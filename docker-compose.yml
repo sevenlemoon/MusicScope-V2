@@ -1,0 +1,47 @@
+name: musicscope-v2
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-musicscope_v2}
+      POSTGRES_USER: ${POSTGRES_USER:-musicscope_v2}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-musicscope_v2_dev}
+    ports:
+      - "${POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - musicscope_v2_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-musicscope_v2} -d ${POSTGRES_DB:-musicscope_v2}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build: ./apps/api
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-musicscope_v2}:${POSTGRES_PASSWORD:-musicscope_v2_dev}@postgres:5432/${POSTGRES_DB:-musicscope_v2}
+      SECRET_ENCRYPTION_KEY: ${SECRET_ENCRYPTION_KEY:-}
+      SECRET_ENCRYPTION_KEY_VERSION: ${SECRET_ENCRYPTION_KEY_VERSION:-1}
+      WEB_ORIGINS: http://localhost:3000
+    ports:
+      - "${API_PORT:-8100}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8100}
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8100}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  musicscope_v2_postgres_data:
+    name: musicscope_v2_postgres_data

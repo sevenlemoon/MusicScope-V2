@@ -1,0 +1,18 @@
+{
+  "name": "musicscope-netease-sidecar",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=24.21.0 <25"
+  },
+  "scripts": {
+    "start": "node server.cjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@neteasecloudmusicapienhanced/api": "4.40.1"
+  },
+  "overrides": {
+    "qs": "6.16.0"
+  }
+}
