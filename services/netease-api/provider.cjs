@@ -59,4 +59,8 @@ module.exports = {
   },
   artist_detail: moduleCall("artist_detail"),
   album: moduleCall("album"),
+  cloudsearch: moduleCall("cloudsearch"),
+  artist_songs: moduleCall("artist_songs"),
+  artist_album: moduleCall("artist_album"),
+  simi_artist: moduleCall("simi_artist"),
 };

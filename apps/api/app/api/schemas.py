@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Literal
 
@@ -20,11 +22,12 @@ class AlphabetGroup(BaseModel):
 
 
 class ProductStatus(BaseModel):
-    release: Literal["R0", "R1", "R2.1"]
+    release: Literal["R0", "R1", "R2.1", "R2"]
     stage: Literal[
         "architecture_and_greenfield_bootstrap",
         "netease_integration_verification",
         "library_experience_and_playback",
+        "personal_music_intelligence",
     ]
     capabilities: dict[str, CapabilityStage]
 
@@ -252,7 +255,8 @@ class TrackDetail(BaseModel):
 
 
 class PlaybackSourceResponse(BaseModel):
-    track_id: str
+    track_id: str | None = None
+    provider_identity: ProviderEntityIdentity | None = None
     source_type: Literal["provider_stream"] = "provider_stream"
     url: str
     mime_type: str
@@ -292,6 +296,172 @@ class LibrarySummary(BaseModel):
     counts: LibraryCounts
     items: list[dict[str, object]] = Field(default_factory=list)
     next_cursor: str | None = None
+
+
+RecommendationEntityType = Literal["track", "artist", "album"]
+RecommendationStrategy = Literal[
+    "REDISCOVER",
+    "ARTIST_AFFINITY",
+    "ALBUM_AFFINITY",
+    "CO_OCCURRENCE",
+    "ADJACENT_ARTIST",
+    "EXPLORATION",
+    "EXTERNAL_ARTIST_CATALOG",
+    "EXTERNAL_COLLABORATION",
+]
+
+
+class RecommendationEvidence(BaseModel):
+    code: str
+    label: str
+    value: int | float | str
+
+
+class ProviderEntityIdentity(BaseModel):
+    provider: Literal["netease"]
+    entity_type: RecommendationEntityType
+    provider_id: str
+
+
+class ExternalArtistItem(BaseModel):
+    provider_id: str
+    name: str
+    artwork_url: str | None = None
+
+
+class ExternalAlbumItem(BaseModel):
+    provider_id: str
+    title: str
+    artwork_url: str | None = None
+
+
+class ExternalTrackItem(BaseModel):
+    provider: Literal["netease"] = "netease"
+    provider_id: str
+    title: str
+    artwork_url: str | None = None
+    duration_ms: int | None = None
+    artists: list[ExternalArtistItem] = Field(default_factory=list)
+    album: ExternalAlbumItem | None = None
+
+
+class RecommendationItem(BaseModel):
+    entity_type: RecommendationEntityType
+    canonical_entity_id: str | None = None
+    provider_identity: ProviderEntityIdentity | None = None
+    title: str
+    subtitle: str | None = None
+    artwork_url: str | None = None
+    score: float
+    confidence: float
+    confidence_label: Literal["strong", "developing", "light"]
+    strategy: RecommendationStrategy
+    evidence: list[RecommendationEvidence] = Field(default_factory=list)
+    explanation: str
+    is_in_library: bool
+    source: Literal["musicscope_library", "netease_external"]
+    generated_at: datetime
+    track: TrackItem | None = None
+    external_track: ExternalTrackItem | None = None
+    discovery_distance: int = 0
+
+
+class AffinityItem(BaseModel):
+    id: str
+    name: str
+    artwork_url: str | None = None
+    affinity: float
+    confidence: float
+    evidence: list[RecommendationEvidence] = Field(default_factory=list)
+
+
+class RelationshipItem(BaseModel):
+    source: EntityReference
+    target: EntityReference
+    weight: float
+    playlist_count: int
+    collaboration_count: int
+
+
+class RecommendationProfileResponse(BaseModel):
+    profile_id: str
+    version: int
+    stale: bool
+    exploration_level: int
+    artist_count: int
+    album_count: int
+    relationship_count: int
+    playlist_count: int
+    track_count: int
+    largest_playlist: int
+    largest_playlist_weight: float
+    generated_at: datetime
+    timings_ms: dict[str, int] = Field(default_factory=dict)
+    top_artists: list[AffinityItem] = Field(default_factory=list)
+    top_albums: list[AffinityItem] = Field(default_factory=list)
+    relationships: list[RelationshipItem] = Field(default_factory=list)
+
+
+class ProfileRebuildResponse(BaseModel):
+    status: Literal["rebuilt"] = "rebuilt"
+    profile_id: str
+    artist_count: int
+    album_count: int
+    relationship_count: int
+    timings_ms: dict[str, int]
+
+
+class HomeRecommendationsResponse(BaseModel):
+    generated_at: datetime
+    exploration_level: int
+    made_for_you: list[RecommendationItem] = Field(default_factory=list)
+    rediscover: list[RecommendationItem] = Field(default_factory=list)
+    strong_artists: list[RecommendationItem] = Field(default_factory=list)
+    explore_next: list[RecommendationItem] = Field(default_factory=list)
+    candidate_counts: dict[str, int] = Field(default_factory=dict)
+    timings_ms: dict[str, int] = Field(default_factory=dict)
+    external_state: Literal["fresh", "stale", "partial", "unavailable", "no_candidates"]
+    cache_generated_at: datetime | None = None
+
+
+class DiscoverRecommendationsResponse(BaseModel):
+    generated_at: datetime
+    category: str
+    exploration_level: int
+    items: list[RecommendationItem] = Field(default_factory=list)
+    candidate_counts: dict[str, int] = Field(default_factory=dict)
+    timings_ms: dict[str, int] = Field(default_factory=dict)
+    external_state: Literal["fresh", "stale", "partial", "unavailable", "no_candidates"]
+    cache_generated_at: datetime | None = None
+
+
+class CandidateRefreshResponse(BaseModel):
+    status: Literal["fresh", "partial", "stale", "no_candidates"]
+    candidate_count: int
+    provider_request_count: int
+    provider_failure_count: int
+    duration_ms: int
+    generated_at: datetime | None = None
+
+
+class RecommendationSettingsRequest(BaseModel):
+    exploration_level: int = Field(ge=0, le=100)
+
+
+class RecommendationFeedbackRequest(BaseModel):
+    entity_type: RecommendationEntityType
+    canonical_entity_id: str | None = None
+    provider_identity: ProviderEntityIdentity | None = None
+    strategy: RecommendationStrategy
+    feedback_type: Literal["LIKE", "DISLIKE", "NOT_INTERESTED"]
+    reason: str | None = Field(default=None, max_length=80)
+
+
+class RecommendationFeedbackResponse(BaseModel):
+    status: Literal["saved"] = "saved"
+    feedback_type: Literal["LIKE", "DISLIKE", "NOT_INTERESTED"]
+    canonical_entity_id: str | None = None
+    provider_identity: ProviderEntityIdentity | None = None
 
 
 class HealthResponse(BaseModel):

@@ -273,6 +273,94 @@ class NetEaseProvider:
                 )
         return items
 
+    async def search_tracks(self, query: str, *, limit: int = 20) -> list[ProviderTrack]:
+        result = await self._post(
+            "search_tracks",
+            "/v1/search/tracks",
+            self._authenticated_payload(keywords=query, limit=min(max(limit, 1), 50), offset=0),
+        )
+        search_result = result.get("result") or {}
+        songs = search_result.get("songs") if isinstance(search_result, dict) else []
+        return [self._normalize_track(item) for item in songs or [] if isinstance(item, dict)]
+
+    async def search_artists(self, query: str, *, limit: int = 20) -> list[ProviderArtist]:
+        result = await self._post(
+            "search_artists",
+            "/v1/search/artists",
+            self._authenticated_payload(keywords=query, limit=min(max(limit, 1), 50), offset=0),
+        )
+        search_result = result.get("result") or {}
+        artists = search_result.get("artists") if isinstance(search_result, dict) else []
+        return [
+            ProviderArtist(
+                provider_id=str(item["id"]),
+                name=str(item.get("name") or "Unknown artist"),
+                artwork_url=normalize_artwork_url(item.get("picUrl") or item.get("img1v1Url")),
+            )
+            for item in artists or []
+            if isinstance(item, dict) and item.get("id") is not None
+        ]
+
+    async def get_artist_tracks(
+        self, provider_id: str, *, limit: int = 30
+    ) -> list[ProviderTrack]:
+        result = await self._post(
+            "artist_songs",
+            "/v1/artists/songs",
+            self._authenticated_payload(
+                id=provider_id,
+                limit=min(max(limit, 1), 50),
+                offset=0,
+                order="hot",
+            ),
+        )
+        return [self._normalize_track(item) for item in result.get("songs", []) if isinstance(item, dict)]
+
+    async def get_artist_albums(
+        self, provider_id: str, *, limit: int = 20
+    ) -> list[ProviderAlbum]:
+        result = await self._post(
+            "artist_albums",
+            "/v1/artists/albums",
+            self._authenticated_payload(
+                id=provider_id,
+                limit=min(max(limit, 1), 50),
+                offset=0,
+            ),
+        )
+        return [
+            ProviderAlbum(
+                provider_id=str(item["id"]),
+                title=str(item.get("name") or "Unknown album"),
+                artist_provider_ids=tuple(
+                    str(artist["id"])
+                    for artist in item.get("artists", [])
+                    if isinstance(artist, dict) and artist.get("id") is not None
+                ),
+                artwork_url=normalize_artwork_url(item.get("picUrl")),
+            )
+            for item in result.get("hotAlbums", [])
+            if isinstance(item, dict) and item.get("id") is not None
+        ]
+
+    async def get_related_artists(
+        self, provider_id: str, *, limit: int = 12
+    ) -> list[ProviderArtist]:
+        result = await self._post(
+            "related_artists",
+            "/v1/artists/related",
+            self._authenticated_payload(id=provider_id),
+        )
+        return [
+            ProviderArtist(
+                provider_id=str(item["id"]),
+                name=str(item.get("name") or "Unknown artist"),
+                artwork_url=normalize_artwork_url(item.get("picUrl") or item.get("img1v1Url")),
+            )
+            for item in (result.get("artists") or [])[: min(max(limit, 1), 30)]
+            if isinstance(item, dict) and item.get("id") is not None
+        ]
+
     async def resolve_playback_source(self, provider_id: str) -> ProviderPlaybackSource:
         result = await self._post(
             "playback_source",

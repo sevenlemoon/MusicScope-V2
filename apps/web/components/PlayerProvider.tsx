@@ -8,6 +8,7 @@ import { ApiRequestError, apiRequest } from "@/lib/api-client";
 import type { components } from "@/lib/api-schema.generated";
 
 type TrackItem = components["schemas"]["TrackItem"];
+type ExternalTrackItem = components["schemas"]["ExternalTrackItem"];
 type PlaybackSource = components["schemas"]["PlaybackSourceResponse"];
 type PlayerStatus = "idle" | "loading" | "playing" | "paused" | "error";
 
@@ -15,6 +16,7 @@ type PlayerContextValue = {
   current: TrackItem | null;
   status: PlayerStatus;
   playTrack: (track: TrackItem) => Promise<void>;
+  playExternalTrack: (track: ExternalTrackItem) => Promise<void>;
   toggle: () => Promise<void>;
 };
 
@@ -29,12 +31,14 @@ function displayTime(seconds: number) {
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const sourceExpiresAtRef = useRef<number | null>(null);
+  const externalTrackRef = useRef<ExternalTrackItem | null>(null);
   const [current, setCurrent] = useState<TrackItem | null>(null);
   const [status, setStatus] = useState<PlayerStatus>("idle");
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.75);
   const [error, setError] = useState<string | null>(null);
+  const [detailHref, setDetailHref] = useState<string | null>(null);
 
   useEffect(() => {
     const audio = new Audio();
@@ -67,11 +71,47 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const audio = audioRef.current;
     if (!audio) return;
     setCurrent(track);
+    externalTrackRef.current = null;
+    setStatus("loading");
+    setError(null);
+    setPosition(0);
+    setDetailHref(`/track/${track.id}`);
+    try {
+      const source = await apiRequest<PlaybackSource>(`/api/v1/tracks/${track.id}/playback-source`, { method: "POST" });
+      sourceExpiresAtRef.current = source.expires_at ? Date.parse(source.expires_at) : null;
+      audio.src = source.url;
+      audio.load();
+      await audio.play();
+    } catch (reason) {
+      setStatus("error");
+      const statusCode = reason instanceof ApiRequestError ? reason.status : 0;
+      setError(statusCode === 401 ? "Your NetEase session expired. Reconnect before playing music." : statusCode === 409 ? "Connect NetEase before playing music." : statusCode === 422 ? "This track cannot be played with the current account." : statusCode === 503 ? "NetEase playback is temporarily unavailable." : "NetEase could not provide a playable source for this track.");
+    }
+  }, []);
+
+  const playExternalTrack = useCallback(async (track: ExternalTrackItem) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const displayTrack: TrackItem = {
+      id: `provider:${track.provider}:track:${track.provider_id}`,
+      title: track.title,
+      artwork_url: track.artwork_url,
+      duration_ms: track.duration_ms,
+      album_id: null,
+      album: track.album?.title ?? null,
+      artists: (track.artists ?? []).map((artist) => artist.name),
+      artist_items: [],
+      sort_group: "#",
+      playlist_position: null,
+    };
+    setCurrent(displayTrack);
+    externalTrackRef.current = track;
+    setDetailHref(`/discover/track/${track.provider}/${track.provider_id}`);
     setStatus("loading");
     setError(null);
     setPosition(0);
     try {
-      const source = await apiRequest<PlaybackSource>(`/api/v1/tracks/${track.id}/playback-source`, { method: "POST" });
+      const source = await apiRequest<PlaybackSource>(`/api/v1/recommendations/external/${track.provider}/tracks/${track.provider_id}/playback-source`, { method: "POST" });
       sourceExpiresAtRef.current = source.expires_at ? Date.parse(source.expires_at) : null;
       audio.src = source.url;
       audio.load();
@@ -88,12 +128,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (!audio || !current) return;
     if (audio.paused) {
       if (sourceExpiresAtRef.current && Date.now() >= sourceExpiresAtRef.current) {
-        await playTrack(current);
+        if (externalTrackRef.current) await playExternalTrack(externalTrackRef.current);
+        else await playTrack(current);
         return;
       }
       try { setStatus("loading"); await audio.play(); } catch { setStatus("error"); setError("Playback could not resume. Choose Play to resolve a fresh source."); }
     } else audio.pause();
-  }, [current, playTrack]);
+  }, [current, playExternalTrack, playTrack]);
 
   const seek = (value: number) => {
     const audio = audioRef.current;
@@ -108,11 +149,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (audio) audio.volume = value;
   };
 
-  return <PlayerContext.Provider value={{ current, status, playTrack, toggle }}>
+  return <PlayerContext.Provider value={{ current, status, playTrack, playExternalTrack, toggle }}>
     {children}
     {current && <aside className="global-player" aria-label="Now playing">
       <Artwork src={current.artwork_url} alt="" sizes="56px" className="player-artwork" />
-      <div className="player-identity"><Link href={`/track/${current.id}`}>{current.title}</Link><span>{(current.artists ?? []).join(", ") || "Unknown artist"}</span></div>
+      <div className="player-identity"><Link href={detailHref ?? `/track/${current.id}`}>{current.title}</Link><span>{(current.artists ?? []).join(", ") || "Unknown artist"}</span></div>
       <button className="player-toggle" type="button" onClick={() => void toggle()} aria-label={status === "playing" ? "Pause" : "Play"}>{status === "loading" ? "…" : status === "playing" ? "Ⅱ" : "▶"}</button>
       <div className="player-timeline"><span>{displayTime(position)}</span><input aria-label="Playback position" type="range" min="0" max={duration || Math.max((current.duration_ms ?? 0) / 1000, 1)} step="0.1" value={Math.min(position, duration || position)} onChange={(event) => seek(Number(event.target.value))} /><span>{displayTime(duration || (current.duration_ms ?? 0) / 1000)}</span></div>
       <label className="player-volume"><span>VOL</span><input aria-label="Volume" type="range" min="0" max="1" step="0.05" value={volume} onChange={(event) => changeVolume(Number(event.target.value))} /></label>

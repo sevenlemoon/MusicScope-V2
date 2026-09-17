@@ -1,6 +1,52 @@
 {
   "components": {
     "schemas": {
+      "AffinityItem": {
+        "properties": {
+          "affinity": {
+            "title": "Affinity",
+            "type": "number"
+          },
+          "artwork_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artwork Url"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "affinity",
+          "confidence"
+        ],
+        "title": "AffinityItem",
+        "type": "object"
+      },
       "AlbumDetail": {
         "properties": {
           "artists": {
@@ -377,6 +423,57 @@
         "title": "ArtistPage",
         "type": "object"
       },
+      "CandidateRefreshResponse": {
+        "properties": {
+          "candidate_count": {
+            "title": "Candidate Count",
+            "type": "integer"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "provider_failure_count": {
+            "title": "Provider Failure Count",
+            "type": "integer"
+          },
+          "provider_request_count": {
+            "title": "Provider Request Count",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "fresh",
+              "partial",
+              "stale",
+              "no_candidates"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "candidate_count",
+          "provider_request_count",
+          "provider_failure_count",
+          "duration_ms"
+        ],
+        "title": "CandidateRefreshResponse",
+        "type": "object"
+      },
       "ConnectionList": {
         "properties": {
           "items": {
@@ -471,6 +568,75 @@
         "title": "ConnectionSummary",
         "type": "object"
       },
+      "DiscoverRecommendationsResponse": {
+        "properties": {
+          "cache_generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Generated At"
+          },
+          "candidate_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Candidate Counts",
+            "type": "object"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "exploration_level": {
+            "title": "Exploration Level",
+            "type": "integer"
+          },
+          "external_state": {
+            "enum": [
+              "fresh",
+              "stale",
+              "partial",
+              "unavailable",
+              "no_candidates"
+            ],
+            "title": "External State",
+            "type": "string"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "timings_ms": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Timings Ms",
+            "type": "object"
+          }
+        },
+        "required": [
+          "generated_at",
+          "category",
+          "exploration_level",
+          "external_state"
+        ],
+        "title": "DiscoverRecommendationsResponse",
+        "type": "object"
+      },
       "EntityReference": {
         "properties": {
           "id": {
@@ -487,6 +653,127 @@
           "name"
         ],
         "title": "EntityReference",
+        "type": "object"
+      },
+      "ExternalAlbumItem": {
+        "properties": {
+          "artwork_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artwork Url"
+          },
+          "provider_id": {
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id",
+          "title"
+        ],
+        "title": "ExternalAlbumItem",
+        "type": "object"
+      },
+      "ExternalArtistItem": {
+        "properties": {
+          "artwork_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artwork Url"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider_id": {
+            "title": "Provider Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id",
+          "name"
+        ],
+        "title": "ExternalArtistItem",
+        "type": "object"
+      },
+      "ExternalTrackItem": {
+        "properties": {
+          "album": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExternalAlbumItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "artists": {
+            "items": {
+              "$ref": "#/components/schemas/ExternalArtistItem"
+            },
+            "title": "Artists",
+            "type": "array"
+          },
+          "artwork_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artwork Url"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "provider": {
+            "const": "netease",
+            "default": "netease",
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_id": {
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id",
+          "title"
+        ],
+        "title": "ExternalTrackItem",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -540,6 +827,91 @@
           "service"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "HomeRecommendationsResponse": {
+        "properties": {
+          "cache_generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Generated At"
+          },
+          "candidate_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Candidate Counts",
+            "type": "object"
+          },
+          "exploration_level": {
+            "title": "Exploration Level",
+            "type": "integer"
+          },
+          "explore_next": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationItem"
+            },
+            "title": "Explore Next",
+            "type": "array"
+          },
+          "external_state": {
+            "enum": [
+              "fresh",
+              "stale",
+              "partial",
+              "unavailable",
+              "no_candidates"
+            ],
+            "title": "External State",
+            "type": "string"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "made_for_you": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationItem"
+            },
+            "title": "Made For You",
+            "type": "array"
+          },
+          "rediscover": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationItem"
+            },
+            "title": "Rediscover",
+            "type": "array"
+          },
+          "strong_artists": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationItem"
+            },
+            "title": "Strong Artists",
+            "type": "array"
+          },
+          "timings_ms": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Timings Ms",
+            "type": "object"
+          }
+        },
+        "required": [
+          "generated_at",
+          "exploration_level",
+          "external_state"
+        ],
+        "title": "HomeRecommendationsResponse",
         "type": "object"
       },
       "LibraryCounts": {
@@ -781,6 +1153,16 @@
             "title": "Provider",
             "type": "string"
           },
+          "provider_identity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderEntityIdentity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "quality": {
             "anyOf": [
               {
@@ -803,8 +1185,15 @@
             "type": "string"
           },
           "track_id": {
-            "title": "Track Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Track Id"
           },
           "url": {
             "title": "Url",
@@ -812,7 +1201,6 @@
           }
         },
         "required": [
-          "track_id",
           "url",
           "mime_type",
           "resolution_ms"
@@ -1030,7 +1418,8 @@
             "enum": [
               "R0",
               "R1",
-              "R2.1"
+              "R2.1",
+              "R2"
             ],
             "title": "Release",
             "type": "string"
@@ -1039,7 +1428,8 @@
             "enum": [
               "architecture_and_greenfield_bootstrap",
               "netease_integration_verification",
-              "library_experience_and_playback"
+              "library_experience_and_playback",
+              "personal_music_intelligence"
             ],
             "title": "Stage",
             "type": "string"
@@ -1051,6 +1441,77 @@
           "capabilities"
         ],
         "title": "ProductStatus",
+        "type": "object"
+      },
+      "ProfileRebuildResponse": {
+        "properties": {
+          "album_count": {
+            "title": "Album Count",
+            "type": "integer"
+          },
+          "artist_count": {
+            "title": "Artist Count",
+            "type": "integer"
+          },
+          "profile_id": {
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "relationship_count": {
+            "title": "Relationship Count",
+            "type": "integer"
+          },
+          "status": {
+            "const": "rebuilt",
+            "default": "rebuilt",
+            "title": "Status",
+            "type": "string"
+          },
+          "timings_ms": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Timings Ms",
+            "type": "object"
+          }
+        },
+        "required": [
+          "profile_id",
+          "artist_count",
+          "album_count",
+          "relationship_count",
+          "timings_ms"
+        ],
+        "title": "ProfileRebuildResponse",
+        "type": "object"
+      },
+      "ProviderEntityIdentity": {
+        "properties": {
+          "entity_type": {
+            "enum": [
+              "track",
+              "artist",
+              "album"
+            ],
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "provider": {
+            "const": "netease",
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_id": {
+            "title": "Provider Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "entity_type",
+          "provider_id"
+        ],
+        "title": "ProviderEntityIdentity",
         "type": "object"
       },
       "QrChallengeResponse": {
@@ -1113,6 +1574,461 @@
           "status"
         ],
         "title": "QrStatusResponse",
+        "type": "object"
+      },
+      "RecommendationEvidence": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "value"
+        ],
+        "title": "RecommendationEvidence",
+        "type": "object"
+      },
+      "RecommendationFeedbackRequest": {
+        "properties": {
+          "canonical_entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Entity Id"
+          },
+          "entity_type": {
+            "enum": [
+              "track",
+              "artist",
+              "album"
+            ],
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "feedback_type": {
+            "enum": [
+              "LIKE",
+              "DISLIKE",
+              "NOT_INTERESTED"
+            ],
+            "title": "Feedback Type",
+            "type": "string"
+          },
+          "provider_identity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderEntityIdentity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "strategy": {
+            "enum": [
+              "REDISCOVER",
+              "ARTIST_AFFINITY",
+              "ALBUM_AFFINITY",
+              "CO_OCCURRENCE",
+              "ADJACENT_ARTIST",
+              "EXPLORATION",
+              "EXTERNAL_ARTIST_CATALOG",
+              "EXTERNAL_COLLABORATION"
+            ],
+            "title": "Strategy",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_type",
+          "strategy",
+          "feedback_type"
+        ],
+        "title": "RecommendationFeedbackRequest",
+        "type": "object"
+      },
+      "RecommendationFeedbackResponse": {
+        "properties": {
+          "canonical_entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Entity Id"
+          },
+          "feedback_type": {
+            "enum": [
+              "LIKE",
+              "DISLIKE",
+              "NOT_INTERESTED"
+            ],
+            "title": "Feedback Type",
+            "type": "string"
+          },
+          "provider_identity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderEntityIdentity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "const": "saved",
+            "default": "saved",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "feedback_type"
+        ],
+        "title": "RecommendationFeedbackResponse",
+        "type": "object"
+      },
+      "RecommendationItem": {
+        "properties": {
+          "artwork_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artwork Url"
+          },
+          "canonical_entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Entity Id"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "confidence_label": {
+            "enum": [
+              "strong",
+              "developing",
+              "light"
+            ],
+            "title": "Confidence Label",
+            "type": "string"
+          },
+          "discovery_distance": {
+            "default": 0,
+            "title": "Discovery Distance",
+            "type": "integer"
+          },
+          "entity_type": {
+            "enum": [
+              "track",
+              "artist",
+              "album"
+            ],
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "external_track": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExternalTrackItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "is_in_library": {
+            "title": "Is In Library",
+            "type": "boolean"
+          },
+          "provider_identity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderEntityIdentity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "source": {
+            "enum": [
+              "musicscope_library",
+              "netease_external"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "strategy": {
+            "enum": [
+              "REDISCOVER",
+              "ARTIST_AFFINITY",
+              "ALBUM_AFFINITY",
+              "CO_OCCURRENCE",
+              "ADJACENT_ARTIST",
+              "EXPLORATION",
+              "EXTERNAL_ARTIST_CATALOG",
+              "EXTERNAL_COLLABORATION"
+            ],
+            "title": "Strategy",
+            "type": "string"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "track": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrackItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "entity_type",
+          "title",
+          "score",
+          "confidence",
+          "confidence_label",
+          "strategy",
+          "explanation",
+          "is_in_library",
+          "source",
+          "generated_at"
+        ],
+        "title": "RecommendationItem",
+        "type": "object"
+      },
+      "RecommendationProfileResponse": {
+        "properties": {
+          "album_count": {
+            "title": "Album Count",
+            "type": "integer"
+          },
+          "artist_count": {
+            "title": "Artist Count",
+            "type": "integer"
+          },
+          "exploration_level": {
+            "title": "Exploration Level",
+            "type": "integer"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "largest_playlist": {
+            "title": "Largest Playlist",
+            "type": "integer"
+          },
+          "largest_playlist_weight": {
+            "title": "Largest Playlist Weight",
+            "type": "number"
+          },
+          "playlist_count": {
+            "title": "Playlist Count",
+            "type": "integer"
+          },
+          "profile_id": {
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "relationship_count": {
+            "title": "Relationship Count",
+            "type": "integer"
+          },
+          "relationships": {
+            "items": {
+              "$ref": "#/components/schemas/RelationshipItem"
+            },
+            "title": "Relationships",
+            "type": "array"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "timings_ms": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Timings Ms",
+            "type": "object"
+          },
+          "top_albums": {
+            "items": {
+              "$ref": "#/components/schemas/AffinityItem"
+            },
+            "title": "Top Albums",
+            "type": "array"
+          },
+          "top_artists": {
+            "items": {
+              "$ref": "#/components/schemas/AffinityItem"
+            },
+            "title": "Top Artists",
+            "type": "array"
+          },
+          "track_count": {
+            "title": "Track Count",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "profile_id",
+          "version",
+          "stale",
+          "exploration_level",
+          "artist_count",
+          "album_count",
+          "relationship_count",
+          "playlist_count",
+          "track_count",
+          "largest_playlist",
+          "largest_playlist_weight",
+          "generated_at"
+        ],
+        "title": "RecommendationProfileResponse",
+        "type": "object"
+      },
+      "RecommendationSettingsRequest": {
+        "properties": {
+          "exploration_level": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Exploration Level",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "exploration_level"
+        ],
+        "title": "RecommendationSettingsRequest",
+        "type": "object"
+      },
+      "RelationshipItem": {
+        "properties": {
+          "collaboration_count": {
+            "title": "Collaboration Count",
+            "type": "integer"
+          },
+          "playlist_count": {
+            "title": "Playlist Count",
+            "type": "integer"
+          },
+          "source": {
+            "$ref": "#/components/schemas/EntityReference"
+          },
+          "target": {
+            "$ref": "#/components/schemas/EntityReference"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "weight",
+          "playlist_count",
+          "collaboration_count"
+        ],
+        "title": "RelationshipItem",
         "type": "object"
       },
       "SearchAlbumResult": {
@@ -1630,7 +2546,7 @@
     }
   },
   "info": {
-    "description": "R2.1 API for a canonical NetEase library and entitled transient playback.",
+    "description": "R2 API for a canonical library, playback, and personal music intelligence.",
     "title": "MusicScope V2 API",
     "version": "0.1.0"
   },
@@ -2835,6 +3751,595 @@
         "summary": "Playlist Tracks",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/v1/recommendations/candidates/refresh": {
+      "post": {
+        "operationId": "refresh_candidates_api_v1_recommendations_candidates_refresh_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateRefreshResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh Candidates",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/discover": {
+      "get": {
+        "operationId": "discover_recommendations_api_v1_recommendations_discover_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "default": "for-you",
+              "title": "Category",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "maximum": 60,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoverRecommendationsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discover Recommendations",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/external/{provider}/tracks/{provider_id}": {
+      "get": {
+        "operationId": "external_track_detail_api_v1_recommendations_external__provider__tracks__provider_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "title": "Provider",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "External Track Detail",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/external/{provider}/tracks/{provider_id}/playback-source": {
+      "post": {
+        "operationId": "external_track_playback_api_v1_recommendations_external__provider__tracks__provider_id__playback_source_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "title": "Provider",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybackSourceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "External Track Playback",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/feedback": {
+      "post": {
+        "operationId": "save_recommendation_feedback_api_v1_recommendations_feedback_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendationFeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationFeedbackResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Recommendation Feedback",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/home": {
+      "get": {
+        "operationId": "home_recommendations_api_v1_recommendations_home_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomeRecommendationsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Home Recommendations",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/profile": {
+      "get": {
+        "operationId": "recommendation_profile_api_v1_recommendations_profile_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recommendation Profile",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/profile/rebuild": {
+      "post": {
+        "operationId": "rebuild_recommendation_profile_api_v1_recommendations_profile_rebuild_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileRebuildResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rebuild Recommendation Profile",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/settings": {
+      "patch": {
+        "operationId": "update_recommendation_settings_api_v1_recommendations_settings_patch",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendationSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Recommendation Settings",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/{category}": {
+      "get": {
+        "operationId": "recommendation_category_api_v1_recommendations__category__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "title": "Category",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "maximum": 60,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoverRecommendationsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recommendation Category",
+        "tags": [
+          "recommendations"
         ]
       }
     },

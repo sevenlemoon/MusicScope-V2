@@ -273,15 +273,153 @@ class RecommendationProfile(TimestampMixin, Base):
     window_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class RecommendationProfileArtist(Base):
+    __tablename__ = "recommendation_profile_artists"
+    __table_args__ = (
+        UniqueConstraint("profile_id", "artist_id", name="uq_profile_artist"),
+        Index("ix_profile_artist_affinity", "profile_id", "affinity"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    profile_id: Mapped[UUID] = mapped_column(
+        ForeignKey("recommendation_profiles.id", ondelete="CASCADE"), index=True
+    )
+    artist_id: Mapped[UUID] = mapped_column(ForeignKey("artists.id", ondelete="CASCADE"), index=True)
+    affinity: Mapped[float] = mapped_column(Float, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    distinct_tracks: Mapped[int] = mapped_column(Integer, nullable=False)
+    distinct_playlists: Mapped[int] = mapped_column(Integer, nullable=False)
+    weighted_memberships: Mapped[float] = mapped_column(Float, nullable=False)
+    repeated_memberships: Mapped[int] = mapped_column(Integer, nullable=False)
+    represented_albums: Mapped[int] = mapped_column(Integer, nullable=False)
+    collaboration_tracks: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+
+
+class RecommendationProfileAlbum(Base):
+    __tablename__ = "recommendation_profile_albums"
+    __table_args__ = (
+        UniqueConstraint("profile_id", "album_id", name="uq_profile_album"),
+        Index("ix_profile_album_affinity", "profile_id", "affinity"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    profile_id: Mapped[UUID] = mapped_column(
+        ForeignKey("recommendation_profiles.id", ondelete="CASCADE"), index=True
+    )
+    album_id: Mapped[UUID] = mapped_column(ForeignKey("albums.id", ondelete="CASCADE"), index=True)
+    affinity: Mapped[float] = mapped_column(Float, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    distinct_tracks: Mapped[int] = mapped_column(Integer, nullable=False)
+    distinct_playlists: Mapped[int] = mapped_column(Integer, nullable=False)
+    weighted_memberships: Mapped[float] = mapped_column(Float, nullable=False)
+    artist_affinity: Mapped[float] = mapped_column(Float, nullable=False)
+    evidence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+
+
+class RecommendationRelationship(Base):
+    __tablename__ = "recommendation_relationships"
+    __table_args__ = (
+        UniqueConstraint("profile_id", "source_artist_id", "target_artist_id", name="uq_profile_artist_edge"),
+        Index("ix_recommendation_relationship_weight", "profile_id", "weight"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    profile_id: Mapped[UUID] = mapped_column(
+        ForeignKey("recommendation_profiles.id", ondelete="CASCADE"), index=True
+    )
+    source_artist_id: Mapped[UUID] = mapped_column(ForeignKey("artists.id", ondelete="CASCADE"), index=True)
+    target_artist_id: Mapped[UUID] = mapped_column(ForeignKey("artists.id", ondelete="CASCADE"), index=True)
+    weight: Mapped[float] = mapped_column(Float, nullable=False)
+    playlist_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    collaboration_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+
+
 class RecommendationFeedback(TimestampMixin, Base):
     __tablename__ = "recommendation_feedback"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "entity_type", "identity_key", name="uq_user_recommendation_feedback"
+        ),
+        CheckConstraint(
+            "entity_type IN ('track', 'artist', 'album')",
+            name="recommendation_feedback_entity_type",
+        ),
+        CheckConstraint(
+            "feedback_type IN ('LIKE', 'DISLIKE', 'NOT_INTERESTED')",
+            name="recommendation_feedback_type",
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    track_id: Mapped[UUID] = mapped_column(ForeignKey("tracks.id", ondelete="CASCADE"), index=True)
+    track_id: Mapped[UUID | None] = mapped_column(ForeignKey("tracks.id", ondelete="CASCADE"), index=True)
+    entity_type: Mapped[str] = mapped_column(String(32), default="track", nullable=False)
+    entity_id: Mapped[UUID | None] = mapped_column(index=True)
+    provider: Mapped[str | None] = mapped_column(String(32))
+    provider_id: Mapped[str | None] = mapped_column(String(200))
+    identity_key: Mapped[str] = mapped_column(String(280), nullable=False)
+    strategy: Mapped[str] = mapped_column(String(40), nullable=False)
     feedback_type: Mapped[str] = mapped_column(String(32), nullable=False)
     reason: Mapped[str | None] = mapped_column(String(80))
     context: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+
+
+class RecommendationCandidate(TimestampMixin, Base):
+    __tablename__ = "recommendation_candidates"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "category", "identity_key", name="uq_user_candidate_category_identity"
+        ),
+        Index("ix_recommendation_candidate_pool", "user_id", "category", "score"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    profile_id: Mapped[UUID] = mapped_column(
+        ForeignKey("recommendation_profiles.id", ondelete="CASCADE"), index=True
+    )
+    category: Mapped[str] = mapped_column(String(40), nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    canonical_entity_id: Mapped[UUID | None] = mapped_column(index=True)
+    provider: Mapped[str | None] = mapped_column(String(32))
+    provider_id: Mapped[str | None] = mapped_column(String(200))
+    identity_key: Mapped[str] = mapped_column(String(280), nullable=False)
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    strategy: Mapped[str] = mapped_column(String(48), nullable=False)
+    seed_key: Mapped[str | None] = mapped_column(String(280))
+    distance: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    @validates("payload")
+    def validate_candidate_payload(self, _key: str, value: dict[str, Any]) -> dict[str, Any]:
+        if contains_sensitive_fields(value):
+            raise ValueError("Recommendation candidates cannot contain provider secrets.")
+        return value
+
+
+class RecommendationCandidateRefresh(TimestampMixin, Base):
+    __tablename__ = "recommendation_candidate_refreshes"
+    __table_args__ = (
+        UniqueConstraint("user_id", "provider", name="uq_user_candidate_refresh_provider"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    candidate_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    request_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    failure_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    safe_error_code: Mapped[str | None] = mapped_column(String(80))
 
 
 class ConcertEvent(TimestampMixin, Base):

@@ -345,6 +345,176 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recommendations/candidates/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Candidates */
+        post: operations["refresh_candidates_api_v1_recommendations_candidates_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recommendations/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Discover Recommendations */
+        get: operations["discover_recommendations_api_v1_recommendations_discover_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recommendations/external/{provider}/tracks/{provider_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** External Track Detail */
+        get: operations["external_track_detail_api_v1_recommendations_external__provider__tracks__provider_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recommendations/external/{provider}/tracks/{provider_id}/playback-source": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** External Track Playback */
+        post: operations["external_track_playback_api_v1_recommendations_external__provider__tracks__provider_id__playback_source_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recommendations/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Save Recommendation Feedback */
+        post: operations["save_recommendation_feedback_api_v1_recommendations_feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recommendations/home": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Home Recommendations */
+        get: operations["home_recommendations_api_v1_recommendations_home_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recommendations/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recommendation Profile */
+        get: operations["recommendation_profile_api_v1_recommendations_profile_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recommendations/profile/rebuild": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rebuild Recommendation Profile */
+        post: operations["rebuild_recommendation_profile_api_v1_recommendations_profile_rebuild_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recommendations/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Recommendation Settings */
+        patch: operations["update_recommendation_settings_api_v1_recommendations_settings_patch"];
+        trace?: never;
+    };
+    "/api/v1/recommendations/{category}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recommendation Category */
+        get: operations["recommendation_category_api_v1_recommendations__category__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/status": {
         parameters: {
             query?: never;
@@ -451,6 +621,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AffinityItem */
+        AffinityItem: {
+            /** Affinity */
+            affinity: number;
+            /** Artwork Url */
+            artwork_url?: string | null;
+            /** Confidence */
+            confidence: number;
+            /** Evidence */
+            evidence?: components["schemas"]["RecommendationEvidence"][];
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
         /** AlbumDetail */
         AlbumDetail: {
             /** Artists */
@@ -593,6 +778,24 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** CandidateRefreshResponse */
+        CandidateRefreshResponse: {
+            /** Candidate Count */
+            candidate_count: number;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Generated At */
+            generated_at?: string | null;
+            /** Provider Failure Count */
+            provider_failure_count: number;
+            /** Provider Request Count */
+            provider_request_count: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "fresh" | "partial" | "stale" | "no_candidates";
+        };
         /** ConnectionList */
         ConnectionList: {
             /** Items */
@@ -620,12 +823,79 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** DiscoverRecommendationsResponse */
+        DiscoverRecommendationsResponse: {
+            /** Cache Generated At */
+            cache_generated_at?: string | null;
+            /** Candidate Counts */
+            candidate_counts?: {
+                [key: string]: number;
+            };
+            /** Category */
+            category: string;
+            /** Exploration Level */
+            exploration_level: number;
+            /**
+             * External State
+             * @enum {string}
+             */
+            external_state: "fresh" | "stale" | "partial" | "unavailable" | "no_candidates";
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Items */
+            items?: components["schemas"]["RecommendationItem"][];
+            /** Timings Ms */
+            timings_ms?: {
+                [key: string]: number;
+            };
+        };
         /** EntityReference */
         EntityReference: {
             /** Id */
             id: string;
             /** Name */
             name: string;
+        };
+        /** ExternalAlbumItem */
+        ExternalAlbumItem: {
+            /** Artwork Url */
+            artwork_url?: string | null;
+            /** Provider Id */
+            provider_id: string;
+            /** Title */
+            title: string;
+        };
+        /** ExternalArtistItem */
+        ExternalArtistItem: {
+            /** Artwork Url */
+            artwork_url?: string | null;
+            /** Name */
+            name: string;
+            /** Provider Id */
+            provider_id: string;
+        };
+        /** ExternalTrackItem */
+        ExternalTrackItem: {
+            album?: components["schemas"]["ExternalAlbumItem"] | null;
+            /** Artists */
+            artists?: components["schemas"]["ExternalArtistItem"][];
+            /** Artwork Url */
+            artwork_url?: string | null;
+            /** Duration Ms */
+            duration_ms?: number | null;
+            /**
+             * Provider
+             * @default netease
+             * @constant
+             */
+            provider: "netease";
+            /** Provider Id */
+            provider_id: string;
+            /** Title */
+            title: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -642,6 +912,39 @@ export interface components {
             service: string;
             /** Status */
             status: string;
+        };
+        /** HomeRecommendationsResponse */
+        HomeRecommendationsResponse: {
+            /** Cache Generated At */
+            cache_generated_at?: string | null;
+            /** Candidate Counts */
+            candidate_counts?: {
+                [key: string]: number;
+            };
+            /** Exploration Level */
+            exploration_level: number;
+            /** Explore Next */
+            explore_next?: components["schemas"]["RecommendationItem"][];
+            /**
+             * External State
+             * @enum {string}
+             */
+            external_state: "fresh" | "stale" | "partial" | "unavailable" | "no_candidates";
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Made For You */
+            made_for_you?: components["schemas"]["RecommendationItem"][];
+            /** Rediscover */
+            rediscover?: components["schemas"]["RecommendationItem"][];
+            /** Strong Artists */
+            strong_artists?: components["schemas"]["RecommendationItem"][];
+            /** Timings Ms */
+            timings_ms?: {
+                [key: string]: number;
+            };
         };
         /** LibraryCounts */
         LibraryCounts: {
@@ -754,6 +1057,7 @@ export interface components {
              * @constant
              */
             provider: "netease";
+            provider_identity?: components["schemas"]["ProviderEntityIdentity"] | null;
             /** Quality */
             quality?: string | null;
             /** Resolution Ms */
@@ -765,7 +1069,7 @@ export interface components {
              */
             source_type: "provider_stream";
             /** Track Id */
-            track_id: string;
+            track_id?: string | null;
             /** Url */
             url: string;
         };
@@ -843,12 +1147,48 @@ export interface components {
              * Release
              * @enum {string}
              */
-            release: "R0" | "R1" | "R2.1";
+            release: "R0" | "R1" | "R2.1" | "R2";
             /**
              * Stage
              * @enum {string}
              */
-            stage: "architecture_and_greenfield_bootstrap" | "netease_integration_verification" | "library_experience_and_playback";
+            stage: "architecture_and_greenfield_bootstrap" | "netease_integration_verification" | "library_experience_and_playback" | "personal_music_intelligence";
+        };
+        /** ProfileRebuildResponse */
+        ProfileRebuildResponse: {
+            /** Album Count */
+            album_count: number;
+            /** Artist Count */
+            artist_count: number;
+            /** Profile Id */
+            profile_id: string;
+            /** Relationship Count */
+            relationship_count: number;
+            /**
+             * Status
+             * @default rebuilt
+             * @constant
+             */
+            status: "rebuilt";
+            /** Timings Ms */
+            timings_ms: {
+                [key: string]: number;
+            };
+        };
+        /** ProviderEntityIdentity */
+        ProviderEntityIdentity: {
+            /**
+             * Entity Type
+             * @enum {string}
+             */
+            entity_type: "track" | "artist" | "album";
+            /**
+             * Provider
+             * @constant
+             */
+            provider: "netease";
+            /** Provider Id */
+            provider_id: string;
         };
         /** QrChallengeResponse */
         QrChallengeResponse: {
@@ -873,6 +1213,165 @@ export interface components {
             connection?: components["schemas"]["ConnectionSummary"] | null;
             /** Status */
             status: string;
+        };
+        /** RecommendationEvidence */
+        RecommendationEvidence: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /** Value */
+            value: number | string;
+        };
+        /** RecommendationFeedbackRequest */
+        RecommendationFeedbackRequest: {
+            /** Canonical Entity Id */
+            canonical_entity_id?: string | null;
+            /**
+             * Entity Type
+             * @enum {string}
+             */
+            entity_type: "track" | "artist" | "album";
+            /**
+             * Feedback Type
+             * @enum {string}
+             */
+            feedback_type: "LIKE" | "DISLIKE" | "NOT_INTERESTED";
+            provider_identity?: components["schemas"]["ProviderEntityIdentity"] | null;
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Strategy
+             * @enum {string}
+             */
+            strategy: "REDISCOVER" | "ARTIST_AFFINITY" | "ALBUM_AFFINITY" | "CO_OCCURRENCE" | "ADJACENT_ARTIST" | "EXPLORATION" | "EXTERNAL_ARTIST_CATALOG" | "EXTERNAL_COLLABORATION";
+        };
+        /** RecommendationFeedbackResponse */
+        RecommendationFeedbackResponse: {
+            /** Canonical Entity Id */
+            canonical_entity_id?: string | null;
+            /**
+             * Feedback Type
+             * @enum {string}
+             */
+            feedback_type: "LIKE" | "DISLIKE" | "NOT_INTERESTED";
+            provider_identity?: components["schemas"]["ProviderEntityIdentity"] | null;
+            /**
+             * Status
+             * @default saved
+             * @constant
+             */
+            status: "saved";
+        };
+        /** RecommendationItem */
+        RecommendationItem: {
+            /** Artwork Url */
+            artwork_url?: string | null;
+            /** Canonical Entity Id */
+            canonical_entity_id?: string | null;
+            /** Confidence */
+            confidence: number;
+            /**
+             * Confidence Label
+             * @enum {string}
+             */
+            confidence_label: "strong" | "developing" | "light";
+            /**
+             * Discovery Distance
+             * @default 0
+             */
+            discovery_distance: number;
+            /**
+             * Entity Type
+             * @enum {string}
+             */
+            entity_type: "track" | "artist" | "album";
+            /** Evidence */
+            evidence?: components["schemas"]["RecommendationEvidence"][];
+            /** Explanation */
+            explanation: string;
+            external_track?: components["schemas"]["ExternalTrackItem"] | null;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Is In Library */
+            is_in_library: boolean;
+            provider_identity?: components["schemas"]["ProviderEntityIdentity"] | null;
+            /** Score */
+            score: number;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "musicscope_library" | "netease_external";
+            /**
+             * Strategy
+             * @enum {string}
+             */
+            strategy: "REDISCOVER" | "ARTIST_AFFINITY" | "ALBUM_AFFINITY" | "CO_OCCURRENCE" | "ADJACENT_ARTIST" | "EXPLORATION" | "EXTERNAL_ARTIST_CATALOG" | "EXTERNAL_COLLABORATION";
+            /** Subtitle */
+            subtitle?: string | null;
+            /** Title */
+            title: string;
+            track?: components["schemas"]["TrackItem"] | null;
+        };
+        /** RecommendationProfileResponse */
+        RecommendationProfileResponse: {
+            /** Album Count */
+            album_count: number;
+            /** Artist Count */
+            artist_count: number;
+            /** Exploration Level */
+            exploration_level: number;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Largest Playlist */
+            largest_playlist: number;
+            /** Largest Playlist Weight */
+            largest_playlist_weight: number;
+            /** Playlist Count */
+            playlist_count: number;
+            /** Profile Id */
+            profile_id: string;
+            /** Relationship Count */
+            relationship_count: number;
+            /** Relationships */
+            relationships?: components["schemas"]["RelationshipItem"][];
+            /** Stale */
+            stale: boolean;
+            /** Timings Ms */
+            timings_ms?: {
+                [key: string]: number;
+            };
+            /** Top Albums */
+            top_albums?: components["schemas"]["AffinityItem"][];
+            /** Top Artists */
+            top_artists?: components["schemas"]["AffinityItem"][];
+            /** Track Count */
+            track_count: number;
+            /** Version */
+            version: number;
+        };
+        /** RecommendationSettingsRequest */
+        RecommendationSettingsRequest: {
+            /** Exploration Level */
+            exploration_level: number;
+        };
+        /** RelationshipItem */
+        RelationshipItem: {
+            /** Collaboration Count */
+            collaboration_count: number;
+            /** Playlist Count */
+            playlist_count: number;
+            source: components["schemas"]["EntityReference"];
+            target: components["schemas"]["EntityReference"];
+            /** Weight */
+            weight: number;
         };
         /** SearchAlbumResult */
         SearchAlbumResult: {
@@ -1692,6 +2191,337 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrackPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_candidates_api_v1_recommendations_candidates_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateRefreshResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discover_recommendations_api_v1_recommendations_discover_get: {
+        parameters: {
+            query?: {
+                category?: string;
+                limit?: number;
+            };
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoverRecommendationsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    external_track_detail_api_v1_recommendations_external__provider__tracks__provider_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path: {
+                provider: string;
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecommendationItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    external_track_playback_api_v1_recommendations_external__provider__tracks__provider_id__playback_source_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path: {
+                provider: string;
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybackSourceResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_recommendation_feedback_api_v1_recommendations_feedback_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecommendationFeedbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecommendationFeedbackResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    home_recommendations_api_v1_recommendations_home_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomeRecommendationsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recommendation_profile_api_v1_recommendations_profile_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecommendationProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rebuild_recommendation_profile_api_v1_recommendations_profile_rebuild_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileRebuildResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_recommendation_settings_api_v1_recommendations_settings_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecommendationSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecommendationProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recommendation_category_api_v1_recommendations__category__get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path: {
+                category: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoverRecommendationsResponse"];
                 };
             };
             /** @description Validation Error */

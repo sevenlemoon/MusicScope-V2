@@ -140,6 +140,65 @@ async function playbackSource(payload) {
   );
 }
 
+function boundedInteger(value, fallback, maximum) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) return fallback;
+  return Math.min(parsed, maximum);
+}
+
+async function search(payload, type, category) {
+  const keywords = requireText(payload, "keywords");
+  return providerRead(
+    {
+      session_cookie: payload.session_cookie,
+      keywords,
+      type,
+      limit: boundedInteger(payload.limit, 20, 50),
+      offset: boundedInteger(payload.offset, 0, 500),
+    },
+    api.cloudsearch,
+    category,
+  );
+}
+
+async function artistSongs(payload) {
+  const id = requireText(payload, "id");
+  return providerRead(
+    {
+      session_cookie: payload.session_cookie,
+      id,
+      limit: boundedInteger(payload.limit, 30, 50),
+      offset: boundedInteger(payload.offset, 0, 500),
+      order: payload.order === "time" ? "time" : "hot",
+    },
+    api.artist_songs,
+    "artist_songs",
+  );
+}
+
+async function artistAlbums(payload) {
+  const id = requireText(payload, "id");
+  return providerRead(
+    {
+      session_cookie: payload.session_cookie,
+      id,
+      limit: boundedInteger(payload.limit, 20, 50),
+      offset: boundedInteger(payload.offset, 0, 500),
+    },
+    api.artist_album,
+    "artist_albums",
+  );
+}
+
+async function relatedArtists(payload) {
+  const id = requireText(payload, "id");
+  return providerRead(
+    { session_cookie: payload.session_cookie, id },
+    api.simi_artist,
+    "related_artists",
+  );
+}
+
 async function artistDetail(payload) {
   try {
     return await providerRead(payload, api.artist_detail, "artist_detail");
@@ -166,6 +225,11 @@ async function route(request, response) {
   if (path === "/v1/playlist/detail") return send(response, 200, await providerRead(payload, api.playlist_detail, "playlist_detail"));
   if (path === "/v1/songs/detail") return send(response, 200, await providerRead(payload, api.song_detail, "song_detail"));
   if (path === "/v1/song/url") return send(response, 200, await playbackSource(payload));
+  if (path === "/v1/search/tracks") return send(response, 200, await search(payload, 1, "search_tracks"));
+  if (path === "/v1/search/artists") return send(response, 200, await search(payload, 100, "search_artists"));
+  if (path === "/v1/artists/songs") return send(response, 200, await artistSongs(payload));
+  if (path === "/v1/artists/albums") return send(response, 200, await artistAlbums(payload));
+  if (path === "/v1/artists/related") return send(response, 200, await relatedArtists(payload));
   if (path === "/v1/artist/detail") return send(response, 200, await artistDetail(payload));
   if (path === "/v1/album/detail") return send(response, 200, await providerRead(payload, api.album, "album_detail"));
   return send(response, 404, { code: "not_found" });

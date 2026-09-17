@@ -15,3 +15,15 @@ test("upstream diagnostics are suppressed before they can expose response cookie
   assert.match(source, /getStore\(\)\?\.suppress/);
   assert.match(source, /providerLogContext\.run\(\{ suppress: true \}/);
 });
+
+test("discovery routes expose only bounded read-only provider operations", () => {
+  const server = require("node:fs").readFileSync(require.resolve("./server.cjs"), "utf8");
+  const provider = require("node:fs").readFileSync(require.resolve("./provider.cjs"), "utf8");
+  for (const route of ["/v1/search/tracks", "/v1/search/artists", "/v1/artists/songs", "/v1/artists/albums", "/v1/artists/related"]) {
+    assert.match(server, new RegExp(route.replaceAll("/", "\\/")));
+  }
+  for (const operation of ["cloudsearch", "artist_songs", "artist_album", "simi_artist"]) {
+    assert.match(provider, new RegExp(`${operation}: moduleCall`));
+  }
+  assert.match(server, /Math\.min\(parsed, maximum\)/);
+});

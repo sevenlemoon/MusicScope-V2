@@ -75,6 +75,125 @@ CHECKS = {
         ) artwork
         WHERE artwork_url IS NOT NULL AND artwork_url NOT LIKE 'https://%'
     """,
+    "orphan_recommendation_profiles": """
+        SELECT count(*) FROM recommendation_profiles profile
+        LEFT JOIN users owner ON owner.id = profile.user_id
+        WHERE owner.id IS NULL
+    """,
+    "orphan_recommendation_profile_artists": """
+        SELECT count(*) FROM recommendation_profile_artists item
+        LEFT JOIN recommendation_profiles profile ON profile.id = item.profile_id
+        LEFT JOIN artists artist ON artist.id = item.artist_id
+        WHERE profile.id IS NULL OR artist.id IS NULL
+    """,
+    "orphan_recommendation_profile_albums": """
+        SELECT count(*) FROM recommendation_profile_albums item
+        LEFT JOIN recommendation_profiles profile ON profile.id = item.profile_id
+        LEFT JOIN albums album ON album.id = item.album_id
+        WHERE profile.id IS NULL OR album.id IS NULL
+    """,
+    "orphan_recommendation_relationships": """
+        SELECT count(*) FROM recommendation_relationships edge
+        LEFT JOIN recommendation_profiles profile ON profile.id = edge.profile_id
+        LEFT JOIN artists source ON source.id = edge.source_artist_id
+        LEFT JOIN artists target ON target.id = edge.target_artist_id
+        WHERE profile.id IS NULL OR source.id IS NULL OR target.id IS NULL
+    """,
+    "duplicate_recommendation_feedback": """
+        SELECT count(*) FROM (
+            SELECT user_id, entity_type, identity_key
+            FROM recommendation_feedback
+            GROUP BY user_id, entity_type, identity_key
+            HAVING count(*) > 1
+        ) duplicates
+    """,
+    "invalid_recommendation_feedback_references": """
+        SELECT count(*) FROM recommendation_feedback feedback
+        LEFT JOIN users owner ON owner.id = feedback.user_id
+        WHERE owner.id IS NULL
+           OR feedback.entity_type NOT IN ('track', 'artist', 'album')
+           OR (feedback.entity_id IS NOT NULL AND feedback.entity_type = 'track' AND NOT EXISTS (
+               SELECT 1 FROM tracks entity WHERE entity.id = feedback.entity_id
+           ))
+           OR (feedback.entity_id IS NOT NULL AND feedback.entity_type = 'artist' AND NOT EXISTS (
+               SELECT 1 FROM artists entity WHERE entity.id = feedback.entity_id
+           ))
+           OR (feedback.entity_id IS NOT NULL AND feedback.entity_type = 'album' AND NOT EXISTS (
+               SELECT 1 FROM albums entity WHERE entity.id = feedback.entity_id
+           ))
+           OR (feedback.entity_id IS NULL AND (
+               feedback.provider IS NULL
+               OR feedback.provider_id IS NULL
+               OR feedback.identity_key <> (
+                   'provider:' || feedback.provider || ':'
+                   || feedback.entity_type || ':' || feedback.provider_id
+               )
+           ))
+    """,
+    "feedback_outside_user_library": """
+        SELECT count(*) FROM recommendation_feedback feedback
+        WHERE feedback.entity_id IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1
+            FROM playlist_tracks membership
+            JOIN playlists playlist ON playlist.id = membership.playlist_id
+            JOIN music_connections connection ON connection.id = playlist.owner_connection_id
+            JOIN tracks track ON track.id = membership.track_id
+            WHERE connection.user_id = feedback.user_id
+              AND (
+                  (feedback.entity_type = 'track' AND track.id = feedback.entity_id)
+                  OR (feedback.entity_type = 'album' AND track.album_id = feedback.entity_id)
+                  OR (feedback.entity_type = 'artist' AND EXISTS (
+                      SELECT 1 FROM track_artists relation
+                      WHERE relation.track_id = track.id
+                        AND relation.artist_id = feedback.entity_id
+                  ))
+              )
+        )
+    """,
+    "speculative_external_recommendation_library_items": """
+        SELECT count(*) FROM library_items
+        WHERE provenance::text ILIKE '%external_recommendation%'
+    """,
+    "orphan_recommendation_candidates": """
+        SELECT count(*) FROM recommendation_candidates candidate
+        LEFT JOIN users owner ON owner.id = candidate.user_id
+        LEFT JOIN recommendation_profiles profile ON profile.id = candidate.profile_id
+        WHERE owner.id IS NULL OR profile.id IS NULL OR profile.user_id <> candidate.user_id
+    """,
+    "invalid_external_recommendation_identities": """
+        SELECT count(*) FROM recommendation_candidates candidate
+        WHERE candidate.source = 'netease_external'
+          AND (
+              candidate.provider <> 'netease'
+              OR candidate.provider_id IS NULL
+              OR candidate.entity_type NOT IN ('track', 'artist', 'album')
+              OR candidate.identity_key <> (
+                  'provider:' || candidate.provider || ':'
+                  || candidate.entity_type || ':' || candidate.provider_id
+              )
+          )
+    """,
+    "external_candidates_already_in_user_library": """
+        SELECT count(*) FROM recommendation_candidates candidate
+        WHERE candidate.source = 'netease_external'
+          AND EXISTS (
+              SELECT 1
+              FROM external_identities identity
+              JOIN playlist_tracks membership ON membership.track_id = identity.entity_id
+              JOIN playlists playlist ON playlist.id = membership.playlist_id
+              JOIN music_connections connection ON connection.id = playlist.owner_connection_id
+              WHERE connection.user_id = candidate.user_id
+                AND identity.provider = candidate.provider
+                AND identity.entity_type = candidate.entity_type
+                AND identity.provider_id = candidate.provider_id
+          )
+    """,
+    "sensitive_recommendation_candidate_payload": """
+        SELECT count(*) FROM recommendation_candidates
+        WHERE lower(payload::text) ~ '(cookie|credential|password|private_key|secret|session|token)'
+           OR lower(payload::text) ~ '(playback_url|source_url)'
+    """,
 }
 
 

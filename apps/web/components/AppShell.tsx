@@ -34,7 +34,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
 
   return <div className="app-shell">
     <aside className="side-rail">
-      <Link className="brand" href="/" aria-label="MusicScope home"><span className="brand-glyph">M</span><span className="brand-word">MusicScope</span><small>V2 / R2.1</small></Link>
+      <Link className="brand" href="/" aria-label="MusicScope home"><span className="brand-glyph">M</span><span className="brand-word">MusicScope</span><small>V2 / R2</small></Link>
       <nav className="desktop-nav" aria-label="Primary navigation">
         {primaryRoutes.map((item, index) => <Link key={item.href} href={item.href} aria-current={isActive(pathname, item.href) ? "page" : undefined}>
           <span className="nav-index">0{index + 1}</span><Icon name={item.icon} /><span>{item.label}</span>
@@ -43,7 +43,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
       <div className="rail-footer">
         <Link href="/connect"><Icon name="connect" /><span>Connect music</span></Link>
         <Link href="/settings"><Icon name="settings" /><span>Settings</span></Link>
-        <span className="rail-build"><i />Real library player</span>
+        <span className="rail-build"><i />Personal music intelligence</span>
       </div>
     </aside>
 
@@ -53,7 +53,7 @@ function AppFrame({ children }: { children: React.ReactNode }) {
         <Link className="connection-control" href="/connect"><span className="connection-dot" />{connected ? "Connected" : "Not connected"}<Icon name="arrow" size={15} /></Link>
       </header>
       <main className="page-content">{children}</main>
-      <footer className="app-footer"><span>MusicScope V2</span><span>Real data · canonical library · transient playback</span></footer>
+      <footer className="app-footer"><span>MusicScope V2</span><span>Real data · explainable recommendations · transient playback</span></footer>
     </div>
 
     <nav className="mobile-nav" aria-label="Primary navigation">
