@@ -6,7 +6,13 @@ Canonical music uses `Track`, `Artist`, `Album`, and `Playlist`, with ordered ma
 
 `LibraryItem` records user ownership plus connection provenance. `SyncState` stores resumable scope, cursor, checkpoint, counts, and safe errors. `RecommendationProfile` keeps long-term/short-term observations separate; `RecommendationFeedback` and `MusicMemory` preserve user-authored input.
 
-`ConcertEvent` requires provider identity and a real source URL. `AudioAsset`, `StemJob`, and `StemArtifact` support durable, cacheable offline work; artifact records reserve a waveform storage key for real decoded waveform data.
+`ConcertEvent` is the normalized logical concert. `ConcertEventSource` preserves each authoritative
+`(provider, provider_event_id)` identity and real source/ticket URL, while `ConcertPerformer` keeps
+multi-artist relationships and optional canonical-artist links. `LiveRecommendation`,
+`UserLivePreference`, `LiveSearchCache`, and `ArtistSearchAlias` keep personalized evidence,
+explicit location settings, verified search materialization, and reusable cross-script aliases
+separate from provider payloads. `AudioAsset`, `StemJob`, and `StemArtifact` support durable,
+cacheable offline work; artifact records reserve a waveform storage key for real decoded waveform
+data.
 
 The generic `ExternalIdentity.entity_id` cannot have a database foreign key to four target tables. Application services must validate `entity_type` and canonical existence transactionally; this tradeoff avoids four near-identical identity tables and is recorded as an R0 risk.
-

@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Artwork } from "@/components/Artwork";
 import { EmptyState } from "@/components/EmptyState";
 import { TrackRow } from "@/components/TrackRow";
+import { ArtistLiveSection } from "@/components/LiveExperience";
 import { usePlayer } from "@/components/PlayerProvider";
 import { apiRequest } from "@/lib/api-client";
 import type { components } from "@/lib/api-schema.generated";
@@ -34,6 +35,7 @@ function ArtistExperience({ id }: { id: string }) {
   if (failed) return <MissingEntity type="artist" />;
   if (!detail || !tracks || !albums) return <DetailLoading />;
   return <div className="detail-view"><DetailHero eyebrow="ARTIST / CANONICAL" name={detail.name} artwork={detail.artwork_url} meta={`${detail.library_track_count} library tracks · ${detail.represented_album_count} represented albums`} />
+    <ArtistLiveSection artistId={id} />
     <section className="detail-section"><div className="detail-section-heading"><h2>Albums in your library</h2><span>{albums.total}</span></div><div className="detail-card-row">{albums.items.map((album) => <Link className="library-card" href={`/album/${album.id}`} key={album.id}><Artwork src={album.artwork_url} alt="" /><strong>{album.title}</strong><small>{(album.artists ?? []).map((artist) => artist.name).join(", ")}</small></Link>)}</div></section>
     <PagedTracks title="Tracks involving this artist" page={tracks} setCursor={setCursor} />
   </div>;

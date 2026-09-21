@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/artists/{artist_id}/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Artist Live */
+        get: operations["artist_live_api_v1_artists__artist_id__live_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/artists/{artist_id}/tracks": {
         parameters: {
             query?: never;
@@ -200,6 +217,109 @@ export interface paths {
         };
         /** Tracks */
         get: operations["tracks_api_v1_library_tracks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Live Feed */
+        get: operations["live_feed_api_v1_live_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/live/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Live Event Detail */
+        get: operations["live_event_detail_api_v1_live_events__event_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/live/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Live Preferences */
+        get: operations["live_preferences_api_v1_live_preferences_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Live Preferences */
+        patch: operations["update_live_preferences_api_v1_live_preferences_patch"];
+        trace?: never;
+    };
+    "/api/v1/live/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Live Providers */
+        get: operations["live_providers_api_v1_live_providers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/live/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Live */
+        post: operations["refresh_live_api_v1_live_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/live/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Live */
+        get: operations["search_live_api_v1_live_search_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -778,6 +898,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** ArtistProviderMatchResponse */
+        ArtistProviderMatchResponse: {
+            /** Artwork Url */
+            artwork_url?: string | null;
+            /** Name */
+            name: string;
+            /** Provider */
+            provider: string;
+            /** Provider Artist Id */
+            provider_artist_id: string;
+        };
         /** CandidateRefreshResponse */
         CandidateRefreshResponse: {
             /** Candidate Count */
@@ -795,6 +926,116 @@ export interface components {
              * @enum {string}
              */
             status: "fresh" | "partial" | "stale" | "no_candidates";
+        };
+        /** ConcertEventResponse */
+        ConcertEventResponse: {
+            /** Artwork Url */
+            artwork_url?: string | null;
+            /** Canonical Artist Id */
+            canonical_artist_id?: string | null;
+            /** City */
+            city?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Event Url */
+            event_url: string;
+            /** Explanation */
+            explanation?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Last Refreshed At
+             * Format: date-time
+             */
+            last_refreshed_at: string;
+            /** Latitude */
+            latitude?: number | null;
+            /** Longitude */
+            longitude?: number | null;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** Performers */
+            performers?: components["schemas"]["ConcertPerformerResponse"][];
+            /** Personalization Evidence */
+            personalization_evidence?: components["schemas"]["RecommendationEvidence"][];
+            /** Primary Artist Name */
+            primary_artist_name?: string | null;
+            /** Region */
+            region?: string | null;
+            /** Sources */
+            sources?: components["schemas"]["ConcertSourceResponse"][];
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /** Start Time */
+            start_time?: string | null;
+            /** Status */
+            status?: string | null;
+            /** Ticket Url */
+            ticket_url?: string | null;
+            /** Timezone */
+            timezone?: string | null;
+            /** Title */
+            title: string;
+            /** Venue Address */
+            venue_address?: string | null;
+            /** Venue Name */
+            venue_name?: string | null;
+        };
+        /** ConcertPerformerResponse */
+        ConcertPerformerResponse: {
+            /** Canonical Artist Id */
+            canonical_artist_id?: string | null;
+            /** Name */
+            name: string;
+            /** Provider Identities */
+            provider_identities?: {
+                [key: string]: string;
+            };
+        };
+        /** ConcertProviderResponse */
+        ConcertProviderResponse: {
+            /** Capabilities */
+            capabilities: string[];
+            /** Enabled */
+            enabled: boolean;
+            /** Health */
+            health: string;
+            /** Provider */
+            provider: string;
+            /**
+             * Tier
+             * @enum {string}
+             */
+            tier: "core" | "experimental";
+        };
+        /** ConcertSourceResponse */
+        ConcertSourceResponse: {
+            /** Event Url */
+            event_url: string;
+            /**
+             * Last Refreshed At
+             * Format: date-time
+             */
+            last_refreshed_at: string;
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** Provider */
+            provider: string;
+            /** Provider Event Id */
+            provider_event_id: string;
+            /** Status */
+            status?: string | null;
+            /** Ticket Url */
+            ticket_url?: string | null;
         };
         /** ConnectionList */
         ConnectionList: {
@@ -1015,6 +1256,88 @@ export interface components {
             /** Sync State */
             sync_state: string;
         };
+        /** LiveFeedResponse */
+        LiveFeedResponse: {
+            /** Coverage Message */
+            coverage_message: string;
+            /** Events */
+            events?: components["schemas"]["ConcertEventResponse"][];
+            /** Generated At */
+            generated_at?: string | null;
+            /** Provider States */
+            provider_states?: {
+                [key: string]: string;
+            };
+            /**
+             * Stale
+             * @default false
+             */
+            stale: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "OK" | "ARTIST_NOT_FOUND" | "NO_UPCOMING_EVENTS" | "AMBIGUOUS_ARTIST" | "PROVIDER_NOT_CONFIGURED" | "PROVIDER_UNAVAILABLE" | "PROVIDER_RATE_LIMITED" | "PARTIAL_RESULTS" | "PROFILE_NOT_READY" | "EMPTY";
+        };
+        /** LivePreferenceRequest */
+        LivePreferenceRequest: {
+            /** City */
+            city?: string | null;
+            /** Country */
+            country?: string | null;
+        };
+        /** LivePreferenceResponse */
+        LivePreferenceResponse: {
+            /** City */
+            city?: string | null;
+            /** Country */
+            country?: string | null;
+        };
+        /** LiveRefreshResponse */
+        LiveRefreshResponse: {
+            /** Event Count */
+            event_count: number;
+            /** Generated At */
+            generated_at?: string | null;
+            /** Matched Artists */
+            matched_artists: number;
+            /** Seed Count */
+            seed_count: number;
+            /** Status */
+            status: string;
+        };
+        /** LiveSearchResponse */
+        LiveSearchResponse: {
+            /** Artist Matches */
+            artist_matches?: components["schemas"]["ArtistProviderMatchResponse"][];
+            /**
+             * Cache State
+             * @enum {string}
+             */
+            cache_state: "fresh" | "miss" | "stale";
+            /** Coverage Message */
+            coverage_message: string;
+            /** Events */
+            events?: components["schemas"]["ConcertEventResponse"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Provider Results */
+            provider_results?: components["schemas"]["ProviderSearchOutcomeResponse"][];
+            /** Provider States */
+            provider_states?: {
+                [key: string]: string;
+            };
+            /** Query */
+            query: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "OK" | "ARTIST_NOT_FOUND" | "NO_UPCOMING_EVENTS" | "AMBIGUOUS_ARTIST" | "PROVIDER_NOT_CONFIGURED" | "PROVIDER_UNAVAILABLE" | "PROVIDER_RATE_LIMITED" | "PARTIAL_RESULTS" | "PROFILE_NOT_READY" | "EMPTY";
+        };
         /** NeteaseCapabilities */
         NeteaseCapabilities: {
             /** Auth States */
@@ -1147,12 +1470,12 @@ export interface components {
              * Release
              * @enum {string}
              */
-            release: "R0" | "R1" | "R2.1" | "R2";
+            release: "R0" | "R1" | "R2.1" | "R2" | "R3";
             /**
              * Stage
              * @enum {string}
              */
-            stage: "architecture_and_greenfield_bootstrap" | "netease_integration_verification" | "library_experience_and_playback" | "personal_music_intelligence";
+            stage: "architecture_and_greenfield_bootstrap" | "netease_integration_verification" | "library_experience_and_playback" | "personal_music_intelligence" | "live_concert_intelligence";
         };
         /** ProfileRebuildResponse */
         ProfileRebuildResponse: {
@@ -1189,6 +1512,19 @@ export interface components {
             provider: "netease";
             /** Provider Id */
             provider_id: string;
+        };
+        /** ProviderSearchOutcomeResponse */
+        ProviderSearchOutcomeResponse: {
+            /** Latency Ms */
+            latency_ms: number;
+            /** Match State */
+            match_state?: string | null;
+            /** Provider */
+            provider: string;
+            /** Result Count */
+            result_count: number;
+            /** Status */
+            status: string;
         };
         /** QrChallengeResponse */
         QrChallengeResponse: {
@@ -1560,6 +1896,10 @@ export interface components {
         };
         /** ValidationError */
         ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
             /** Location */
             loc: (string | number)[];
             /** Message */
@@ -1695,6 +2035,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AlbumPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    artist_live_api_v1_artists__artist_id__live_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path: {
+                artist_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveFeedResponse"];
                 };
             };
             /** @description Validation Error */
@@ -1941,6 +2314,228 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrackPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    live_feed_api_v1_live_get: {
+        parameters: {
+            query?: {
+                date_filter?: "all" | "month" | "three_months";
+                country?: string | null;
+                city?: string | null;
+                limit?: number;
+            };
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveFeedResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    live_event_detail_api_v1_live_events__event_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConcertEventResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    live_preferences_api_v1_live_preferences_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LivePreferenceResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_live_preferences_api_v1_live_preferences_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LivePreferenceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LivePreferenceResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    live_providers_api_v1_live_providers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConcertProviderResponse"][];
+                };
+            };
+        };
+    };
+    refresh_live_api_v1_live_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveRefreshResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_live_api_v1_live_search_get: {
+        parameters: {
+            query: {
+                query: string;
+                date_filter?: "all" | "month" | "three_months";
+                country?: string | null;
+                city?: string | null;
+            };
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveSearchResponse"];
                 };
             };
             /** @description Validation Error */

@@ -21,6 +21,32 @@ The database defaults to `musicscope_v2` on port `55432` with a V2-specific Comp
 
 ## Local development
 
+The one-command launcher safely checks and reuses the local environment:
+
+```bash
+./scripts/dev.sh
+```
+
+It installs only missing or changed project dependencies, starts/reuses PostgreSQL, applies
+forward Alembic migrations, starts the loopback NetEase sidecar, FastAPI, and Next.js, and opens
+the web app. It never logs in, synchronizes, rebuilds recommendations, enriches artwork, deletes
+data, or removes Docker volumes automatically.
+
+Useful modes:
+
+```bash
+./scripts/dev.sh --setup     # dependencies, PostgreSQL, and migrations only
+./scripts/dev.sh --status    # read-only status; starts nothing
+./scripts/dev.sh --no-open   # normal start without opening a browser
+```
+
+Manual prerequisites are Docker Desktop, Node.js 24.21.x, Python 3.12+, and uv. The launcher
+reports an actionable message when one is missing; it does not install system software or use
+sudo. Optional provider credentials are not required for startup, and a fresh user reaches the
+NetEase Connect/QR onboarding flow without a fabricated account or library.
+
+For the lower-level commands, the following remains available:
+
 ```bash
 cp .env.example .env
 make install

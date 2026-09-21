@@ -243,9 +243,15 @@ class RecommendationProfileService:
         pair_playlists: dict[tuple[UUID, UUID], set[UUID]] = defaultdict(set)
         pair_collaborations: dict[tuple[UUID, UUID], int] = defaultdict(int)
         pair_collaboration_weight: dict[tuple[UUID, UUID], float] = defaultdict(float)
+        graph_artist_ids = set(
+            sorted(
+                artist_rows,
+                key=lambda artist_id: (-artist_rows[artist_id].affinity, str(artist_id)),
+            )[:MAX_PLAYLIST_ARTISTS_FOR_GRAPH]
+        )
         for playlist_id, artist_map in playlist_artist_tracks.items():
             bounded = sorted(
-                artist_map,
+                (artist_id for artist_id in artist_map if artist_id in graph_artist_ids),
                 key=lambda artist_id: (-len(artist_map[artist_id]), str(artist_id)),
             )[:MAX_PLAYLIST_ARTISTS_FOR_GRAPH]
             weight = playlist_membership_weight(playlist_sizes[playlist_id])
@@ -255,10 +261,11 @@ class RecommendationProfileService:
                 pair_weight[pair] += weight * support
                 pair_playlists[pair].add(playlist_id)
         for artists in track_artists.values():
-            if len(artists) < 2:
+            bounded_artists = artists & graph_artist_ids
+            if len(bounded_artists) < 2:
                 continue
-            contribution = 0.5 / math.sqrt(len(artists) - 1)
-            for left, right in combinations(sorted(artists, key=str), 2):
+            contribution = 0.5 / math.sqrt(len(bounded_artists) - 1)
+            for left, right in combinations(sorted(bounded_artists, key=str), 2):
                 pair = (left, right)
                 pair_weight[pair] += contribution
                 pair_collaborations[pair] += 1

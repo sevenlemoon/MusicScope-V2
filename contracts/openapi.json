@@ -423,6 +423,40 @@
         "title": "ArtistPage",
         "type": "object"
       },
+      "ArtistProviderMatchResponse": {
+        "properties": {
+          "artwork_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artwork Url"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_artist_id": {
+            "title": "Provider Artist Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "provider_artist_id",
+          "name"
+        ],
+        "title": "ArtistProviderMatchResponse",
+        "type": "object"
+      },
       "CandidateRefreshResponse": {
         "properties": {
           "candidate_count": {
@@ -472,6 +506,362 @@
           "duration_ms"
         ],
         "title": "CandidateRefreshResponse",
+        "type": "object"
+      },
+      "ConcertEventResponse": {
+        "properties": {
+          "artwork_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artwork Url"
+          },
+          "canonical_artist_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Artist Id"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "event_url": {
+            "title": "Event Url",
+            "type": "string"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_refreshed_at": {
+            "format": "date-time",
+            "title": "Last Refreshed At",
+            "type": "string"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "performers": {
+            "items": {
+              "$ref": "#/components/schemas/ConcertPerformerResponse"
+            },
+            "title": "Performers",
+            "type": "array"
+          },
+          "personalization_evidence": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationEvidence"
+            },
+            "title": "Personalization Evidence",
+            "type": "array"
+          },
+          "primary_artist_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Artist Name"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/ConcertSourceResponse"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "ticket_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticket Url"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "venue_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Address"
+          },
+          "venue_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Name"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "start_date",
+          "event_url",
+          "observed_at",
+          "last_refreshed_at"
+        ],
+        "title": "ConcertEventResponse",
+        "type": "object"
+      },
+      "ConcertPerformerResponse": {
+        "properties": {
+          "canonical_artist_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Artist Id"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider_identities": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Provider Identities",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ConcertPerformerResponse",
+        "type": "object"
+      },
+      "ConcertProviderResponse": {
+        "properties": {
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "health": {
+            "title": "Health",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "tier": {
+            "enum": [
+              "core",
+              "experimental"
+            ],
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "tier",
+          "enabled",
+          "health",
+          "capabilities"
+        ],
+        "title": "ConcertProviderResponse",
+        "type": "object"
+      },
+      "ConcertSourceResponse": {
+        "properties": {
+          "event_url": {
+            "title": "Event Url",
+            "type": "string"
+          },
+          "last_refreshed_at": {
+            "format": "date-time",
+            "title": "Last Refreshed At",
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "provider_event_id": {
+            "title": "Provider Event Id",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "ticket_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticket Url"
+          }
+        },
+        "required": [
+          "provider",
+          "provider_event_id",
+          "event_url",
+          "observed_at",
+          "last_refreshed_at"
+        ],
+        "title": "ConcertSourceResponse",
         "type": "object"
       },
       "ConnectionList": {
@@ -1063,6 +1453,245 @@
         "title": "LibrarySummary",
         "type": "object"
       },
+      "LiveFeedResponse": {
+        "properties": {
+          "coverage_message": {
+            "title": "Coverage Message",
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ConcertEventResponse"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "provider_states": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Provider States",
+            "type": "object"
+          },
+          "stale": {
+            "default": false,
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "OK",
+              "ARTIST_NOT_FOUND",
+              "NO_UPCOMING_EVENTS",
+              "AMBIGUOUS_ARTIST",
+              "PROVIDER_NOT_CONFIGURED",
+              "PROVIDER_UNAVAILABLE",
+              "PROVIDER_RATE_LIMITED",
+              "PARTIAL_RESULTS",
+              "PROFILE_NOT_READY",
+              "EMPTY"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "coverage_message"
+        ],
+        "title": "LiveFeedResponse",
+        "type": "object"
+      },
+      "LivePreferenceRequest": {
+        "properties": {
+          "city": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "maxLength": 2,
+                "minLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          }
+        },
+        "title": "LivePreferenceRequest",
+        "type": "object"
+      },
+      "LivePreferenceResponse": {
+        "properties": {
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          }
+        },
+        "title": "LivePreferenceResponse",
+        "type": "object"
+      },
+      "LiveRefreshResponse": {
+        "properties": {
+          "event_count": {
+            "title": "Event Count",
+            "type": "integer"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "matched_artists": {
+            "title": "Matched Artists",
+            "type": "integer"
+          },
+          "seed_count": {
+            "title": "Seed Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "seed_count",
+          "matched_artists",
+          "event_count"
+        ],
+        "title": "LiveRefreshResponse",
+        "type": "object"
+      },
+      "LiveSearchResponse": {
+        "properties": {
+          "artist_matches": {
+            "items": {
+              "$ref": "#/components/schemas/ArtistProviderMatchResponse"
+            },
+            "title": "Artist Matches",
+            "type": "array"
+          },
+          "cache_state": {
+            "enum": [
+              "fresh",
+              "miss",
+              "stale"
+            ],
+            "title": "Cache State",
+            "type": "string"
+          },
+          "coverage_message": {
+            "title": "Coverage Message",
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ConcertEventResponse"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "provider_results": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderSearchOutcomeResponse"
+            },
+            "title": "Provider Results",
+            "type": "array"
+          },
+          "provider_states": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Provider States",
+            "type": "object"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "OK",
+              "ARTIST_NOT_FOUND",
+              "NO_UPCOMING_EVENTS",
+              "AMBIGUOUS_ARTIST",
+              "PROVIDER_NOT_CONFIGURED",
+              "PROVIDER_UNAVAILABLE",
+              "PROVIDER_RATE_LIMITED",
+              "PARTIAL_RESULTS",
+              "PROFILE_NOT_READY",
+              "EMPTY"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "status",
+          "coverage_message",
+          "cache_state",
+          "generated_at"
+        ],
+        "title": "LiveSearchResponse",
+        "type": "object"
+      },
       "NeteaseCapabilities": {
         "properties": {
           "auth_states": {
@@ -1419,7 +2048,8 @@
               "R0",
               "R1",
               "R2.1",
-              "R2"
+              "R2",
+              "R3"
             ],
             "title": "Release",
             "type": "string"
@@ -1429,7 +2059,8 @@
               "architecture_and_greenfield_bootstrap",
               "netease_integration_verification",
               "library_experience_and_playback",
-              "personal_music_intelligence"
+              "personal_music_intelligence",
+              "live_concert_intelligence"
             ],
             "title": "Stage",
             "type": "string"
@@ -1512,6 +2143,45 @@
           "provider_id"
         ],
         "title": "ProviderEntityIdentity",
+        "type": "object"
+      },
+      "ProviderSearchOutcomeResponse": {
+        "properties": {
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "match_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match State"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "result_count": {
+            "title": "Result Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "status",
+          "result_count",
+          "latency_ms"
+        ],
+        "title": "ProviderSearchOutcomeResponse",
         "type": "object"
       },
       "QrChallengeResponse": {
@@ -2512,6 +3182,13 @@
       },
       "ValidationError": {
         "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
           "loc": {
             "items": {
               "anyOf": [
@@ -2546,7 +3223,7 @@
     }
   },
   "info": {
-    "description": "R2 API for a canonical library, playback, and personal music intelligence.",
+    "description": "MusicScope API for canonical music intelligence and verified live discovery.",
     "title": "MusicScope V2 API",
     "version": "0.1.0"
   },
@@ -2805,6 +3482,65 @@
         "summary": "Artist Albums",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/v1/artists/{artist_id}/live": {
+      "get": {
+        "operationId": "artist_live_api_v1_artists__artist_id__live_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artist_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Artist Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveFeedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Artist Live",
+        "tags": [
+          "live"
         ]
       }
     },
@@ -3389,6 +4125,466 @@
         "summary": "Tracks",
         "tags": [
           "library"
+        ]
+      }
+    },
+    "/api/v1/live": {
+      "get": {
+        "operationId": "live_feed_api_v1_live_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "date_filter",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "all",
+                "month",
+                "three_months"
+              ],
+              "title": "Date Filter",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "country",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 2,
+                  "minLength": 2,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Country"
+            }
+          },
+          {
+            "in": "query",
+            "name": "city",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 160,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "City"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 60,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveFeedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Live Feed",
+        "tags": [
+          "live"
+        ]
+      }
+    },
+    "/api/v1/live/events/{event_id}": {
+      "get": {
+        "operationId": "live_event_detail_api_v1_live_events__event_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConcertEventResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Live Event Detail",
+        "tags": [
+          "live"
+        ]
+      }
+    },
+    "/api/v1/live/preferences": {
+      "get": {
+        "operationId": "live_preferences_api_v1_live_preferences_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LivePreferenceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Live Preferences",
+        "tags": [
+          "live"
+        ]
+      },
+      "patch": {
+        "operationId": "update_live_preferences_api_v1_live_preferences_patch",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LivePreferenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LivePreferenceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Live Preferences",
+        "tags": [
+          "live"
+        ]
+      }
+    },
+    "/api/v1/live/providers": {
+      "get": {
+        "operationId": "live_providers_api_v1_live_providers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConcertProviderResponse"
+                  },
+                  "title": "Response Live Providers Api V1 Live Providers Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Live Providers",
+        "tags": [
+          "live"
+        ]
+      }
+    },
+    "/api/v1/live/refresh": {
+      "post": {
+        "operationId": "refresh_live_api_v1_live_refresh_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveRefreshResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh Live",
+        "tags": [
+          "live"
+        ]
+      }
+    },
+    "/api/v1/live/search": {
+      "get": {
+        "operationId": "search_live_api_v1_live_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "required": true,
+            "schema": {
+              "maxLength": 300,
+              "minLength": 1,
+              "title": "Query",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_filter",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "all",
+                "month",
+                "three_months"
+              ],
+              "title": "Date Filter",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "country",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 2,
+                  "minLength": 2,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Country"
+            }
+          },
+          {
+            "in": "query",
+            "name": "city",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 160,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "City"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Live",
+        "tags": [
+          "live"
         ]
       }
     },

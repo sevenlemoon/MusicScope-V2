@@ -24,3 +24,16 @@ class ProviderAuthenticationExpired(ProviderError):
 class ProviderTemporarilyUnavailable(ProviderError):
     code = "provider_temporarily_unavailable"
     retryable = True
+
+
+class ProviderTimeout(ProviderTemporarilyUnavailable):
+    code = "provider_timeout"
+
+
+class ProviderParserChanged(ProviderTemporarilyUnavailable):
+    code = "provider_parser_changed"
+    retryable = False
+
+
+class ProviderRateLimited(ProviderTemporarilyUnavailable):
+    code = "provider_rate_limited"

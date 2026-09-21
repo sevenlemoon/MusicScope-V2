@@ -50,6 +50,15 @@ public DTO types from that generated module instead of maintaining handwritten c
 
 R1 will reconcile account -> paginated playlists -> playlist track IDs -> batched song detail -> referenced artists/albums. Pages and batches are bounded; retries apply only to transient failures; commits occur in small idempotent units; unresolved minority records are retained with provenance instead of aborting the import.
 
+## Live concert intelligence
+
+Live concert discovery uses capability-declaring provider adapters behind a failure-isolating
+aggregator. Normal Home, Artist, and Live feed reads use verified materialized records and make no
+provider calls; explicit searches and refreshes apply bounded provider request budgets. Logical
+events retain every provider source, while conservative reconciliation keeps uncertain matches
+separate. See [LIVE_CONCERTS.md](LIVE_CONCERTS.md) for the provider matrix, identity rules, and
+deferred-provider boundaries.
+
 ## Frontend
 
 App Router supplies primary routes (`/`, `/discover`, `/library`, `/live`, `/studio`, `/insights`) and secondary routes. A responsive shell uses a desktop rail and recomposed mobile bottom navigation. R0 states are deliberately honest: no fake music, events, waveform, recommendations, or playback.

@@ -194,6 +194,75 @@ CHECKS = {
         WHERE lower(payload::text) ~ '(cookie|credential|password|private_key|secret|session|token)'
            OR lower(payload::text) ~ '(playback_url|source_url)'
     """,
+    "duplicate_concert_source_identities": """
+        SELECT count(*) FROM (
+            SELECT provider, provider_event_id
+            FROM concert_event_sources
+            GROUP BY provider, provider_event_id
+            HAVING count(*) > 1
+        ) duplicates
+    """,
+    "orphan_concert_sources": """
+        SELECT count(*) FROM concert_event_sources source
+        LEFT JOIN concert_events event ON event.id = source.event_id
+        WHERE event.id IS NULL
+    """,
+    "orphan_concert_performers": """
+        SELECT count(*) FROM concert_performers performer
+        LEFT JOIN concert_events event ON event.id = performer.event_id
+        LEFT JOIN artists artist ON artist.id = performer.artist_id
+        WHERE event.id IS NULL
+           OR (performer.artist_id IS NOT NULL AND artist.id IS NULL)
+    """,
+    "orphan_live_recommendations": """
+        SELECT count(*) FROM live_recommendations recommendation
+        LEFT JOIN users owner ON owner.id = recommendation.user_id
+        LEFT JOIN concert_events event ON event.id = recommendation.event_id
+        LEFT JOIN artists artist ON artist.id = recommendation.artist_id
+        WHERE owner.id IS NULL
+           OR event.id IS NULL
+           OR (recommendation.artist_id IS NOT NULL AND artist.id IS NULL)
+    """,
+    "orphan_live_preferences": """
+        SELECT count(*) FROM user_live_preferences preference
+        LEFT JOIN users owner ON owner.id = preference.user_id
+        WHERE owner.id IS NULL
+    """,
+    "orphan_artist_search_aliases": """
+        SELECT count(*) FROM artist_search_aliases alias
+        LEFT JOIN users owner ON owner.id = alias.user_id
+        LEFT JOIN artists artist ON artist.id = alias.artist_id
+        WHERE (alias.user_id IS NOT NULL AND owner.id IS NULL)
+           OR (alias.artist_id IS NOT NULL AND artist.id IS NULL)
+    """,
+    "unresolved_live_cache_event_ids": """
+        SELECT count(*)
+        FROM live_search_cache cache
+        CROSS JOIN LATERAL json_array_elements_text(cache.event_ids) cached_event_id
+        WHERE NOT EXISTS (
+            SELECT 1 FROM concert_events event
+            WHERE event.id::text = cached_event_id
+        )
+    """,
+    "insecure_concert_urls": """
+        SELECT count(*) FROM (
+            SELECT event_url AS url FROM concert_events
+            UNION ALL SELECT ticket_url FROM concert_events WHERE ticket_url IS NOT NULL
+            UNION ALL SELECT event_url FROM concert_event_sources
+            UNION ALL SELECT ticket_url FROM concert_event_sources WHERE ticket_url IS NOT NULL
+        ) links
+        WHERE url NOT LIKE 'https://%'
+    """,
+    "sensitive_concert_payload": """
+        SELECT count(*) FROM (
+            SELECT source_metadata AS payload FROM concert_events
+            UNION ALL SELECT source_payload FROM concert_event_sources
+            UNION ALL SELECT match_payload FROM live_search_cache
+            UNION ALL SELECT provider_states FROM live_search_cache
+        ) concert_payloads
+        WHERE lower(payload::text) ~ '(cookie|credential|password|private_key|secret|session|token)'
+           OR lower(payload::text) ~ '(playback_url|authorization)'
+    """,
 }
 
 

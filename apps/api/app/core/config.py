@@ -29,6 +29,20 @@ class Settings(BaseSettings):
     separator_model: str = "htdemucs"
     concert_provider: str = "none"
     ticketmaster_api_key: str | None = None
+    ticketmaster_timeout_seconds: float = 6
+    ticketmaster_search_page_budget: int = 2
+    live_cache_ttl_hours: int = 6
+    live_search_cache_minutes: int = 30
+    live_seed_budget: int = 12
+    live_search_max_concurrency: int = 3
+    live_provider_timeout_seconds: float = 8
+    live_search_deadline_seconds: float = 10
+    showstart_timeout_seconds: float = 5
+    verified_official_timeout_seconds: float = 6
+    enable_maoyan_concerts: bool = False
+    enable_kktix_concerts: bool = False
+    enable_showstart_concerts: bool = False
+    enable_verified_official_concerts: bool = True
 
     model_config = SettingsConfigDict(env_file=V2_ROOT / ".env", extra="ignore")
 

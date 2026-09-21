@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -14,6 +14,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Time,
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, validates
@@ -425,24 +426,131 @@ class RecommendationCandidateRefresh(TimestampMixin, Base):
 class ConcertEvent(TimestampMixin, Base):
     __tablename__ = "concert_events"
     __table_args__ = (
-        UniqueConstraint("provider", "provider_event_id", name="uq_concert_provider_event"),
-        Index("ix_concert_events_artist_date", "artist_id", "starts_at"),
+        Index("ix_concert_events_artist_date", "artist_id", "start_date"),
+        Index("ix_concert_events_location_date", "country", "city", "start_date"),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     artist_id: Mapped[UUID | None] = mapped_column(ForeignKey("artists.id", ondelete="SET NULL"))
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    primary_artist_name: Mapped[str | None] = mapped_column(String(300))
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    start_time: Mapped[time | None] = mapped_column(Time)
+    timezone: Mapped[str | None] = mapped_column(String(100))
+    venue_name: Mapped[str | None] = mapped_column(String(300))
+    venue_address: Mapped[str | None] = mapped_column(String(500))
+    city: Mapped[str | None] = mapped_column(String(160))
+    region: Mapped[str | None] = mapped_column(String(160))
+    country: Mapped[str | None] = mapped_column(String(120))
+    latitude: Mapped[float | None] = mapped_column(Float)
+    longitude: Mapped[float | None] = mapped_column(Float)
+    artwork_url: Mapped[str | None] = mapped_column(String(1000))
+    event_url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    ticket_url: Mapped[str | None] = mapped_column(String(1000))
+    status: Mapped[str | None] = mapped_column(String(40))
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_refreshed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+
+
+class ConcertEventSource(TimestampMixin, Base):
+    __tablename__ = "concert_event_sources"
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_event_id", name="uq_concert_source_provider_event"),
+        Index("ix_concert_event_sources_event", "event_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    event_id: Mapped[UUID] = mapped_column(
+        ForeignKey("concert_events.id", ondelete="CASCADE"), index=True
+    )
     provider: Mapped[str] = mapped_column(String(64), nullable=False)
     provider_event_id: Mapped[str] = mapped_column(String(200), nullable=False)
-    artist_name: Mapped[str] = mapped_column(String(300), nullable=False)
-    title: Mapped[str] = mapped_column(String(300), nullable=False)
-    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    venue_name: Mapped[str | None] = mapped_column(String(300))
-    city: Mapped[str | None] = mapped_column(String(160))
-    country: Mapped[str | None] = mapped_column(String(120))
-    source_url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    event_url: Mapped[str] = mapped_column(String(1000), nullable=False)
     ticket_url: Mapped[str | None] = mapped_column(String(1000))
-    confidence: Mapped[float | None] = mapped_column(Float)
-    source_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    status: Mapped[str | None] = mapped_column(String(40))
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_refreshed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source_payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+
+
+class ConcertPerformer(Base):
+    __tablename__ = "concert_performers"
+    __table_args__ = (
+        UniqueConstraint("event_id", "position", name="uq_concert_performer_position"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    event_id: Mapped[UUID] = mapped_column(
+        ForeignKey("concert_events.id", ondelete="CASCADE"), index=True
+    )
+    artist_id: Mapped[UUID | None] = mapped_column(ForeignKey("artists.id", ondelete="SET NULL"))
+    name: Mapped[str] = mapped_column(String(300), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    provider_identities: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+
+
+class LiveRecommendation(TimestampMixin, Base):
+    __tablename__ = "live_recommendations"
+    __table_args__ = (
+        UniqueConstraint("user_id", "event_id", name="uq_user_live_event"),
+        Index("ix_live_recommendation_rank", "user_id", "rank"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    event_id: Mapped[UUID] = mapped_column(
+        ForeignKey("concert_events.id", ondelete="CASCADE"), index=True
+    )
+    artist_id: Mapped[UUID | None] = mapped_column(ForeignKey("artists.id", ondelete="SET NULL"))
+    rank: Mapped[int] = mapped_column(Integer, nullable=False)
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    evidence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class UserLivePreference(TimestampMixin, Base):
+    __tablename__ = "user_live_preferences"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    country: Mapped[str | None] = mapped_column(String(2))
+    city: Mapped[str | None] = mapped_column(String(160))
+
+
+class LiveSearchCache(TimestampMixin, Base):
+    __tablename__ = "live_search_cache"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    cache_key: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    query: Mapped[str] = mapped_column(String(300), nullable=False)
+    status: Mapped[str] = mapped_column(String(40), nullable=False)
+    match_payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    provider_states: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    event_ids: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ArtistSearchAlias(TimestampMixin, Base):
+    __tablename__ = "artist_search_aliases"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "normalized_alias", "canonical_name", name="uq_artist_search_alias"
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    user_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    artist_id: Mapped[UUID | None] = mapped_column(ForeignKey("artists.id", ondelete="CASCADE"), index=True)
+    alias: Mapped[str] = mapped_column(String(300), nullable=False)
+    normalized_alias: Mapped[str] = mapped_column(String(300), nullable=False, index=True)
+    canonical_name: Mapped[str] = mapped_column(String(300), nullable=False)
+    source: Mapped[str] = mapped_column(String(40), nullable=False)
+    verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 
 class AudioAsset(TimestampMixin, Base):

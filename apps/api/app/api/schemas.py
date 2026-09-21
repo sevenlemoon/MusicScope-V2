@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, time
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -22,12 +22,13 @@ class AlphabetGroup(BaseModel):
 
 
 class ProductStatus(BaseModel):
-    release: Literal["R0", "R1", "R2.1", "R2"]
+    release: Literal["R0", "R1", "R2.1", "R2", "R3"]
     stage: Literal[
         "architecture_and_greenfield_bootstrap",
         "netease_integration_verification",
         "library_experience_and_playback",
         "personal_music_intelligence",
+        "live_concert_intelligence",
     ]
     capabilities: dict[str, CapabilityStage]
 
@@ -469,3 +470,122 @@ class HealthResponse(BaseModel):
     service: str
     release: str | None = None
     database: str | None = None
+
+
+LiveResultStatus = Literal[
+    "OK",
+    "ARTIST_NOT_FOUND",
+    "NO_UPCOMING_EVENTS",
+    "AMBIGUOUS_ARTIST",
+    "PROVIDER_NOT_CONFIGURED",
+    "PROVIDER_UNAVAILABLE",
+    "PROVIDER_RATE_LIMITED",
+    "PARTIAL_RESULTS",
+    "PROFILE_NOT_READY",
+    "EMPTY",
+]
+
+
+class ConcertPerformerResponse(BaseModel):
+    name: str
+    canonical_artist_id: str | None = None
+    provider_identities: dict[str, str] = Field(default_factory=dict)
+
+
+class ConcertSourceResponse(BaseModel):
+    provider: str
+    provider_event_id: str
+    event_url: str
+    ticket_url: str | None = None
+    status: str | None = None
+    observed_at: datetime
+    last_refreshed_at: datetime
+
+
+class ConcertEventResponse(BaseModel):
+    id: str
+    title: str
+    primary_artist_name: str | None = None
+    canonical_artist_id: str | None = None
+    performers: list[ConcertPerformerResponse] = Field(default_factory=list)
+    start_date: date
+    start_time: time | None = None
+    timezone: str | None = None
+    venue_name: str | None = None
+    venue_address: str | None = None
+    city: str | None = None
+    region: str | None = None
+    country: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    artwork_url: str | None = None
+    event_url: str
+    ticket_url: str | None = None
+    status: str | None = None
+    observed_at: datetime
+    last_refreshed_at: datetime
+    sources: list[ConcertSourceResponse] = Field(default_factory=list)
+    personalization_evidence: list[RecommendationEvidence] = Field(default_factory=list)
+    explanation: str | None = None
+
+
+class ArtistProviderMatchResponse(BaseModel):
+    provider: str
+    provider_artist_id: str
+    name: str
+    artwork_url: str | None = None
+
+
+class ProviderSearchOutcomeResponse(BaseModel):
+    provider: str
+    status: str
+    result_count: int
+    latency_ms: int
+    match_state: str | None = None
+
+
+class LiveSearchResponse(BaseModel):
+    query: str
+    status: LiveResultStatus
+    coverage_message: str
+    events: list[ConcertEventResponse] = Field(default_factory=list)
+    artist_matches: list[ArtistProviderMatchResponse] = Field(default_factory=list)
+    provider_states: dict[str, str] = Field(default_factory=dict)
+    provider_results: list[ProviderSearchOutcomeResponse] = Field(default_factory=list)
+    cache_state: Literal["fresh", "miss", "stale"]
+    generated_at: datetime
+
+
+class LiveFeedResponse(BaseModel):
+    status: LiveResultStatus
+    coverage_message: str
+    events: list[ConcertEventResponse] = Field(default_factory=list)
+    provider_states: dict[str, str] = Field(default_factory=dict)
+    generated_at: datetime | None = None
+    stale: bool = False
+
+
+class LiveRefreshResponse(BaseModel):
+    status: str
+    seed_count: int
+    matched_artists: int
+    event_count: int
+    generated_at: datetime | None = None
+
+
+class LivePreferenceResponse(BaseModel):
+    country: str | None = None
+    city: str | None = None
+
+
+class LivePreferenceRequest(BaseModel):
+    country: str | None = Field(default=None, min_length=2, max_length=2)
+    city: str | None = Field(default=None, max_length=160)
+
+
+class ConcertProviderResponse(BaseModel):
+    provider: str
+    tier: Literal["core", "experimental"]
+    enabled: bool
+    health: str
+    capabilities: list[str]

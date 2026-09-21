@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiRequestError, apiRequest } from "@/lib/api-client";
 import type { components } from "@/lib/api-schema.generated";
 import { RecommendationCard, recommendationKey } from "@/components/RecommendationCard";
+import { HomeLiveTeaser } from "@/components/LiveExperience";
 
 type HomeData = components["schemas"]["HomeRecommendationsResponse"];
 type Profile = components["schemas"]["RecommendationProfileResponse"];
@@ -124,7 +125,7 @@ export function HomeExperience() {
     <RecommendationSection eyebrow="PROFILE / STRONGEST SIGNALS" title="Artists strongly represented" body="Raw track, playlist, and album evidence is normalized before affinity is derived." items={data.strong_artists ?? []} onFeedback={remove} />
     <RecommendationSection eyebrow="EXPLORE NEXT / NEW" title="Step outside the library" body={data.external_state === "stale" ? "Cached provider discoveries remain available while a refresh is delayed." : "Unsaved NetEase tracks reached through artists strongly represented in your collection."} items={data.explore_next ?? []} onFeedback={remove} />
     <section className="future-teasers">
-      <article><p className="eyebrow">LIVE FOR YOU</p><h3>Coming in a later phase</h3><p>No concert events are invented here. Live recommendations will appear only when real event data is available.</p></article>
+      <HomeLiveTeaser />
       <article><p className="eyebrow">INSIGHTS PREVIEW</p><h3>{profile.playlist_count} playlists shape this profile</h3><p>Your largest playlist has {profile.largest_playlist.toLocaleString()} tracks and is normalized to {profile.largest_playlist_weight.toFixed(3)} per membership.</p></article>
     </section>
   </div>;

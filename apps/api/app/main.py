@@ -15,7 +15,7 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title=settings.app_name,
         version="0.1.0",
-        description="R2 API for a canonical library, playback, and personal music intelligence.",
+        description="MusicScope API for canonical music intelligence and verified live discovery.",
     )
     application.add_middleware(
         CORSMiddleware,
@@ -30,7 +30,7 @@ def create_app() -> FastAPI:
         "/health", tags=["system"], response_model=HealthResponse, response_model_exclude_none=True
     )
     def health() -> HealthResponse:
-        return HealthResponse(status="ok", service="musicscope-v2-api", release="R2")
+        return HealthResponse(status="ok", service="musicscope-v2-api", release="R3")
 
     @application.get("/health/db", tags=["system"])
     def database_health() -> JSONResponse:
