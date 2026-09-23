@@ -9,8 +9,8 @@ router = APIRouter(tags=["system"])
 def product_status() -> ProductStatus:
     return ProductStatus(
         **{
-            "release": "R3",
-            "stage": "live_concert_intelligence",
+            "release": "R4.1",
+            "stage": "production_audio_studio",
             "capabilities": {
                 "application_shell": "implemented",
                 "domain_schema": "implemented",
@@ -30,7 +30,7 @@ def product_status() -> ProductStatus:
                 "concert_provider": "verification_pending",
                 "concert_search": "verification_pending",
                 "live_materialization": "implemented",
-                "stem_separation": "designed",
+                "stem_separation": "implemented",
             },
         }
     )

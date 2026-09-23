@@ -15,13 +15,13 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title=settings.app_name,
         version="0.1.0",
-        description="MusicScope API for canonical music intelligence and verified live discovery.",
+        description="MusicScope API for music intelligence, verified live discovery, and local audio Studio.",
     )
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PATCH", "DELETE"],
+        allow_methods=["GET", "HEAD", "POST", "PATCH", "DELETE"],
         allow_headers=["Content-Type", "Authorization", "X-MusicScope-User-ID"],
     )
     application.include_router(api_router)
@@ -30,7 +30,7 @@ def create_app() -> FastAPI:
         "/health", tags=["system"], response_model=HealthResponse, response_model_exclude_none=True
     )
     def health() -> HealthResponse:
-        return HealthResponse(status="ok", service="musicscope-v2-api", release="R3")
+        return HealthResponse(status="ok", service="musicscope-v2-api", release="R4.1")
 
     @application.get("/health/db", tags=["system"])
     def database_health() -> JSONResponse:

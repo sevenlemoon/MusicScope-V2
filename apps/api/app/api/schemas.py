@@ -22,13 +22,14 @@ class AlphabetGroup(BaseModel):
 
 
 class ProductStatus(BaseModel):
-    release: Literal["R0", "R1", "R2.1", "R2", "R3"]
+    release: Literal["R0", "R1", "R2.1", "R2", "R3", "R4.1"]
     stage: Literal[
         "architecture_and_greenfield_bootstrap",
         "netease_integration_verification",
         "library_experience_and_playback",
         "personal_music_intelligence",
         "live_concert_intelligence",
+        "production_audio_studio",
     ]
     capabilities: dict[str, CapabilityStage]
 
@@ -272,6 +273,58 @@ class StemEntryResponse(BaseModel):
     status: Literal["LOCAL_UPLOAD_REQUIRED"]
     message: str
     studio_url: str
+
+
+class StudioAssetResponse(BaseModel):
+    id: str
+    original_filename: str
+    media_type: str
+    size_bytes: int
+    duration_ms: int
+    sample_rate: int
+    channels: int
+    sha256: str
+    reused: bool = False
+    created_at: datetime
+
+
+class StudioArtifactResponse(BaseModel):
+    id: str
+    stem_type: Literal["VOCALS", "DRUMS", "BASS", "OTHER"]
+    media_type: Literal["audio/flac"] = "audio/flac"
+    size_bytes: int
+    duration_ms: int | None = None
+    sample_rate: int
+    channels: int
+    sha256: str
+    stream_url: str
+
+
+class StudioJobResponse(BaseModel):
+    id: str
+    status: Literal["QUEUED", "PREPARING", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED"]
+    stage: str
+    model_name: str
+    model_version: str | None = None
+    demucs_version: str | None = None
+    device: str | None = None
+    attempt_count: int
+    safe_error_code: str | None = None
+    safe_error_message: str | None = None
+    configuration: dict[str, object] = Field(default_factory=dict)
+    asset: StudioAssetResponse
+    artifacts: list[StudioArtifactResponse] = Field(default_factory=list)
+    waveform_url: str | None = None
+    cancellable: bool = False
+    retryable: bool = False
+    reused: bool = False
+    created_at: datetime
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+
+
+class StudioJobListResponse(BaseModel):
+    items: list[StudioJobResponse] = Field(default_factory=list)
 
 
 class ArtistEnrichmentResponse(BaseModel):

@@ -1,18 +1,15 @@
 [project]
-name = "musicscope-api"
+name = "musicscope-audio-worker"
 version = "0.1.0"
-description = "MusicScope V2 application API"
-requires-python = ">=3.12,<3.14"
+description = "Isolated local four-stem separation worker for MusicScope V2"
+requires-python = ">=3.12,<3.13"
 dependencies = [
-  "alembic==1.14.1",
-  "cryptography==50.0.1",
-  "fastapi==0.141.1",
-  "httpx==0.28.1",
+  "demucs==4.1.0",
+  "numpy==1.26.4",
   "psycopg[binary]==3.2.3",
   "pydantic-settings==2.7.1",
-  "python-multipart==0.0.31",
   "SQLAlchemy==2.0.36",
-  "uvicorn[standard]==0.34.0",
+  "torch==2.14.0",
 ]
 
 [project.optional-dependencies]
@@ -23,11 +20,12 @@ dev = [
 
 [tool.uv]
 package = false
+environments = ["sys_platform == 'darwin' and platform_machine == 'arm64'"]
 
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = [".", "../api"]
 
 [tool.ruff]
 line-length = 110

@@ -2,7 +2,7 @@
 
 ## Decision
 
-MusicScope V2 is a modular monolith: one Next.js client, one FastAPI service, one PostgreSQL database, and process boundaries only where workloads require them. This keeps the graduation project demonstrable and maintainable without preventing a future audio worker.
+MusicScope V2 is a modular monolith: one Next.js client, one FastAPI service, one PostgreSQL database, and an isolated local audio worker for the ML workload.
 
 ```text
 Next.js web
@@ -12,7 +12,8 @@ Next.js web
             -> MusicProvider -> NetEase adapter
             -> MetadataProvider -> optional adapters
             -> ConcertProvider -> optional adapters
-            -> separation job runner -> FFmpeg / Demucs
+            -> PostgreSQL StemJob queue
+                -> isolated audio worker -> FFmpeg / Demucs CLI
 ```
 
 The browser never owns provider private-protocol behavior or provider cookies. Provider session
@@ -27,7 +28,8 @@ Nested log structures are recursively redacted as a second, independent boundary
 - `app/core`: configuration, database, logging, and safety guards.
 - `app/domain`: SQLAlchemy domain entities and enums.
 - `app/providers`: ports plus vendor adapters. `NetEaseProvider` is an explicit R0 placeholder.
-- `app/services`: orchestration such as connection state transitions and future sync reconciliation.
+- `app/services`: orchestration such as connection state transitions, synchronization, live aggregation, and Studio upload/job lifecycle.
+- `apps/audio-worker`: isolated locked runtime, durable job claiming, heartbeat/recovery, Demucs execution, FLAC validation, waveform generation, and atomic publication.
 
 ## Identity and provenance
 
@@ -63,6 +65,10 @@ deferred-provider boundaries.
 
 App Router supplies primary routes (`/`, `/discover`, `/library`, `/live`, `/studio`, `/insights`) and secondary routes. A responsive shell uses a desktop rail and recomposed mobile bottom navigation. R0 states are deliberately honest: no fake music, events, waveform, recommendations, or playback.
 
-## Audio
+## Audio Studio
 
-The legacy validated FFmpeg + `demucs-infer` pipeline is a reference for R3/R4. V2 targets four offline stems and a durable job runner. Model/runtime choice will be benchmarked again in the V2 environment before implementation; real-time separation remains out of scope.
+Studio keeps `PlaybackSource != ProcessingSource`: provider streams remain playback-only, while processing accepts an explicit local upload. FastAPI streams the upload into server-controlled storage, enforces byte/duration/quota limits, hashes it, and verifies the real container and single audio stream with ffprobe. A deterministic source-and-configuration fingerprint provides same-user successful-result reuse without cross-user sharing.
+
+PostgreSQL is the durable queue. One worker holds the project advisory lock, claims rows transactionally, records a worker identity and heartbeat, and recovers stale work after a crash. It prepares canonical PCM, invokes Demucs 4.1.0 through an argument-array subprocess (MPS by default, validated CPU fallback), validates exactly four synchronized FLAC artifacts, generates real min/max waveform peaks, and atomically publishes job-owned output. Cancellation terminates only the owned process group.
+
+The API never imports Torch or Demucs. Artifact and waveform endpoints enforce the authenticated user relationship; FLAC delivery supports private ETag caching and HTTP Range requests without revealing local paths. The browser streams four `HTMLMediaElement`s through `MediaElementAudioSourceNode`s, per-stem gain nodes, and a master gain node, with coordinated play/pause/seek and bounded drift correction. Real-time separation remains out of scope.

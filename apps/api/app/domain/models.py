@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     CheckConstraint,
     Date,
@@ -149,10 +150,7 @@ class Track(TimestampMixin, Base):
 
 class TrackArtist(Base):
     __tablename__ = "track_artists"
-    __table_args__ = (
-        UniqueConstraint("track_id", "artist_id", "role", name="uq_track_artist_role"),
-        UniqueConstraint("track_id", "position", name="uq_track_artist_position"),
-    )
+    __table_args__ = (UniqueConstraint("track_id", "position", name="uq_track_artist_position"),)
 
     track_id: Mapped[UUID] = mapped_column(ForeignKey("tracks.id", ondelete="CASCADE"), primary_key=True)
     artist_id: Mapped[UUID] = mapped_column(ForeignKey("artists.id", ondelete="CASCADE"), primary_key=True)
@@ -184,10 +182,7 @@ class Playlist(TimestampMixin, Base):
 
 class PlaylistTrack(Base):
     __tablename__ = "playlist_tracks"
-    __table_args__ = (
-        UniqueConstraint("playlist_id", "track_id", name="uq_playlist_track"),
-        UniqueConstraint("playlist_id", "position", name="uq_playlist_position"),
-    )
+    __table_args__ = (UniqueConstraint("playlist_id", "position", name="uq_playlist_position"),)
 
     playlist_id: Mapped[UUID] = mapped_column(
         ForeignKey("playlists.id", ondelete="CASCADE"), primary_key=True
@@ -340,8 +335,12 @@ class RecommendationRelationship(Base):
 class RecommendationFeedback(TimestampMixin, Base):
     __tablename__ = "recommendation_feedback"
     __table_args__ = (
-        UniqueConstraint(
-            "user_id", "entity_type", "identity_key", name="uq_user_recommendation_feedback"
+        Index(
+            "uq_user_recommendation_feedback",
+            "user_id",
+            "entity_type",
+            "identity_key",
+            unique=True,
         ),
         CheckConstraint(
             "entity_type IN ('track', 'artist', 'album')",
@@ -512,10 +511,14 @@ class LiveRecommendation(TimestampMixin, Base):
 
 class UserLivePreference(TimestampMixin, Base):
     __tablename__ = "user_live_preferences"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="user_live_preferences_user_id_key"),
+        Index("ix_user_live_preferences_user_id", "user_id"),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True
+        ForeignKey("users.id", ondelete="CASCADE")
     )
     country: Mapped[str | None] = mapped_column(String(2))
     city: Mapped[str | None] = mapped_column(String(160))
@@ -523,9 +526,13 @@ class UserLivePreference(TimestampMixin, Base):
 
 class LiveSearchCache(TimestampMixin, Base):
     __tablename__ = "live_search_cache"
+    __table_args__ = (
+        UniqueConstraint("cache_key", name="live_search_cache_cache_key_key"),
+        Index("ix_live_search_cache_cache_key", "cache_key"),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    cache_key: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    cache_key: Mapped[str] = mapped_column(String(64), nullable=False)
     query: Mapped[str] = mapped_column(String(300), nullable=False)
     status: Mapped[str] = mapped_column(String(40), nullable=False)
     match_payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
@@ -555,10 +562,18 @@ class ArtistSearchAlias(TimestampMixin, Base):
 
 class AudioAsset(TimestampMixin, Base):
     __tablename__ = "audio_assets"
+    __table_args__ = (
+        UniqueConstraint("user_id", "sha256", name="uq_audio_asset_user_sha256"),
+        Index("ix_audio_assets_user_sha256", "user_id", "sha256"),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    media_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    sample_rate: Mapped[int] = mapped_column(Integer, nullable=False)
+    channels: Mapped[int] = mapped_column(Integer, nullable=False)
     storage_key: Mapped[str] = mapped_column(String(500), nullable=False)
     sha256: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     duration_ms: Mapped[int | None] = mapped_column(Integer)
@@ -567,36 +582,60 @@ class AudioAsset(TimestampMixin, Base):
 
 class StemJob(TimestampMixin, Base):
     __tablename__ = "stem_jobs"
-    __table_args__ = (UniqueConstraint("user_id", "fingerprint", name="uq_stem_job_fingerprint"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "fingerprint", name="uq_stem_job_fingerprint"),
+        CheckConstraint(
+            "status IN ('QUEUED','PREPARING','RUNNING','SUCCEEDED','FAILED','CANCELLED')",
+            name="stem_job_status",
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     audio_asset_id: Mapped[UUID] = mapped_column(
         ForeignKey("audio_assets.id", ondelete="CASCADE"), index=True
     )
-    status: Mapped[str] = mapped_column(String(32), default=StemJobStatus.PENDING.value, index=True)
+    status: Mapped[str] = mapped_column(String(32), default=StemJobStatus.QUEUED.value, index=True)
+    stage: Mapped[str] = mapped_column(String(40), default="QUEUED", nullable=False)
     fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     model_name: Mapped[str] = mapped_column(String(120), nullable=False)
     model_version: Mapped[str | None] = mapped_column(String(80))
+    demucs_version: Mapped[str | None] = mapped_column(String(80))
+    device: Mapped[str | None] = mapped_column(String(16))
     configuration: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
     progress: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    safe_error_code: Mapped[str | None] = mapped_column(String(80))
     safe_error_message: Mapped[str | None] = mapped_column(String(300))
     diagnostic_error: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    worker_run_id: Mapped[UUID | None] = mapped_column(index=True)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    cancellation_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class StemArtifact(TimestampMixin, Base):
     __tablename__ = "stem_artifacts"
-    __table_args__ = (UniqueConstraint("stem_job_id", "stem_type", name="uq_stem_job_type"),)
+    __table_args__ = (
+        UniqueConstraint("stem_job_id", "stem_type", name="uq_stem_job_type"),
+        CheckConstraint(
+            "stem_type IN ('VOCALS','DRUMS','BASS','OTHER')", name="stem_artifact_type"
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     stem_job_id: Mapped[UUID] = mapped_column(ForeignKey("stem_jobs.id", ondelete="CASCADE"), index=True)
     stem_type: Mapped[str] = mapped_column(String(32), nullable=False)
     storage_key: Mapped[str] = mapped_column(String(500), nullable=False)
     waveform_storage_key: Mapped[str | None] = mapped_column(String(500))
+    media_type: Mapped[str] = mapped_column(String(100), default="audio/flac", nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     duration_ms: Mapped[int | None] = mapped_column(Integer)
+    sample_rate: Mapped[int] = mapped_column(Integer, nullable=False)
+    channels: Mapped[int] = mapped_column(Integer, nullable=False)
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    artifact_version: Mapped[str] = mapped_column(String(40), default="flac-v1", nullable=False)
 
 
 class MusicMemory(TimestampMixin, Base):

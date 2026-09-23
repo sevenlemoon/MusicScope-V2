@@ -33,7 +33,9 @@ class SyncStatus(StrEnum):
 
 
 class StemJobStatus(StrEnum):
-    PENDING = "PENDING"
-    PROCESSING = "PROCESSING"
-    COMPLETED = "COMPLETED"
+    QUEUED = "QUEUED"
+    PREPARING = "PREPARING"
+    RUNNING = "RUNNING"
+    SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
+    CANCELLED = "CANCELLED"

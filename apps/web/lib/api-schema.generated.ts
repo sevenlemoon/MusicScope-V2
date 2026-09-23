@@ -652,6 +652,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/studio/artifacts/{artifact_id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stream Artifact */
+        get: operations["stream_studio_artifact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Asset */
+        post: operations["upload_asset_api_v1_studio_assets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/assets/{asset_id}/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Job */
+        post: operations["start_job_api_v1_studio_assets__asset_id__jobs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Jobs */
+        get: operations["jobs_api_v1_studio_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Job Detail */
+        get: operations["job_detail_api_v1_studio_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/jobs/{job_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request Cancellation */
+        post: operations["request_cancellation_api_v1_studio_jobs__job_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/jobs/{job_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry */
+        post: operations["retry_api_v1_studio_jobs__job_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/studio/jobs/{job_id}/waveform": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Waveform */
+        get: operations["waveform_api_v1_studio_jobs__job_id__waveform_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tracks/{track_id}": {
         parameters: {
             query?: never;
@@ -908,6 +1044,14 @@ export interface components {
             provider: string;
             /** Provider Artist Id */
             provider_artist_id: string;
+        };
+        /** Body_upload_asset_api_v1_studio_assets_post */
+        Body_upload_asset_api_v1_studio_assets_post: {
+            /**
+             * File
+             * @description Local MP3, WAV, FLAC, or M4A/AAC audio
+             */
+            file: string;
         };
         /** CandidateRefreshResponse */
         CandidateRefreshResponse: {
@@ -1470,12 +1614,12 @@ export interface components {
              * Release
              * @enum {string}
              */
-            release: "R0" | "R1" | "R2.1" | "R2" | "R3";
+            release: "R0" | "R1" | "R2.1" | "R2" | "R3" | "R4.1";
             /**
              * Stage
              * @enum {string}
              */
-            stage: "architecture_and_greenfield_bootstrap" | "netease_integration_verification" | "library_experience_and_playback" | "personal_music_intelligence" | "live_concert_intelligence";
+            stage: "architecture_and_greenfield_bootstrap" | "netease_integration_verification" | "library_experience_and_playback" | "personal_music_intelligence" | "live_concert_intelligence" | "production_audio_studio";
         };
         /** ProfileRebuildResponse */
         ProfileRebuildResponse: {
@@ -1782,6 +1926,127 @@ export interface components {
             status: "LOCAL_UPLOAD_REQUIRED";
             /** Studio Url */
             studio_url: string;
+        };
+        /** StudioArtifactResponse */
+        StudioArtifactResponse: {
+            /** Channels */
+            channels: number;
+            /** Duration Ms */
+            duration_ms?: number | null;
+            /** Id */
+            id: string;
+            /**
+             * Media Type
+             * @default audio/flac
+             * @constant
+             */
+            media_type: "audio/flac";
+            /** Sample Rate */
+            sample_rate: number;
+            /** Sha256 */
+            sha256: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /**
+             * Stem Type
+             * @enum {string}
+             */
+            stem_type: "VOCALS" | "DRUMS" | "BASS" | "OTHER";
+            /** Stream Url */
+            stream_url: string;
+        };
+        /** StudioAssetResponse */
+        StudioAssetResponse: {
+            /** Channels */
+            channels: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Id */
+            id: string;
+            /** Media Type */
+            media_type: string;
+            /** Original Filename */
+            original_filename: string;
+            /**
+             * Reused
+             * @default false
+             */
+            reused: boolean;
+            /** Sample Rate */
+            sample_rate: number;
+            /** Sha256 */
+            sha256: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /** StudioJobListResponse */
+        StudioJobListResponse: {
+            /** Items */
+            items?: components["schemas"]["StudioJobResponse"][];
+        };
+        /** StudioJobResponse */
+        StudioJobResponse: {
+            /** Artifacts */
+            artifacts?: components["schemas"]["StudioArtifactResponse"][];
+            asset: components["schemas"]["StudioAssetResponse"];
+            /** Attempt Count */
+            attempt_count: number;
+            /**
+             * Cancellable
+             * @default false
+             */
+            cancellable: boolean;
+            /** Completed At */
+            completed_at?: string | null;
+            /** Configuration */
+            configuration?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Demucs Version */
+            demucs_version?: string | null;
+            /** Device */
+            device?: string | null;
+            /** Id */
+            id: string;
+            /** Model Name */
+            model_name: string;
+            /** Model Version */
+            model_version?: string | null;
+            /**
+             * Retryable
+             * @default false
+             */
+            retryable: boolean;
+            /**
+             * Reused
+             * @default false
+             */
+            reused: boolean;
+            /** Safe Error Code */
+            safe_error_code?: string | null;
+            /** Safe Error Message */
+            safe_error_message?: string | null;
+            /** Stage */
+            stage: string;
+            /** Started At */
+            started_at?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "QUEUED" | "PREPARING" | "RUNNING" | "SUCCEEDED" | "FAILED" | "CANCELLED";
+            /** Waveform Url */
+            waveform_url?: string | null;
         };
         /** SyncResponse */
         SyncResponse: {
@@ -3146,6 +3411,273 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProductStatus"];
+                };
+            };
+        };
+    };
+    stream_studio_artifact: {
+        parameters: {
+            query?: never;
+            header?: {
+                "if-none-match"?: string | null;
+                "x-musicscope-user-id"?: string | null;
+            };
+            path: {
+                artifact_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_asset_api_v1_studio_assets_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_asset_api_v1_studio_assets_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioAssetResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_job_api_v1_studio_assets__asset_id__jobs_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioJobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    jobs_api_v1_studio_jobs_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioJobListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    job_detail_api_v1_studio_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioJobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_cancellation_api_v1_studio_jobs__job_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioJobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_api_v1_studio_jobs__job_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioJobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    waveform_api_v1_studio_jobs__job_id__waveform_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

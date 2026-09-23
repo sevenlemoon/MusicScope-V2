@@ -1,6 +1,6 @@
 # MusicScope V2
 
-MusicScope V2 is a greenfield personal music intelligence application. R0 provides a working full-stack shell and the domain/provider boundaries needed for real NetEase Cloud Music connection work in R1. It does **not** claim that QR login, library sync, recommendations, concert providers, or source separation are already integrated.
+MusicScope V2 is a local-first personal music intelligence application with a connected music library, recommendation and live-concert intelligence, and a real four-stem audio Studio.
 
 ## Architecture
 
@@ -8,7 +8,7 @@ MusicScope V2 is a greenfield personal music intelligence application. R0 provid
 - `apps/api`: FastAPI modular monolith with SQLAlchemy 2 and Alembic.
 - PostgreSQL 16: canonical music domain and sync/job persistence.
 - Provider ports isolate music, metadata, and concert vendors from UI and domain code.
-- Audio separation remains an offline background-job boundary; R0 does not invoke Demucs.
+- `apps/audio-worker`: isolated Python 3.12 Demucs worker; Torch and model dependencies never enter FastAPI.
 
 The database defaults to `musicscope_v2` on port `55432` with a V2-specific Compose project and volume. The API rejects PostgreSQL database names that do not contain `v2` to reduce the chance of touching the legacy database.
 
@@ -28,7 +28,8 @@ The one-command launcher safely checks and reuses the local environment:
 ```
 
 It installs only missing or changed project dependencies, starts/reuses PostgreSQL, applies
-forward Alembic migrations, starts the loopback NetEase sidecar, FastAPI, and Next.js, and opens
+forward Alembic migrations, starts the loopback NetEase sidecar, FastAPI, durable audio worker,
+and Next.js, and opens
 the web app. It never logs in, synchronizes, rebuilds recommendations, enriches artwork, deletes
 data, or removes Docker volumes automatically.
 
@@ -80,8 +81,8 @@ make compose-check
 
 ## Current reality boundary
 
-Implemented and locally testable: route shell, design tokens/components, health/status APIs, domain schema, migrations, encrypted provider sessions, the NetEase adapter and read-only sidecar, QR state handling, library synchronization, and isolated development configuration.
+Implemented and locally testable: encrypted NetEase connection and library ingestion, recommendation intelligence, verified live-event aggregation, and R4.1 Studio. Studio accepts only user-selected local MP3/WAV/FLAC/M4A audio, validates it with ffprobe, queues durable PostgreSQL jobs, runs `htdemucs` in an isolated single-concurrency worker, publishes four validated FLAC stems and real waveform peaks, and serves user-scoped HTTP Range streams to the Web Audio mixer. Provider playback URLs are never processing inputs.
 
-Awaiting R1 human verification: real QR scan, authenticated profile, real library synchronization, artwork rendering, timing measurement, and repeated-sync database evidence. MusicScope ranking, live concert aggregation, and four-stem separation remain future phases.
+The first Studio model preparation downloads its worker-only weights into the user's external cache. Subjective separation quality on a user-owned commercial music file remains a user QA step; generated lawful audio covers the automated product path.
 
 See [`docs/R0_AUDIT.md`](docs/R0_AUDIT.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and [`docs/R1_NETEASE_PLAN.md`](docs/R1_NETEASE_PLAN.md).

@@ -5,13 +5,13 @@ from app.main import app
 client = TestClient(app)
 
 
-def test_health_is_honest_r3_status() -> None:
+def test_health_is_honest_r4_1_status() -> None:
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {
         "status": "ok",
         "service": "musicscope-v2-api",
-        "release": "R3",
+        "release": "R4.1",
     }
 
 
@@ -31,7 +31,7 @@ def test_product_status_marks_real_integration_implemented() -> None:
     assert capabilities["concert_search"] == "verification_pending"
     assert capabilities["live_materialization"] == "implemented"
     assert capabilities["stem_entry"] == "implemented"
-    assert capabilities["stem_separation"] == "designed"
+    assert capabilities["stem_separation"] == "implemented"
 
 
 def test_library_summary_is_empty_without_connection() -> None:

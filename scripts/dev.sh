@@ -5,6 +5,7 @@ set -Eeuo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 LOG_DIR="$ROOT_DIR/.logs"
 SETUP_LOG="$LOG_DIR/setup.log"
+AUDIO_WORKER_HEALTH="$LOG_DIR/audio-worker-health.json"
 WEB_PORT="${MUSICSCOPE_WEB_PORT:-3100}"
 API_PORT="8100"
 NETEASE_PORT="36531"
@@ -26,7 +27,7 @@ usage() {
   cat <<'EOF'
 Usage: ./scripts/dev.sh [--setup] [--status] [--no-open]
 
-  (default)  Check, bootstrap what is missing, and start PostgreSQL, sidecar, API, and web.
+  (default)  Check, bootstrap what is missing, and start PostgreSQL, sidecar, API, audio worker, and web.
   --setup    Check/install dependencies, start PostgreSQL, and apply migrations; stop before app processes.
   --status   Report system, database, migration, and application state without changing anything.
   --no-open  Start normally without opening a browser.
@@ -155,6 +156,12 @@ python_env_valid() {
   "$python" -c 'import sys; assert sys.version_info[:2] in ((3, 12), (3, 13)); import alembic, fastapi, sqlalchemy, uvicorn' >/dev/null 2>&1
 }
 
+audio_worker_env_valid() {
+  local python="$ROOT_DIR/apps/audio-worker/.venv/bin/python"
+  [[ -x "$python" ]] || return 1
+  "$python" -c 'import sys; assert sys.version_info[:2] == (3, 12); import demucs, numpy, torch; assert numpy.__version__ == "1.26.4"' >/dev/null 2>&1
+}
+
 ensure_python_dependencies() {
   local marker="$LOG_DIR/backend-dependencies.sha256" expected
   expected="$(hash_files "$ROOT_DIR/apps/api/pyproject.toml" "$ROOT_DIR/apps/api/uv.lock")"
@@ -174,6 +181,27 @@ ensure_python_dependencies() {
   python_env_valid || fail "The API virtual environment is not Python 3.12/3.13 after setup. See $SETUP_LOG."
   printf '%s\n' "$expected" >"$marker"
   say "READY Python dependencies"
+}
+
+ensure_audio_worker_dependencies() {
+  local marker="$LOG_DIR/audio-worker-dependencies.sha256" expected
+  expected="$(hash_files "$ROOT_DIR/apps/audio-worker/pyproject.toml" "$ROOT_DIR/apps/audio-worker/uv.lock")"
+  if dependency_marker_matches "$marker" "$expected" && audio_worker_env_valid; then
+    say "SKIPPED audio worker dependencies (lockfiles unchanged)"
+    return
+  fi
+  if audio_worker_env_valid; then
+    printf '%s\n' "$expected" >"$marker"
+    say "SKIPPED audio worker installation (existing isolated environment validated)"
+    return
+  fi
+  say "INSTALLING isolated audio worker dependencies (first setup includes Torch; details in .logs/setup.log)"
+  if ! (cd "$ROOT_DIR" && UV_HTTP_TIMEOUT=300 uv sync --project apps/audio-worker --extra dev --python 3.12) >>"$SETUP_LOG" 2>&1; then
+    fail "Audio worker dependency setup failed. See $SETUP_LOG."
+  fi
+  audio_worker_env_valid || fail "The isolated audio worker environment failed validation. See $SETUP_LOG."
+  printf '%s\n' "$expected" >"$marker"
+  say "READY isolated audio worker dependencies"
 }
 
 ensure_node_dependencies() {
@@ -253,6 +281,53 @@ start_service() {
   fail "$name did not become ready within 30 seconds. See $LOG_DIR/$logfile."
 }
 
+audio_worker_pid() {
+  [[ -f "$AUDIO_WORKER_HEALTH" ]] || return 1
+  "$ROOT_DIR/apps/api/.venv/bin/python" - "$AUDIO_WORKER_HEALTH" <<'PY'
+import json, sys
+try:
+    value = json.load(open(sys.argv[1], encoding="utf-8")).get("pid")
+    if isinstance(value, int) and value > 1:
+        print(value)
+except (OSError, ValueError, TypeError):
+    pass
+PY
+}
+
+audio_worker_is_healthy() {
+  local pid command cwd
+  pid="$(audio_worker_pid || true)"
+  [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+  kill -0 "$pid" >/dev/null 2>&1 || return 1
+  command="$(process_command "$pid")"
+  cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1)"
+  [[ "$command" == *"-m audio_worker"* && "$cwd" == "$ROOT_DIR/apps/audio-worker" ]] || return 1
+  return 0
+}
+
+start_audio_worker() {
+  local existing attempt=1 pid
+  if audio_worker_is_healthy; then
+    say "SKIPPED audio worker (already healthy, PID $(audio_worker_pid))"
+    return
+  fi
+  existing="$(pgrep -f -- '-m audio_worker' 2>/dev/null | head -n 1 || true)"
+  [[ -z "$existing" ]] || fail "An untracked MusicScope audio worker is already running (PID $existing). Inspect it before retrying."
+  rm -f "$AUDIO_WORKER_HEALTH"
+  : >"$LOG_DIR/audio-worker.log"
+  say "STARTING audio worker"
+  (cd "$ROOT_DIR/apps/audio-worker" && exec "$ROOT_DIR/apps/audio-worker/.venv/bin/python" -m audio_worker --health-file "$AUDIO_WORKER_HEALTH") >>"$LOG_DIR/audio-worker.log" 2>&1 &
+  pid="$!"
+  CHILD_PIDS+=("$pid")
+  while ((attempt <= 30)); do
+    if audio_worker_is_healthy; then say "READY audio worker"; return; fi
+    kill -0 "$pid" >/dev/null 2>&1 || fail "Audio worker exited during startup. See $LOG_DIR/audio-worker.log."
+    sleep 1
+    attempt=$((attempt + 1))
+  done
+  fail "Audio worker did not become ready within 30 seconds. See $LOG_DIR/audio-worker.log."
+}
+
 app_state() {
   local connections library profile
   connections="$(curl -fsS --max-time 3 "http://127.0.0.1:$API_PORT/api/v1/music-connections" 2>/dev/null || true)"
@@ -277,6 +352,7 @@ status_mode() {
   if [[ -x "$ROOT_DIR/apps/api/.venv/bin/alembic" ]] && (cd "$ROOT_DIR/apps/api" && "$ROOT_DIR/apps/api/.venv/bin/alembic" current >/dev/null 2>&1); then say "Migration: CURRENT"; else say "Migration: UNKNOWN/NOT_CURRENT"; fi
   curl -fsS --max-time 3 "http://127.0.0.1:$NETEASE_PORT/health" >/dev/null 2>&1 && say "NetEase sidecar: READY" || say "NetEase sidecar: NOT_READY"
   curl -fsS --max-time 3 "http://127.0.0.1:$API_PORT/health" >/dev/null 2>&1 && say "FastAPI: READY" || say "FastAPI: NOT_READY"
+  if audio_worker_is_healthy; then say "Audio worker: READY"; else say "Audio worker: NOT_READY"; fi
   curl -fsS --max-time 3 "http://127.0.0.1:$WEB_PORT/" >/dev/null 2>&1 && say "Web: READY" || say "Web: NOT_READY"
   if curl -fsS --max-time 3 "http://127.0.0.1:$API_PORT/health" >/dev/null 2>&1; then app_state; fi
 }
@@ -314,24 +390,27 @@ main() {
   trap handle_signal INT TERM
   cd "$ROOT_DIR"
   say "MusicScope"
-  say "[1/6] Checking environment..."
+  say "[1/7] Checking environment..."
   check_versions
   check_docker
   load_env
-  say "[2/6] Checking database..."
+  say "[2/7] Checking database..."
   ensure_postgres
-  say "[3/6] Preparing project dependencies..."
+  say "[3/7] Preparing project dependencies..."
   ensure_python_dependencies
+  ensure_audio_worker_dependencies
   ensure_node_dependencies "apps/web" "$LOG_DIR/web-dependencies.sha256" "web"
   ensure_node_dependencies "services/netease-api" "$LOG_DIR/sidecar-dependencies.sha256" "NetEase sidecar"
   ensure_local_env
-  say "[4/6] Applying safe forward-only migrations..."
+  say "[4/7] Applying safe forward-only migrations..."
   apply_migrations
   if ((SETUP_ONLY)); then say "SETUP complete; application processes were not started"; return; fi
-  say "[5/6] Starting backend services..."
+  say "[5/7] Starting backend services..."
   start_service "NetEase sidecar" "$NETEASE_PORT" "http://127.0.0.1:$NETEASE_PORT/health" 'server\.cjs' "netease.log" "$ROOT_DIR/services/netease-api" node server.cjs
   start_service "FastAPI" "$API_PORT" "http://127.0.0.1:$API_PORT/health" 'uvicorn.*app\.main:app' "api.log" "$ROOT_DIR/apps/api" "$ROOT_DIR/apps/api/.venv/bin/uvicorn" app.main:app --host 127.0.0.1 --port "$API_PORT"
-  say "[6/6] Waiting for MusicScope web app..."
+  say "[6/7] Starting durable audio processing..."
+  start_audio_worker
+  say "[7/7] Waiting for MusicScope web app..."
   start_service "Web" "$WEB_PORT" "http://127.0.0.1:$WEB_PORT/" '(next-server|next dev)' "web.log" "$ROOT_DIR/apps/web" "$ROOT_DIR/apps/web/node_modules/.bin/next" dev --hostname 127.0.0.1 --port "$WEB_PORT"
   say "APPLICATION READY: http://127.0.0.1:$WEB_PORT"
   app_state

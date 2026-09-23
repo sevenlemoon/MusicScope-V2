@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     netease_artist_concurrency: int = 6
     netease_playback_level: str = "standard"
     audio_storage_dir: str = "storage/audio"
+    audio_upload_max_bytes: int = 200 * 1024 * 1024
+    audio_duration_max_seconds: int = 15 * 60
+    audio_storage_quota_bytes: int = 10 * 1024 * 1024 * 1024
+    audio_worker_stale_seconds: int = 90
+    audio_worker_poll_seconds: float = 1.0
     separator_executable: str | None = None
     separator_model: str = "htdemucs"
     concert_provider: str = "none"
