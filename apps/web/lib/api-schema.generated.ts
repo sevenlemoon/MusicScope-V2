@@ -106,6 +106,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/insights/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Overview */
+        get: operations["overview_api_v1_insights_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/insights/playlists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Playlists */
+        get: operations["playlists_api_v1_insights_playlists_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/insights/rediscovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rediscovery */
+        get: operations["rediscovery_api_v1_insights_rediscovery_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/insights/universe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Universe */
+        get: operations["universe_api_v1_insights_universe_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/library/albums": {
         parameters: {
             query?: never;
@@ -1071,6 +1139,61 @@ export interface components {
              */
             status: "fresh" | "partial" | "stale" | "no_candidates";
         };
+        /** CollaborationMetrics */
+        CollaborationMetrics: {
+            /**
+             * Multi Artist Track Share
+             * @default 0
+             */
+            multi_artist_track_share: number;
+            /**
+             * Multi Artist Tracks
+             * @default 0
+             */
+            multi_artist_tracks: number;
+            /**
+             * Relationship Pairs With Collaboration
+             * @default 0
+             */
+            relationship_pairs_with_collaboration: number;
+        };
+        /** CollaborationPair */
+        CollaborationPair: {
+            /** Collaboration Track Count */
+            collaboration_track_count: number;
+            /** Relationship Weight */
+            relationship_weight: number;
+            /** Shared Playlist Count */
+            shared_playlist_count: number;
+            /** Source Artist Id */
+            source_artist_id: string;
+            /** Source Artist Name */
+            source_artist_name: string;
+            /** Target Artist Id */
+            target_artist_id: string;
+            /** Target Artist Name */
+            target_artist_name: string;
+        };
+        /** ConcentrationMetrics */
+        ConcentrationMetrics: {
+            /** Long Tail */
+            long_tail?: components["schemas"]["LongTailBucket"][];
+            /**
+             * Median Tracks Per Artist
+             * @default 0
+             */
+            median_tracks_per_artist: number;
+            /**
+             * Top 10 Track Share
+             * @default 0
+             */
+            top_10_track_share: number;
+            /**
+             * Top 50 Track Share
+             * @default 0
+             */
+            top_50_track_share: number;
+        };
         /** ConcertEventResponse */
         ConcertEventResponse: {
             /** Artwork Url */
@@ -1282,6 +1405,31 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** GenreCoverage */
+        GenreCoverage: {
+            /**
+             * Coverage
+             * @default 0
+             */
+            coverage: number;
+            /**
+             * Missing Track Count
+             * @default 0
+             */
+            missing_track_count: number;
+            /**
+             * Reliable Track Count
+             * @default 0
+             */
+            reliable_track_count: number;
+            /** Sources */
+            sources?: string[];
+            /**
+             * Sufficient For Primary Insight
+             * @default false
+             */
+            sufficient_for_primary_insight: boolean;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1326,6 +1474,143 @@ export interface components {
             rediscover?: components["schemas"]["RecommendationItem"][];
             /** Strong Artists */
             strong_artists?: components["schemas"]["RecommendationItem"][];
+            /** Timings Ms */
+            timings_ms?: {
+                [key: string]: number;
+            };
+        };
+        /** InsightsArtist */
+        InsightsArtist: {
+            /** Affinity */
+            affinity: number;
+            /** Artwork Url */
+            artwork_url?: string | null;
+            /** Collaboration Track Count */
+            collaboration_track_count: number;
+            /** Confidence */
+            confidence: number;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Playlist Count */
+            playlist_count: number;
+            /** Represented Album Count */
+            represented_album_count: number;
+            /** Saved Track Count */
+            saved_track_count: number;
+        };
+        /** InsightsCounts */
+        InsightsCounts: {
+            /**
+             * Albums
+             * @default 0
+             */
+            albums: number;
+            /**
+             * Artists
+             * @default 0
+             */
+            artists: number;
+            /**
+             * Playlists
+             * @default 0
+             */
+            playlists: number;
+            /**
+             * Tracks
+             * @default 0
+             */
+            tracks: number;
+        };
+        /** InsightsOverviewResponse */
+        InsightsOverviewResponse: {
+            collaboration: components["schemas"]["CollaborationMetrics"];
+            concentration: components["schemas"]["ConcentrationMetrics"];
+            counts: components["schemas"]["InsightsCounts"];
+            /** Formulas */
+            formulas?: {
+                [key: string]: string;
+            };
+            /** Generated At */
+            generated_at?: string | null;
+            genre_coverage: components["schemas"]["GenreCoverage"];
+            /** Profile Metrics */
+            profile_metrics?: components["schemas"]["ProfileMetric"][];
+            /**
+             * Profile State
+             * @enum {string}
+             */
+            profile_state: "current" | "missing_or_stale";
+            /** Strongest Collaborations */
+            strongest_collaborations?: components["schemas"]["CollaborationPair"][];
+            /** Timings Ms */
+            timings_ms?: {
+                [key: string]: number;
+            };
+            /** Top Artists */
+            top_artists?: components["schemas"]["InsightsArtist"][];
+        };
+        /** InsightsPlaylistsResponse */
+        InsightsPlaylistsResponse: {
+            /** Playlists */
+            playlists?: components["schemas"]["PlaylistInsight"][];
+            /** Similarity Formula */
+            similarity_formula: string;
+            /** Strongest Overlaps */
+            strongest_overlaps?: components["schemas"]["PlaylistOverlap"][];
+            /** Timings Ms */
+            timings_ms?: {
+                [key: string]: number;
+            };
+            /** Uniqueness Formula */
+            uniqueness_formula: string;
+        };
+        /** InsightsRediscoveryResponse */
+        InsightsRediscoveryResponse: {
+            /** Items */
+            items?: components["schemas"]["RediscoveryInsight"][];
+            /**
+             * Profile State
+             * @enum {string}
+             */
+            profile_state: "current" | "missing_or_stale";
+            /** Semantics */
+            semantics: string;
+            /** Timings Ms */
+            timings_ms?: {
+                [key: string]: number;
+            };
+        };
+        /** InsightsUniverseResponse */
+        InsightsUniverseResponse: {
+            /** Communities */
+            communities?: components["schemas"]["UniverseCommunity"][];
+            /** Edge Cap */
+            edge_cap: number;
+            /** Edges */
+            edges?: components["schemas"]["UniverseEdge"][];
+            /** Formulas */
+            formulas?: {
+                [key: string]: string;
+            };
+            /** Node Cap */
+            node_cap: number;
+            /**
+             * Node Metric
+             * @default canonical_library_affinity
+             * @constant
+             */
+            node_metric: "canonical_library_affinity";
+            /** Nodes */
+            nodes?: components["schemas"]["UniverseNode"][];
+            /** Per Node Edge Cap */
+            per_node_edge_cap: number;
+            /**
+             * Profile State
+             * @enum {string}
+             */
+            profile_state: "current" | "missing_or_stale";
             /** Timings Ms */
             timings_ms?: {
                 [key: string]: number;
@@ -1482,6 +1767,20 @@ export interface components {
              */
             status: "OK" | "ARTIST_NOT_FOUND" | "NO_UPCOMING_EVENTS" | "AMBIGUOUS_ARTIST" | "PROVIDER_NOT_CONFIGURED" | "PROVIDER_UNAVAILABLE" | "PROVIDER_RATE_LIMITED" | "PARTIAL_RESULTS" | "PROFILE_NOT_READY" | "EMPTY";
         };
+        /** LongTailBucket */
+        LongTailBucket: {
+            /** Artist Count */
+            artist_count: number;
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "one" | "two_to_five" | "six_to_twenty" | "twenty_one_to_fifty" | "fifty_one_plus";
+            /** Maximum Tracks */
+            maximum_tracks?: number | null;
+            /** Minimum Tracks */
+            minimum_tracks: number;
+        };
         /** NeteaseCapabilities */
         NeteaseCapabilities: {
             /** Auth States */
@@ -1555,6 +1854,27 @@ export interface components {
             /** Synchronized Track Count */
             synchronized_track_count: number;
         };
+        /** PlaylistInsight */
+        PlaylistInsight: {
+            /** Artwork Url */
+            artwork_url?: string | null;
+            /** Distinct Album Count */
+            distinct_album_count: number;
+            /** Distinct Artist Count */
+            distinct_artist_count: number;
+            /** Id */
+            id: string;
+            /** Leading Artist Track Share */
+            leading_artist_track_share: number;
+            /** Multi Artist Track Count */
+            multi_artist_track_count: number;
+            /** Name */
+            name: string;
+            /** Track Count */
+            track_count: number;
+            /** Unique Library Coverage */
+            unique_library_coverage: number;
+        };
         /** PlaylistItem */
         PlaylistItem: {
             /** Artwork Url */
@@ -1572,6 +1892,25 @@ export interface components {
             sort_group: string;
             /** Track Count */
             track_count?: number | null;
+        };
+        /** PlaylistOverlap */
+        PlaylistOverlap: {
+            /** Jaccard Similarity */
+            jaccard_similarity: number;
+            /** Shared Track Count */
+            shared_track_count: number;
+            /** Source Playlist Id */
+            source_playlist_id: string;
+            /** Source Playlist Name */
+            source_playlist_name: string;
+            /** Source Track Count */
+            source_track_count: number;
+            /** Target Playlist Id */
+            target_playlist_id: string;
+            /** Target Playlist Name */
+            target_playlist_name: string;
+            /** Target Track Count */
+            target_track_count: number;
         };
         /** PlaylistPage */
         PlaylistPage: {
@@ -1620,6 +1959,19 @@ export interface components {
              * @enum {string}
              */
             stage: "architecture_and_greenfield_bootstrap" | "netease_integration_verification" | "library_experience_and_playback" | "personal_music_intelligence" | "live_concert_intelligence" | "production_audio_studio";
+        };
+        /** ProfileMetric */
+        ProfileMetric: {
+            /** Code */
+            code: string;
+            /** Evidence */
+            evidence?: {
+                [key: string]: number;
+            };
+            /** Formula */
+            formula: string;
+            /** Value */
+            value: number;
         };
         /** ProfileRebuildResponse */
         ProfileRebuildResponse: {
@@ -1841,6 +2193,28 @@ export interface components {
         RecommendationSettingsRequest: {
             /** Exploration Level */
             exploration_level: number;
+        };
+        /** RediscoveryInsight */
+        RediscoveryInsight: {
+            /** Artwork Url */
+            artwork_url?: string | null;
+            /** Explanation */
+            explanation: string;
+            /** Id */
+            id: string;
+            /**
+             * Is In Library
+             * @default true
+             */
+            is_in_library: boolean;
+            /** Score */
+            score: number;
+            /** Strategy */
+            strategy: string;
+            /** Subtitle */
+            subtitle?: string | null;
+            /** Title */
+            title: string;
         };
         /** RelationshipItem */
         RelationshipItem: {
@@ -2159,6 +2533,51 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** UniverseCommunity */
+        UniverseCommunity: {
+            /** Artist Count */
+            artist_count: number;
+            /** Id */
+            id: string;
+            /** Representative Artists */
+            representative_artists?: string[];
+        };
+        /** UniverseEdge */
+        UniverseEdge: {
+            /** Collaboration Track Count */
+            collaboration_track_count: number;
+            /** Id */
+            id: string;
+            /** Shared Playlist Count */
+            shared_playlist_count: number;
+            /** Source */
+            source: string;
+            /** Target */
+            target: string;
+            /** Weight */
+            weight: number;
+        };
+        /** UniverseNode */
+        UniverseNode: {
+            /** Affinity */
+            affinity: number;
+            /** Artwork Url */
+            artwork_url?: string | null;
+            /** Collaboration Track Count */
+            collaboration_track_count: number;
+            /** Community Id */
+            community_id: string;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Playlist Count */
+            playlist_count: number;
+            /** Represented Album Count */
+            represented_album_count: number;
+            /** Saved Track Count */
+            saved_track_count: number;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -2368,6 +2787,132 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrackPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    overview_api_v1_insights_overview_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightsOverviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    playlists_api_v1_insights_playlists_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightsPlaylistsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rediscovery_api_v1_insights_rediscovery_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightsRediscoveryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    universe_api_v1_insights_universe_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightsUniverseResponse"];
                 };
             };
             /** @description Validation Error */

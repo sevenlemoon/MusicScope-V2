@@ -523,6 +523,98 @@
         "title": "CandidateRefreshResponse",
         "type": "object"
       },
+      "CollaborationMetrics": {
+        "properties": {
+          "multi_artist_track_share": {
+            "default": 0,
+            "title": "Multi Artist Track Share",
+            "type": "number"
+          },
+          "multi_artist_tracks": {
+            "default": 0,
+            "title": "Multi Artist Tracks",
+            "type": "integer"
+          },
+          "relationship_pairs_with_collaboration": {
+            "default": 0,
+            "title": "Relationship Pairs With Collaboration",
+            "type": "integer"
+          }
+        },
+        "title": "CollaborationMetrics",
+        "type": "object"
+      },
+      "CollaborationPair": {
+        "properties": {
+          "collaboration_track_count": {
+            "title": "Collaboration Track Count",
+            "type": "integer"
+          },
+          "relationship_weight": {
+            "title": "Relationship Weight",
+            "type": "number"
+          },
+          "shared_playlist_count": {
+            "title": "Shared Playlist Count",
+            "type": "integer"
+          },
+          "source_artist_id": {
+            "title": "Source Artist Id",
+            "type": "string"
+          },
+          "source_artist_name": {
+            "title": "Source Artist Name",
+            "type": "string"
+          },
+          "target_artist_id": {
+            "title": "Target Artist Id",
+            "type": "string"
+          },
+          "target_artist_name": {
+            "title": "Target Artist Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_artist_id",
+          "source_artist_name",
+          "target_artist_id",
+          "target_artist_name",
+          "shared_playlist_count",
+          "collaboration_track_count",
+          "relationship_weight"
+        ],
+        "title": "CollaborationPair",
+        "type": "object"
+      },
+      "ConcentrationMetrics": {
+        "properties": {
+          "long_tail": {
+            "items": {
+              "$ref": "#/components/schemas/LongTailBucket"
+            },
+            "title": "Long Tail",
+            "type": "array"
+          },
+          "median_tracks_per_artist": {
+            "default": 0,
+            "title": "Median Tracks Per Artist",
+            "type": "number"
+          },
+          "top_10_track_share": {
+            "default": 0,
+            "title": "Top 10 Track Share",
+            "type": "number"
+          },
+          "top_50_track_share": {
+            "default": 0,
+            "title": "Top 50 Track Share",
+            "type": "number"
+          }
+        },
+        "title": "ConcentrationMetrics",
+        "type": "object"
+      },
       "ConcertEventResponse": {
         "properties": {
           "artwork_url": {
@@ -1181,6 +1273,39 @@
         "title": "ExternalTrackItem",
         "type": "object"
       },
+      "GenreCoverage": {
+        "properties": {
+          "coverage": {
+            "default": 0,
+            "title": "Coverage",
+            "type": "number"
+          },
+          "missing_track_count": {
+            "default": 0,
+            "title": "Missing Track Count",
+            "type": "integer"
+          },
+          "reliable_track_count": {
+            "default": 0,
+            "title": "Reliable Track Count",
+            "type": "integer"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "sufficient_for_primary_insight": {
+            "default": false,
+            "title": "Sufficient For Primary Insight",
+            "type": "boolean"
+          }
+        },
+        "title": "GenreCoverage",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1317,6 +1442,319 @@
           "external_state"
         ],
         "title": "HomeRecommendationsResponse",
+        "type": "object"
+      },
+      "InsightsArtist": {
+        "properties": {
+          "affinity": {
+            "title": "Affinity",
+            "type": "number"
+          },
+          "artwork_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artwork Url"
+          },
+          "collaboration_track_count": {
+            "title": "Collaboration Track Count",
+            "type": "integer"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "playlist_count": {
+            "title": "Playlist Count",
+            "type": "integer"
+          },
+          "represented_album_count": {
+            "title": "Represented Album Count",
+            "type": "integer"
+          },
+          "saved_track_count": {
+            "title": "Saved Track Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "affinity",
+          "confidence",
+          "saved_track_count",
+          "playlist_count",
+          "represented_album_count",
+          "collaboration_track_count"
+        ],
+        "title": "InsightsArtist",
+        "type": "object"
+      },
+      "InsightsCounts": {
+        "properties": {
+          "albums": {
+            "default": 0,
+            "title": "Albums",
+            "type": "integer"
+          },
+          "artists": {
+            "default": 0,
+            "title": "Artists",
+            "type": "integer"
+          },
+          "playlists": {
+            "default": 0,
+            "title": "Playlists",
+            "type": "integer"
+          },
+          "tracks": {
+            "default": 0,
+            "title": "Tracks",
+            "type": "integer"
+          }
+        },
+        "title": "InsightsCounts",
+        "type": "object"
+      },
+      "InsightsOverviewResponse": {
+        "properties": {
+          "collaboration": {
+            "$ref": "#/components/schemas/CollaborationMetrics"
+          },
+          "concentration": {
+            "$ref": "#/components/schemas/ConcentrationMetrics"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/InsightsCounts"
+          },
+          "formulas": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Formulas",
+            "type": "object"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "genre_coverage": {
+            "$ref": "#/components/schemas/GenreCoverage"
+          },
+          "profile_metrics": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileMetric"
+            },
+            "title": "Profile Metrics",
+            "type": "array"
+          },
+          "profile_state": {
+            "enum": [
+              "current",
+              "missing_or_stale"
+            ],
+            "title": "Profile State",
+            "type": "string"
+          },
+          "strongest_collaborations": {
+            "items": {
+              "$ref": "#/components/schemas/CollaborationPair"
+            },
+            "title": "Strongest Collaborations",
+            "type": "array"
+          },
+          "timings_ms": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Timings Ms",
+            "type": "object"
+          },
+          "top_artists": {
+            "items": {
+              "$ref": "#/components/schemas/InsightsArtist"
+            },
+            "title": "Top Artists",
+            "type": "array"
+          }
+        },
+        "required": [
+          "profile_state",
+          "counts",
+          "concentration",
+          "collaboration",
+          "genre_coverage"
+        ],
+        "title": "InsightsOverviewResponse",
+        "type": "object"
+      },
+      "InsightsPlaylistsResponse": {
+        "properties": {
+          "playlists": {
+            "items": {
+              "$ref": "#/components/schemas/PlaylistInsight"
+            },
+            "title": "Playlists",
+            "type": "array"
+          },
+          "similarity_formula": {
+            "title": "Similarity Formula",
+            "type": "string"
+          },
+          "strongest_overlaps": {
+            "items": {
+              "$ref": "#/components/schemas/PlaylistOverlap"
+            },
+            "title": "Strongest Overlaps",
+            "type": "array"
+          },
+          "timings_ms": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Timings Ms",
+            "type": "object"
+          },
+          "uniqueness_formula": {
+            "title": "Uniqueness Formula",
+            "type": "string"
+          }
+        },
+        "required": [
+          "similarity_formula",
+          "uniqueness_formula"
+        ],
+        "title": "InsightsPlaylistsResponse",
+        "type": "object"
+      },
+      "InsightsRediscoveryResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RediscoveryInsight"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "profile_state": {
+            "enum": [
+              "current",
+              "missing_or_stale"
+            ],
+            "title": "Profile State",
+            "type": "string"
+          },
+          "semantics": {
+            "title": "Semantics",
+            "type": "string"
+          },
+          "timings_ms": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Timings Ms",
+            "type": "object"
+          }
+        },
+        "required": [
+          "profile_state",
+          "semantics"
+        ],
+        "title": "InsightsRediscoveryResponse",
+        "type": "object"
+      },
+      "InsightsUniverseResponse": {
+        "properties": {
+          "communities": {
+            "items": {
+              "$ref": "#/components/schemas/UniverseCommunity"
+            },
+            "title": "Communities",
+            "type": "array"
+          },
+          "edge_cap": {
+            "title": "Edge Cap",
+            "type": "integer"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/UniverseEdge"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "formulas": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Formulas",
+            "type": "object"
+          },
+          "node_cap": {
+            "title": "Node Cap",
+            "type": "integer"
+          },
+          "node_metric": {
+            "const": "canonical_library_affinity",
+            "default": "canonical_library_affinity",
+            "title": "Node Metric",
+            "type": "string"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/UniverseNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "per_node_edge_cap": {
+            "title": "Per Node Edge Cap",
+            "type": "integer"
+          },
+          "profile_state": {
+            "enum": [
+              "current",
+              "missing_or_stale"
+            ],
+            "title": "Profile State",
+            "type": "string"
+          },
+          "timings_ms": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Timings Ms",
+            "type": "object"
+          }
+        },
+        "required": [
+          "profile_state",
+          "node_cap",
+          "edge_cap",
+          "per_node_edge_cap"
+        ],
+        "title": "InsightsUniverseResponse",
         "type": "object"
       },
       "LibraryCounts": {
@@ -1707,6 +2145,47 @@
         "title": "LiveSearchResponse",
         "type": "object"
       },
+      "LongTailBucket": {
+        "properties": {
+          "artist_count": {
+            "title": "Artist Count",
+            "type": "integer"
+          },
+          "key": {
+            "enum": [
+              "one",
+              "two_to_five",
+              "six_to_twenty",
+              "twenty_one_to_fifty",
+              "fifty_one_plus"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "maximum_tracks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum Tracks"
+          },
+          "minimum_tracks": {
+            "title": "Minimum Tracks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "minimum_tracks",
+          "artist_count"
+        ],
+        "title": "LongTailBucket",
+        "type": "object"
+      },
       "NeteaseCapabilities": {
         "properties": {
           "auth_states": {
@@ -1908,6 +2387,65 @@
         "title": "PlaylistDetail",
         "type": "object"
       },
+      "PlaylistInsight": {
+        "properties": {
+          "artwork_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artwork Url"
+          },
+          "distinct_album_count": {
+            "title": "Distinct Album Count",
+            "type": "integer"
+          },
+          "distinct_artist_count": {
+            "title": "Distinct Artist Count",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "leading_artist_track_share": {
+            "title": "Leading Artist Track Share",
+            "type": "number"
+          },
+          "multi_artist_track_count": {
+            "title": "Multi Artist Track Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "track_count": {
+            "title": "Track Count",
+            "type": "integer"
+          },
+          "unique_library_coverage": {
+            "title": "Unique Library Coverage",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "track_count",
+          "distinct_artist_count",
+          "distinct_album_count",
+          "multi_artist_track_count",
+          "leading_artist_track_share",
+          "unique_library_coverage"
+        ],
+        "title": "PlaylistInsight",
+        "type": "object"
+      },
       "PlaylistItem": {
         "properties": {
           "artwork_url": {
@@ -1962,6 +2500,54 @@
           "name"
         ],
         "title": "PlaylistItem",
+        "type": "object"
+      },
+      "PlaylistOverlap": {
+        "properties": {
+          "jaccard_similarity": {
+            "title": "Jaccard Similarity",
+            "type": "number"
+          },
+          "shared_track_count": {
+            "title": "Shared Track Count",
+            "type": "integer"
+          },
+          "source_playlist_id": {
+            "title": "Source Playlist Id",
+            "type": "string"
+          },
+          "source_playlist_name": {
+            "title": "Source Playlist Name",
+            "type": "string"
+          },
+          "source_track_count": {
+            "title": "Source Track Count",
+            "type": "integer"
+          },
+          "target_playlist_id": {
+            "title": "Target Playlist Id",
+            "type": "string"
+          },
+          "target_playlist_name": {
+            "title": "Target Playlist Name",
+            "type": "string"
+          },
+          "target_track_count": {
+            "title": "Target Track Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "source_playlist_id",
+          "source_playlist_name",
+          "source_track_count",
+          "target_playlist_id",
+          "target_playlist_name",
+          "target_track_count",
+          "shared_track_count",
+          "jaccard_similarity"
+        ],
+        "title": "PlaylistOverlap",
         "type": "object"
       },
       "PlaylistPage": {
@@ -2089,6 +2675,43 @@
           "capabilities"
         ],
         "title": "ProductStatus",
+        "type": "object"
+      },
+      "ProfileMetric": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "evidence": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Evidence",
+            "type": "object"
+          },
+          "formula": {
+            "title": "Formula",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "code",
+          "value",
+          "formula"
+        ],
+        "title": "ProfileMetric",
         "type": "object"
       },
       "ProfileRebuildResponse": {
@@ -2685,6 +3308,66 @@
           "exploration_level"
         ],
         "title": "RecommendationSettingsRequest",
+        "type": "object"
+      },
+      "RediscoveryInsight": {
+        "properties": {
+          "artwork_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artwork Url"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_in_library": {
+            "default": true,
+            "title": "Is In Library",
+            "type": "boolean"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "strategy": {
+            "title": "Strategy",
+            "type": "string"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "score",
+          "explanation",
+          "strategy"
+        ],
+        "title": "RediscoveryInsight",
         "type": "object"
       },
       "RelationshipItem": {
@@ -3503,6 +4186,128 @@
         "title": "TrackPage",
         "type": "object"
       },
+      "UniverseCommunity": {
+        "properties": {
+          "artist_count": {
+            "title": "Artist Count",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "representative_artists": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Representative Artists",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "artist_count"
+        ],
+        "title": "UniverseCommunity",
+        "type": "object"
+      },
+      "UniverseEdge": {
+        "properties": {
+          "collaboration_track_count": {
+            "title": "Collaboration Track Count",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "shared_playlist_count": {
+            "title": "Shared Playlist Count",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "target",
+          "weight",
+          "shared_playlist_count",
+          "collaboration_track_count"
+        ],
+        "title": "UniverseEdge",
+        "type": "object"
+      },
+      "UniverseNode": {
+        "properties": {
+          "affinity": {
+            "title": "Affinity",
+            "type": "number"
+          },
+          "artwork_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artwork Url"
+          },
+          "collaboration_track_count": {
+            "title": "Collaboration Track Count",
+            "type": "integer"
+          },
+          "community_id": {
+            "title": "Community Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "playlist_count": {
+            "title": "Playlist Count",
+            "type": "integer"
+          },
+          "represented_album_count": {
+            "title": "Represented Album Count",
+            "type": "integer"
+          },
+          "saved_track_count": {
+            "title": "Saved Track Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "affinity",
+          "saved_track_count",
+          "playlist_count",
+          "represented_album_count",
+          "collaboration_track_count",
+          "community_id"
+        ],
+        "title": "UniverseNode",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -3949,6 +4754,214 @@
         "summary": "Artist Tracks",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/v1/insights/overview": {
+      "get": {
+        "operationId": "overview_api_v1_insights_overview_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightsOverviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Overview",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/insights/playlists": {
+      "get": {
+        "operationId": "playlists_api_v1_insights_playlists_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightsPlaylistsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Playlists",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/insights/rediscovery": {
+      "get": {
+        "operationId": "rediscovery_api_v1_insights_rediscovery_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "maximum": 24,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightsRediscoveryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rediscovery",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/insights/universe": {
+      "get": {
+        "operationId": "universe_api_v1_insights_universe_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-musicscope-user-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Musicscope-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightsUniverseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Universe",
+        "tags": [
+          "insights"
         ]
       }
     },
