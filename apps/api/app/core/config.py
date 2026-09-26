@@ -10,8 +10,8 @@ V2_ROOT = Path(__file__).resolve().parents[4]
 class Settings(BaseSettings):
     app_name: str = "MusicScope V2 API"
     environment: str = "development"
-    database_url: str = "postgresql+psycopg://musicscope_v2:musicscope_v2_dev@localhost:55432/musicscope_v2"
-    api_host: str = "0.0.0.0"
+    database_url: str = "postgresql+psycopg://musicscope_v2@127.0.0.1:55432/musicscope_v2"
+    api_host: str = "127.0.0.1"
     api_port: int = 8100
     web_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     log_level: str = "INFO"

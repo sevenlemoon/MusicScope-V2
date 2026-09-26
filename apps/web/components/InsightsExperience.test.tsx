@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 import { InsightsExperience } from "./InsightsExperience";
+import { LocaleProvider } from "./LocaleProvider";
 import type { components } from "@/lib/api-schema.generated";
 import { layoutUniverse } from "@/lib/insights-layout";
 
@@ -90,8 +91,13 @@ function installFetch(overrides?: { overview?: object; universe?: object; playli
   });
 }
 
+function renderExperience() {
+  return render(<LocaleProvider><InsightsExperience /></LocaleProvider>);
+}
+
 describe("R5 Insights experience", () => {
   beforeEach(() => {
+    window.localStorage.removeItem("musicscope.locale");
     installFetch();
     window.requestAnimationFrame = (callback) => { callback(0); return 1; };
   });
@@ -99,7 +105,7 @@ describe("R5 Insights experience", () => {
   afterEach(() => jest.restoreAllMocks());
 
   it("starts in a truthful Chinese loading state and renders overview metrics", async () => {
-    render(<InsightsExperience />);
+    renderExperience();
     expect(screen.getByRole("heading", { name: "你的音乐宇宙" })).toBeInTheDocument();
     expect(screen.getByText("正在构建音乐宇宙…")).toBeInTheDocument();
     expect(await screen.findByText("120")).toBeInTheDocument();
@@ -110,7 +116,7 @@ describe("R5 Insights experience", () => {
   });
 
   it("renders a deterministic graph, selects artists, searches, and exposes textual evidence", async () => {
-    render(<InsightsExperience />);
+    renderExperience();
     const graph = await screen.findByRole("img", { name: "可选择的艺人关系图" });
     expect(graph.querySelectorAll("[data-node-id]")).toHaveLength(3);
     const artistB = within(graph).getByRole("button", { name: "选择艺人: Artist B" });
@@ -128,7 +134,7 @@ describe("R5 Insights experience", () => {
   });
 
   it("renders backend-owned playlist overlap and truthful rediscovery semantics", async () => {
-    render(<InsightsExperience />);
+    renderExperience();
     expect(await screen.findByRole("heading", { name: "歌单智能" })).toBeInTheDocument();
     expect(screen.getByText("10", { selector: "dd" })).toBeInTheDocument();
     expect(screen.getAllByText("25%").length).toBeGreaterThan(0);
@@ -139,7 +145,7 @@ describe("R5 Insights experience", () => {
   });
 
   it("shows genre and timeline data boundaries and supports English", async () => {
-    render(<InsightsExperience />);
+    renderExperience();
     expect(await screen.findByRole("heading", { name: "数据边界" })).toBeInTheDocument();
     expect(screen.getByText(/可靠曲风元数据尚不足/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "EN" }));
@@ -150,7 +156,7 @@ describe("R5 Insights experience", () => {
 
   it("handles an empty library without rendering fake analytics", async () => {
     installFetch({ overview: { ...overview, counts: { tracks: 0, artists: 0, albums: 0, playlists: 0 }, top_artists: [], profile_metrics: [] }, universe: { ...universe, profile_state: "missing_or_stale", nodes: [], edges: [], communities: [] }, playlists: { ...playlists, playlists: [], strongest_overlaps: [] }, rediscovery: { ...rediscovery, items: [] } });
-    render(<InsightsExperience />);
+    renderExperience();
     expect(await screen.findByRole("heading", { name: "连接音乐资料库，建立你的音乐宇宙。" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "连接音乐" })).toHaveAttribute("href", "/connect");
     expect(screen.queryByRole("img", { name: "可选择的艺人关系图" })).not.toBeInTheDocument();
@@ -158,7 +164,7 @@ describe("R5 Insights experience", () => {
 
   it("isolates an optional API error instead of destroying the overview", async () => {
     installFetch({ fail: "/playlists" });
-    render(<InsightsExperience />);
+    renderExperience();
     expect(await screen.findByText("120")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "歌单智能" })).toBeInTheDocument();
     expect(screen.getByText("这一部分暂时无法读取")).toBeInTheDocument();

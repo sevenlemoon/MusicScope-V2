@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { Artwork } from "@/components/Artwork";
 import { ApiRequestError, apiRequest } from "@/lib/api-client";
 import type { components } from "@/lib/api-schema.generated";
+import { useText } from "./LocaleProvider";
 
 type TrackItem = components["schemas"]["TrackItem"];
 type ExternalTrackItem = components["schemas"]["ExternalTrackItem"];
@@ -29,6 +30,7 @@ function displayTime(seconds: number) {
 }
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
+  const t = useText();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const sourceExpiresAtRef = useRef<number | null>(null);
   const externalTrackRef = useRef<ExternalTrackItem | null>(null);
@@ -151,15 +153,27 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   return <PlayerContext.Provider value={{ current, status, playTrack, playExternalTrack, toggle }}>
     {children}
-    {current && <aside className="global-player" aria-label="Now playing">
+    {current && <aside className="global-player" aria-label={t("Now playing", "正在播放")}>
       <Artwork src={current.artwork_url} alt="" sizes="56px" className="player-artwork" />
-      <div className="player-identity"><Link href={detailHref ?? `/track/${current.id}`}>{current.title}</Link><span>{(current.artists ?? []).join(", ") || "Unknown artist"}</span></div>
-      <button className="player-toggle" type="button" onClick={() => void toggle()} aria-label={status === "playing" ? "Pause" : "Play"}>{status === "loading" ? "…" : status === "playing" ? "Ⅱ" : "▶"}</button>
-      <div className="player-timeline"><span>{displayTime(position)}</span><input aria-label="Playback position" type="range" min="0" max={duration || Math.max((current.duration_ms ?? 0) / 1000, 1)} step="0.1" value={Math.min(position, duration || position)} onChange={(event) => seek(Number(event.target.value))} /><span>{displayTime(duration || (current.duration_ms ?? 0) / 1000)}</span></div>
-      <label className="player-volume"><span>VOL</span><input aria-label="Volume" type="range" min="0" max="1" step="0.05" value={volume} onChange={(event) => changeVolume(Number(event.target.value))} /></label>
-      {error && <p role="alert" className="player-error">{error}</p>}
+      <div className="player-identity"><Link href={detailHref ?? `/track/${current.id}`}>{current.title}</Link><span>{(current.artists ?? []).join(", ") || t("Unknown artist", "未知艺人")}</span></div>
+      <button className="player-toggle" type="button" onClick={() => void toggle()} aria-label={status === "playing" ? t("Pause", "暂停") : t("Play", "播放")}>{status === "loading" ? "…" : status === "playing" ? "Ⅱ" : "▶"}</button>
+      <div className="player-timeline"><span>{displayTime(position)}</span><input aria-label={t("Playback position", "播放进度")} type="range" min="0" max={duration || Math.max((current.duration_ms ?? 0) / 1000, 1)} step="0.1" value={Math.min(position, duration || position)} onChange={(event) => seek(Number(event.target.value))} /><span>{displayTime(duration || (current.duration_ms ?? 0) / 1000)}</span></div>
+      <label className="player-volume"><span>{t("VOL", "音量")}</span><input aria-label={t("Volume", "音量")} type="range" min="0" max="1" step="0.05" value={volume} onChange={(event) => changeVolume(Number(event.target.value))} /></label>
+      {error && <p role="alert" className="player-error">{t(error, playerErrorZh(error))}</p>}
     </aside>}
   </PlayerContext.Provider>;
+}
+
+function playerErrorZh(error: string) {
+  return ({
+    "Playback stopped. This provider source may no longer be available.": "播放已停止。此来源可能已不可用。",
+    "Your NetEase session expired. Reconnect before playing music.": "网易云音乐会话已过期，请重新连接后播放。",
+    "Connect NetEase before playing music.": "请先连接网易云音乐。",
+    "This track cannot be played with the current account.": "当前账号无法播放此曲目。",
+    "NetEase playback is temporarily unavailable.": "网易云音乐播放暂不可用。",
+    "NetEase could not provide a playable source for this track.": "网易云音乐未能提供此曲目的可播放来源。",
+    "Playback could not resume. Choose Play to resolve a fresh source.": "无法继续播放。请点击播放以获取新来源。",
+  } as Record<string, string>)[error] || error;
 }
 
 export function usePlayer() {

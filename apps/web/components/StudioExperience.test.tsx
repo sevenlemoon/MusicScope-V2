@@ -71,7 +71,7 @@ describe("StudioExperience", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "开始四轨分离" }));
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/studio/jobs/job-1"));
-    expect(screen.getAllByText("等待本地工作进程")).toHaveLength(2);
+    expect(screen.getAllByText("等待处理")).toHaveLength(2);
   });
 
   test("polls active work and exposes cancellation", async () => {

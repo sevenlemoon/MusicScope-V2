@@ -3,17 +3,19 @@ export type IconName = "home" | "discover" | "library" | "live" | "studio" | "in
 export type NavigationItem = {
   href: string;
   label: string;
+  zhLabel: string;
   shortLabel: string;
+  zhShortLabel: string;
   icon: IconName;
 };
 
 export const primaryRoutes: NavigationItem[] = [
-  { href: "/", label: "Home", shortLabel: "Home", icon: "home" },
-  { href: "/discover", label: "Discover", shortLabel: "Discover", icon: "discover" },
-  { href: "/library", label: "Library", shortLabel: "Library", icon: "library" },
-  { href: "/live", label: "Live", shortLabel: "Live", icon: "live" },
-  { href: "/studio", label: "Studio", shortLabel: "Studio", icon: "studio" },
-  { href: "/insights", label: "Insights", shortLabel: "Insights", icon: "insights" },
+  { href: "/", label: "Home", zhLabel: "首页", shortLabel: "Home", zhShortLabel: "首页", icon: "home" },
+  { href: "/discover", label: "Discover", zhLabel: "发现", shortLabel: "Discover", zhShortLabel: "发现", icon: "discover" },
+  { href: "/library", label: "Library", zhLabel: "资料库", shortLabel: "Library", zhShortLabel: "资料库", icon: "library" },
+  { href: "/live", label: "Live", zhLabel: "现场", shortLabel: "Live", zhShortLabel: "现场", icon: "live" },
+  { href: "/studio", label: "Studio", zhLabel: "工作室", shortLabel: "Studio", zhShortLabel: "工作室", icon: "studio" },
+  { href: "/insights", label: "Insights", zhLabel: "洞察", shortLabel: "Insights", zhShortLabel: "洞察", icon: "insights" },
 ];
 
 export const secondaryRoutePatterns = [
@@ -25,4 +27,3 @@ export const secondaryRoutePatterns = [
   "/profile",
   "/settings",
 ] as const;
-

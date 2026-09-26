@@ -103,7 +103,7 @@ dependency_marker_matches() {
 
 load_env() {
   if [[ ! -f "$ROOT_DIR/.env" ]]; then
-    say "LOCAL ENVIRONMENT is absent; it will be created only after database safety checks"
+    say "LOCAL ENVIRONMENT is absent; it will be initialized before PostgreSQL starts"
     return
   fi
   set -a
@@ -114,6 +114,30 @@ load_env() {
   NETEASE_PORT="${MUSICSCOPE_NETEASE_PORT:-36531}"
   POSTGRES_PORT="${POSTGRES_PORT:-55432}"
   say "SKIPPED local environment (existing .env preserved)"
+}
+
+ensure_database_env() {
+  local python
+  if [[ -f "$ROOT_DIR/.env" ]] && grep -Eq '^POSTGRES_PASSWORD=.+$' "$ROOT_DIR/.env"; then
+    say "SKIPPED local database credential (existing configuration preserved)"
+    return
+  fi
+  if docker volume inspect musicscope_v2_postgres_data >/dev/null 2>&1; then
+    fail "The PostgreSQL volume already exists but the local database credential is missing. Restore the original ignored .env before starting; no credential or database was changed."
+  fi
+  python="$(uv python find 3.12 2>/dev/null || true)"
+  if [[ -z "$python" ]]; then
+    uv python install 3.12 >>"$SETUP_LOG" 2>&1 || fail "Could not prepare Python 3.12 for local configuration. See $SETUP_LOG."
+    python="$(uv python find 3.12 2>/dev/null || true)"
+  fi
+  [[ -x "$python" ]] || fail "Python 3.12 is unavailable for local configuration."
+  if [[ -f "$ROOT_DIR/.env" ]]; then
+    "$python" "$ROOT_DIR/scripts/configure_local_env.py" --allow-existing-empty >>"$SETUP_LOG" 2>&1 || fail "Local database configuration failed. See $SETUP_LOG."
+  else
+    "$python" "$ROOT_DIR/scripts/configure_local_env.py" >>"$SETUP_LOG" 2>&1 || fail "Local database configuration failed. See $SETUP_LOG."
+  fi
+  load_env
+  say "READY unique local database credential (stored only in ignored .env)"
 }
 
 compose() { (cd "$ROOT_DIR" && docker compose "$@"); }
@@ -240,6 +264,17 @@ ensure_local_env() {
   fi
   load_env
   say "INITIALIZED local environment (generated local encryption key for an empty database)"
+}
+
+rotate_legacy_database_credential() {
+  local python="$ROOT_DIR/apps/api/.venv/bin/python"
+  if ! "$python" "$ROOT_DIR/scripts/configure_local_env.py" --needs-db-rotation; then return; fi
+  if [[ -n "$(port_pid "$API_PORT")" ]] || audio_worker_is_healthy; then
+    fail "Close the existing MusicScope application before its one-time database credential rotation, then rerun the launcher. No credential was changed."
+  fi
+  "$python" "$ROOT_DIR/scripts/configure_local_env.py" --rotate-legacy-db-password >>"$SETUP_LOG" 2>&1 || fail "Local database credential rotation failed. See $SETUP_LOG."
+  load_env
+  say "READY local database credential (legacy default rotated once)"
 }
 
 apply_migrations() {
@@ -394,6 +429,7 @@ main() {
   check_versions
   check_docker
   load_env
+  ensure_database_env
   say "[2/7] Checking database..."
   ensure_postgres
   say "[3/7] Preparing project dependencies..."
@@ -402,6 +438,7 @@ main() {
   ensure_node_dependencies "apps/web" "$LOG_DIR/web-dependencies.sha256" "web"
   ensure_node_dependencies "services/netease-api" "$LOG_DIR/sidecar-dependencies.sha256" "NetEase sidecar"
   ensure_local_env
+  rotate_legacy_database_credential
   say "[4/7] Applying safe forward-only migrations..."
   apply_migrations
   if ((SETUP_ONLY)); then say "SETUP complete; application processes were not started"; return; fi

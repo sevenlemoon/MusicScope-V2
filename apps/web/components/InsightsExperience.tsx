@@ -7,6 +7,7 @@ import { Artwork } from "./Artwork";
 import { apiRequest } from "@/lib/api-client";
 import type { components } from "@/lib/api-schema.generated";
 import { layoutUniverse } from "@/lib/insights-layout";
+import { useLocale } from "./LocaleProvider";
 
 type Overview = components["schemas"]["InsightsOverviewResponse"];
 type Universe = components["schemas"]["InsightsUniverseResponse"];
@@ -19,15 +20,15 @@ type Loadable<T> = { state: "loading" | "ready" | "error"; data?: T };
 
 const copy = {
   zh: {
-    eyebrow: "INSIGHTS / 你的音乐宇宙", title: "你的音乐宇宙", lede: "从收藏、歌单与真实艺人关系中，看见自己的音乐版图。这里衡量的是资料库关联，不是播放次数。",
+    eyebrow: "洞察 / 你的音乐宇宙", title: "你的音乐宇宙", lede: "从收藏、歌单与真实艺人关系中，看见自己的音乐版图。这里衡量的是资料库关联，不是播放次数。",
     chinese: "中文", english: "EN", tracks: "首收藏曲目", artists: "位艺人", albums: "张专辑", playlists: "个歌单",
-    universe: "音乐宇宙", universeKicker: "MUSIC UNIVERSE / 关系图", universeBody: "节点大小仅代表资料库亲和度；连线来自共同歌单与真实合作曲目。",
+    universe: "音乐宇宙", universeKicker: "音乐宇宙 / 关系图", universeBody: "节点大小仅代表资料库亲和度；连线来自共同歌单与真实合作曲目。",
     searchLabel: "在音乐宇宙中搜索艺人", searchPlaceholder: "搜索当前宇宙中的艺人", search: "搜索", reset: "重置选择", noMatch: "当前有界音乐宇宙中没有匹配艺人。",
     graphLabel: "可选择的艺人关系图", nodeMetric: "节点大小：资料库亲和度", selectHint: "选择一位艺人，查看真实关系证据。",
     strongestAffinity: "资料库亲和度", savedTracks: "收藏曲目", playlistAppearances: "出现于歌单", representedAlbums: "收录专辑", collaborationTracks: "合作曲目",
     connectedArtists: "最强资料库关系", sharedPlaylists: "共同歌单", relationshipWeight: "关系权重", viewArtist: "打开艺人页面", selectArtist: "选择艺人",
     accessibleTitle: "可访问的关系列表", accessibleBody: "这份文字列表与图形使用相同的关系证据。",
-    structure: "资料库结构", structureKicker: "LIBRARY STRUCTURE / 真实收藏", structureBody: "以规范化曲目、艺人、专辑与歌单计数描述你的资料库。",
+    structure: "资料库结构", structureKicker: "资料库结构 / 真实收藏", structureBody: "以规范化曲目、艺人、专辑与歌单计数描述你的资料库。",
     concentration: "艺人集中度", top10: "前 10 位艺人覆盖的收藏曲目", top50: "前 50 位艺人覆盖的收藏曲目", median: "每位艺人收藏曲目中位数",
     profile: "音乐资料库指标", formula: "计算方式", longTail: "长尾分布", longTailBody: "按每位艺人所代表的不同收藏曲目数分组。",
     one: "1 首", two_to_five: "2–5 首", six_to_twenty: "6–20 首", twenty_one_to_fifty: "21–50 首", fifty_one_plus: "51+ 首", artistUnit: "位艺人",
@@ -80,7 +81,8 @@ function LoadingSection({ lang }: { lang: Lang }) {
 }
 
 export function InsightsExperience() {
-  const [lang, setLang] = useState<Lang>("zh");
+  const { locale, setLocale } = useLocale();
+  const lang: Lang = locale;
   const [overview, setOverview] = useState<Loadable<Overview>>({ state: "loading" });
   const [universe, setUniverse] = useState<Loadable<Universe>>({ state: "loading" });
   const [playlists, setPlaylists] = useState<Loadable<Playlists>>({ state: "loading" });
@@ -109,7 +111,6 @@ export function InsightsExperience() {
     const timer = window.setTimeout(load, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
-  useEffect(() => { document.documentElement.lang = lang === "zh" ? "zh-CN" : "en"; }, [lang]);
 
   const nodes = useMemo(() => universe.data?.nodes ?? [], [universe.data?.nodes]);
   const edges = useMemo(() => universe.data?.edges ?? [], [universe.data?.edges]);
@@ -141,7 +142,7 @@ export function InsightsExperience() {
   return <div className="insights-page" lang={lang === "zh" ? "zh-CN" : "en"}>
     <section className="insights-hero">
       <div className="insights-hero-copy">
-        <div className="insights-language" aria-label="Language"><button aria-pressed={lang === "zh"} onClick={() => setLang("zh")}>{t.chinese}</button><button aria-pressed={lang === "en"} onClick={() => setLang("en")}>{t.english}</button></div>
+        <div className="insights-language" aria-label={lang === "zh" ? "语言" : "Language"}><button aria-pressed={lang === "zh"} onClick={() => setLocale("zh")}>{t.chinese}</button><button aria-pressed={lang === "en"} onClick={() => setLocale("en")}>{t.english}</button></div>
         <p className="eyebrow">{t.eyebrow}</p><h1>{t.title}</h1><p>{t.lede}</p>
         {overview.state === "ready" && overview.data && !empty ? <div className="insights-hero-counts" aria-label={t.structure}>
           <span><strong>{number(overview.data.counts.tracks, lang)}</strong>{t.tracks}</span>
@@ -150,10 +151,10 @@ export function InsightsExperience() {
           <span><strong>{number(overview.data.counts.playlists, lang)}</strong>{t.playlists}</span>
         </div> : null}
       </div>
-      <div className="insights-hero-orbit" aria-hidden="true"><div><span>{nodes.length || "—"}</span><small>MUSIC<br />UNIVERSE</small></div>{(overview.data?.top_artists ?? []).slice(0, 4).map((artist, index) => <i key={artist.id} style={{ "--i": index } as React.CSSProperties}>{artist.name}</i>)}</div>
+      <div className="insights-hero-orbit" aria-hidden="true"><div><span>{nodes.length || "—"}</span><small>{lang === "zh" ? <>音乐<br />宇宙</> : <>MUSIC<br />UNIVERSE</>}</small></div>{(overview.data?.top_artists ?? []).slice(0, 4).map((artist, index) => <i key={artist.id} style={{ "--i": index } as React.CSSProperties}>{artist.name}</i>)}</div>
     </section>
 
-    {overview.state === "loading" ? <LoadingSection lang={lang} /> : overview.state === "error" ? <SectionError lang={lang} retry={load} /> : empty ? <section className="insights-empty"><div aria-hidden="true">○</div><p className="eyebrow">MUSIC UNIVERSE / EMPTY</p><h2>{t.emptyTitle}</h2><p>{t.emptyBody}</p><Link className="button button-primary" href="/connect">{t.connect}</Link></section> : <>
+    {overview.state === "loading" ? <LoadingSection lang={lang} /> : overview.state === "error" ? <SectionError lang={lang} retry={load} /> : empty ? <section className="insights-empty"><div aria-hidden="true">○</div><p className="eyebrow">{lang === "zh" ? "音乐宇宙 / 暂无数据" : "MUSIC UNIVERSE / EMPTY"}</p><h2>{t.emptyTitle}</h2><p>{t.emptyBody}</p><Link className="button button-primary" href="/connect">{t.connect}</Link></section> : <>
       <section className="insights-universe-section" aria-labelledby="universe-title">
         <header className="insights-section-heading"><div><p className="eyebrow">{t.universeKicker}</p><h2 id="universe-title">{t.universe}</h2><p>{t.universeBody}</p></div>{universe.data ? <span>{number(nodes.length, lang)} {t.nodes} · {number(edges.length, lang)} {t.edges}</span> : null}</header>
         {universe.state === "loading" ? <LoadingSection lang={lang} /> : universe.state === "error" ? <SectionError lang={lang} retry={load} /> : nodes.length === 0 ? <div className="insights-section-state"><p>{universe.data?.profile_state === "missing_or_stale" ? t.profileStale : t.notEnough}</p></div> : <>
@@ -172,15 +173,15 @@ export function InsightsExperience() {
 
       {overview.data ? <OverviewSections lang={lang} overview={overview.data} /> : null}
 
-      <section className="insights-playlists" aria-labelledby="playlist-insights-title"><header className="insights-section-heading"><div><p className="eyebrow">PLAYLISTS / CANONICAL OVERLAP</p><h2 id="playlist-insights-title">{t.playlistIntelligence}</h2><p>{t.playlistBody}</p></div></header>
+      <section className="insights-playlists" aria-labelledby="playlist-insights-title"><header className="insights-section-heading"><div><p className="eyebrow">{lang === "zh" ? "歌单 / 规范化重叠" : "PLAYLISTS / CANONICAL OVERLAP"}</p><h2 id="playlist-insights-title">{t.playlistIntelligence}</h2><p>{t.playlistBody}</p></div></header>
         {playlists.state === "loading" ? <LoadingSection lang={lang} /> : playlists.state === "error" ? <SectionError lang={lang} retry={load} /> : <PlaylistSections lang={lang} data={playlists.data!} />}
       </section>
 
-      <section className="insights-rediscovery" aria-labelledby="rediscovery-title"><header className="insights-section-heading"><div><p className="eyebrow">REDISCOVERY / SAVED MUSIC</p><h2 id="rediscovery-title">{t.rediscovery}</h2><p>{t.rediscoveryBody}</p></div></header>
+      <section className="insights-rediscovery" aria-labelledby="rediscovery-title"><header className="insights-section-heading"><div><p className="eyebrow">{lang === "zh" ? "重新发现 / 已收藏音乐" : "REDISCOVERY / SAVED MUSIC"}</p><h2 id="rediscovery-title">{t.rediscovery}</h2><p>{t.rediscoveryBody}</p></div></header>
         {rediscovery.state === "loading" ? <LoadingSection lang={lang} /> : rediscovery.state === "error" ? <SectionError lang={lang} retry={load} /> : (rediscovery.data?.items ?? []).length === 0 ? <p className="insights-evidence-empty">{t.noRediscovery}</p> : <div className="rediscovery-grid">{(rediscovery.data?.items ?? []).map((item) => <article key={item.id} className="rediscovery-card"><Artwork src={item.artwork_url} alt="" className="rediscovery-artwork" sizes="(max-width: 767px) 96px, 160px" /><div><span>{t.inLibrary}</span><h3>{item.title}</h3>{item.subtitle ? <p>{item.subtitle}</p> : null}<small>{item.explanation}</small></div></article>)}</div>}
       </section>
 
-      <section className="insights-boundaries" aria-labelledby="boundaries-title"><div><p className="eyebrow">DATA / HONEST BOUNDARIES</p><h2 id="boundaries-title">{t.boundaries}</h2></div><article><span>01</span><h3>{t.genreTitle}</h3><p>{t.genreMissing}</p></article><article><span>02</span><h3>{t.timelineTitle}</h3><p>{t.timelineMissing}</p></article></section>
+      <section className="insights-boundaries" aria-labelledby="boundaries-title"><div><p className="eyebrow">{lang === "zh" ? "数据 / 如实呈现" : "DATA / HONEST BOUNDARIES"}</p><h2 id="boundaries-title">{t.boundaries}</h2></div><article><span>01</span><h3>{t.genreTitle}</h3><p>{t.genreMissing}</p></article><article><span>02</span><h3>{t.timelineTitle}</h3><p>{t.timelineMissing}</p></article></section>
     </>}
   </div>;
 }
@@ -188,12 +189,12 @@ export function InsightsExperience() {
 function ArtistPanel({ lang, selected, edges, nodeById, onSelect }: { lang: Lang; selected: UniverseNode | null; edges: UniverseEdge[]; nodeById: Map<string, UniverseNode>; onSelect: (id: string) => void }) {
   const t = copy[lang];
   if (!selected) return <aside className="artist-insight-panel artist-insight-empty"><div aria-hidden="true">◌</div><p>{t.selectHint}</p></aside>;
-  return <aside className="artist-insight-panel" aria-live="polite"><Artwork src={selected.artwork_url} alt="" className="artist-insight-artwork" sizes="180px" /><p className="eyebrow">SELECTED / ARTIST</p><h3>{selected.name}</h3><div className="artist-insight-affinity"><span>{t.strongestAffinity}</span><strong>{percent(selected.affinity, lang)}</strong><i><b style={{ width: `${Math.min(100, selected.affinity * 100)}%` }} /></i></div><dl><div><dt>{t.savedTracks}</dt><dd>{number(selected.saved_track_count, lang)}</dd></div><div><dt>{t.playlistAppearances}</dt><dd>{number(selected.playlist_count, lang)}</dd></div><div><dt>{t.representedAlbums}</dt><dd>{number(selected.represented_album_count, lang)}</dd></div><div><dt>{t.collaborationTracks}</dt><dd>{number(selected.collaboration_track_count, lang)}</dd></div></dl><h4>{t.connectedArtists}</h4><div className="artist-mini-relations">{edges.slice(0, 4).map((edge) => { const relatedId = edge.source === selected.id ? edge.target : edge.source; const related = nodeById.get(relatedId); return related ? <button key={edge.id} onClick={() => onSelect(related.id)}><strong>{related.name}</strong><span>{number(edge.shared_playlist_count, lang)} {t.sharedPlaylists} · {number(edge.collaboration_track_count, lang)} {t.collaborationTracks}</span></button> : null; })}</div><Link className="button button-primary" href={`/artist/${selected.id}`}>{t.viewArtist}</Link></aside>;
+  return <aside className="artist-insight-panel" aria-live="polite"><Artwork src={selected.artwork_url} alt="" className="artist-insight-artwork" sizes="180px" /><p className="eyebrow">{lang === "zh" ? "已选择 / 艺人" : "SELECTED / ARTIST"}</p><h3>{selected.name}</h3><div className="artist-insight-affinity"><span>{t.strongestAffinity}</span><strong>{percent(selected.affinity, lang)}</strong><i><b style={{ width: `${Math.min(100, selected.affinity * 100)}%` }} /></i></div><dl><div><dt>{t.savedTracks}</dt><dd>{number(selected.saved_track_count, lang)}</dd></div><div><dt>{t.playlistAppearances}</dt><dd>{number(selected.playlist_count, lang)}</dd></div><div><dt>{t.representedAlbums}</dt><dd>{number(selected.represented_album_count, lang)}</dd></div><div><dt>{t.collaborationTracks}</dt><dd>{number(selected.collaboration_track_count, lang)}</dd></div></dl><h4>{t.connectedArtists}</h4><div className="artist-mini-relations">{edges.slice(0, 4).map((edge) => { const relatedId = edge.source === selected.id ? edge.target : edge.source; const related = nodeById.get(relatedId); return related ? <button key={edge.id} onClick={() => onSelect(related.id)}><strong>{related.name}</strong><span>{number(edge.shared_playlist_count, lang)} {t.sharedPlaylists} · {number(edge.collaboration_track_count, lang)} {t.collaborationTracks}</span></button> : null; })}</div><Link className="button button-primary" href={`/artist/${selected.id}`}>{t.viewArtist}</Link></aside>;
 }
 
 function RelationshipList({ lang, selected, edges, nodeById, onSelect }: { lang: Lang; selected: UniverseNode | null; edges: UniverseEdge[]; nodeById: Map<string, UniverseNode>; onSelect: (id: string) => void }) {
   const t = copy[lang];
-  return <section className="universe-text-fallback" aria-labelledby="relationship-list-title"><header><div><p className="eyebrow">RELATIONSHIPS / EVIDENCE</p><h3 id="relationship-list-title">{t.accessibleTitle}</h3></div><p>{t.accessibleBody}</p></header>{edges.length === 0 ? <p className="insights-evidence-empty">{t.notEnough}</p> : <ol>{edges.map((edge) => { const relatedId = selected ? (edge.source === selected.id ? edge.target : edge.source) : edge.target; const source = nodeById.get(edge.source); const target = nodeById.get(edge.target); const related = nodeById.get(relatedId); return source && target && related ? <li key={edge.id}><button onClick={() => onSelect(related.id)}><span>{selected ? related.name : `${source.name} ↔ ${target.name}`}</span><strong>{number(edge.shared_playlist_count, lang)} {t.sharedPlaylists}</strong><strong>{number(edge.collaboration_track_count, lang)} {t.collaborationTracks}</strong><small>{t.relationshipWeight} {edge.weight.toFixed(3)}</small></button></li> : null; })}</ol>}</section>;
+  return <section className="universe-text-fallback" aria-labelledby="relationship-list-title"><header><div><p className="eyebrow">{lang === "zh" ? "关系 / 证据" : "RELATIONSHIPS / EVIDENCE"}</p><h3 id="relationship-list-title">{t.accessibleTitle}</h3></div><p>{t.accessibleBody}</p></header>{edges.length === 0 ? <p className="insights-evidence-empty">{t.notEnough}</p> : <ol>{edges.map((edge) => { const relatedId = selected ? (edge.source === selected.id ? edge.target : edge.source) : edge.target; const source = nodeById.get(edge.source); const target = nodeById.get(edge.target); const related = nodeById.get(relatedId); return source && target && related ? <li key={edge.id}><button onClick={() => onSelect(related.id)}><span>{selected ? related.name : `${source.name} ↔ ${target.name}`}</span><strong>{number(edge.shared_playlist_count, lang)} {t.sharedPlaylists}</strong><strong>{number(edge.collaboration_track_count, lang)} {t.collaborationTracks}</strong><small>{t.relationshipWeight} {edge.weight.toFixed(3)}</small></button></li> : null; })}</ol>}</section>;
 }
 
 function OverviewSections({ lang, overview }: { lang: Lang; overview: Overview }) {
@@ -202,9 +203,9 @@ function OverviewSections({ lang, overview }: { lang: Lang; overview: Overview }
   const maxBucket = Math.max(...buckets.map((bucket) => bucket.artist_count), 1);
   return <>
     <section className="insights-structure" aria-labelledby="structure-title"><header className="insights-section-heading"><div><p className="eyebrow">{t.structureKicker}</p><h2 id="structure-title">{t.structure}</h2><p>{t.structureBody}</p></div></header><div className="profile-metrics">{(overview.profile_metrics ?? []).map((metric, index) => <article key={metric.code}><span>0{index + 1}</span><h3>{metricNames[lang][metric.code] ?? metric.code}</h3><strong>{metric.code === "album_depth" ? metric.value.toFixed(2) : percent(metric.value, lang)}</strong><details><summary>{t.formula}</summary><p>{metric.formula}</p></details></article>)}</div></section>
-    <section className="concentration-section"><div className="concentration-copy"><p className="eyebrow">CONCENTRATION / CUMULATIVE</p><h2>{t.concentration}</h2><div className="concentration-median"><strong>{overview.concentration.median_tracks_per_artist.toFixed(1)}</strong><span>{t.median}</span></div></div><div className="concentration-bars"><ConcentrationBar label={t.top10} value={overview.concentration.top_10_track_share} lang={lang} /><ConcentrationBar label={t.top50} value={overview.concentration.top_50_track_share} lang={lang} /></div></section>
-    <section className="long-tail-section"><header><div><p className="eyebrow">DISTRIBUTION / SAVED TRACKS</p><h2>{t.longTail}</h2></div><p>{t.longTailBody}</p></header><div className="long-tail-chart">{buckets.map((bucket) => <div key={bucket.key}><span>{t[bucket.key]}</span><i><b style={{ width: `${bucket.artist_count / maxBucket * 100}%` }} /></i><strong>{number(bucket.artist_count, lang)} {t.artistUnit}</strong></div>)}</div></section>
-    <section className="collaboration-section"><header className="insights-section-heading"><div><p className="eyebrow">COLLABORATION / TRACKARTIST</p><h2>{t.collaboration}</h2><p>{t.collaborationBody}</p></div></header><div className="collaboration-summary"><span><strong>{number(overview.collaboration.multi_artist_tracks, lang)}</strong>{t.multiArtistTracks}</span><span><strong>{percent(overview.collaboration.multi_artist_track_share, lang)}</strong>{t.collaborationDensity}</span><span><strong>{number(overview.collaboration.relationship_pairs_with_collaboration, lang)}</strong>{t.collaborationPairs}</span></div>{(overview.strongest_collaborations ?? []).length === 0 ? <p className="insights-evidence-empty">{t.noCollaboration}</p> : <ol className="collaboration-list">{(overview.strongest_collaborations ?? []).map((pair) => <li key={`${pair.source_artist_id}:${pair.target_artist_id}`}><div><Link href={`/artist/${pair.source_artist_id}`}>{pair.source_artist_name}</Link><span>↔</span><Link href={`/artist/${pair.target_artist_id}`}>{pair.target_artist_name}</Link></div><p>{number(pair.shared_playlist_count, lang)} {t.sharedPlaylists} · {number(pair.collaboration_track_count, lang)} {t.collaborationTracks}</p></li>)}</ol>}</section>
+    <section className="concentration-section"><div className="concentration-copy"><p className="eyebrow">{lang === "zh" ? "集中度 / 累计" : "CONCENTRATION / CUMULATIVE"}</p><h2>{t.concentration}</h2><div className="concentration-median"><strong>{overview.concentration.median_tracks_per_artist.toFixed(1)}</strong><span>{t.median}</span></div></div><div className="concentration-bars"><ConcentrationBar label={t.top10} value={overview.concentration.top_10_track_share} lang={lang} /><ConcentrationBar label={t.top50} value={overview.concentration.top_50_track_share} lang={lang} /></div></section>
+    <section className="long-tail-section"><header><div><p className="eyebrow">{lang === "zh" ? "分布 / 收藏曲目" : "DISTRIBUTION / SAVED TRACKS"}</p><h2>{t.longTail}</h2></div><p>{t.longTailBody}</p></header><div className="long-tail-chart">{buckets.map((bucket) => <div key={bucket.key}><span>{t[bucket.key]}</span><i><b style={{ width: `${bucket.artist_count / maxBucket * 100}%` }} /></i><strong>{number(bucket.artist_count, lang)} {t.artistUnit}</strong></div>)}</div></section>
+    <section className="collaboration-section"><header className="insights-section-heading"><div><p className="eyebrow">{lang === "zh" ? "合作 / 艺人曲目关系" : "COLLABORATION / TRACKARTIST"}</p><h2>{t.collaboration}</h2><p>{t.collaborationBody}</p></div></header><div className="collaboration-summary"><span><strong>{number(overview.collaboration.multi_artist_tracks, lang)}</strong>{t.multiArtistTracks}</span><span><strong>{percent(overview.collaboration.multi_artist_track_share, lang)}</strong>{t.collaborationDensity}</span><span><strong>{number(overview.collaboration.relationship_pairs_with_collaboration, lang)}</strong>{t.collaborationPairs}</span></div>{(overview.strongest_collaborations ?? []).length === 0 ? <p className="insights-evidence-empty">{t.noCollaboration}</p> : <ol className="collaboration-list">{(overview.strongest_collaborations ?? []).map((pair) => <li key={`${pair.source_artist_id}:${pair.target_artist_id}`}><div><Link href={`/artist/${pair.source_artist_id}`}>{pair.source_artist_name}</Link><span>↔</span><Link href={`/artist/${pair.target_artist_id}`}>{pair.target_artist_name}</Link></div><p>{number(pair.shared_playlist_count, lang)} {t.sharedPlaylists} · {number(pair.collaboration_track_count, lang)} {t.collaborationTracks}</p></li>)}</ol>}</section>
   </>;
 }
 

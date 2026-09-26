@@ -13,6 +13,5 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body><AppShell>{children}</AppShell></body></html>;
+  return <html lang="zh-CN"><body><AppShell>{children}</AppShell></body></html>;
 }
-

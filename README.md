@@ -1,71 +1,52 @@
 # MusicScope V2
 
-MusicScope V2 is a local-first personal music intelligence application with a connected music library, recommendation and live-concert intelligence, and a real four-stem audio Studio.
+MusicScope is a local-first personal music intelligence and discovery app. It connects a NetEase library, keeps canonical music entities, explains recommendations, finds verified live events, and turns a local audio file into four synchronized stems in Studio.
 
-## Architecture
+## What is implemented
 
-- `apps/web`: Next.js App Router + strict TypeScript frontend.
-- `apps/api`: FastAPI modular monolith with SQLAlchemy 2 and Alembic.
-- PostgreSQL 16: canonical music domain and sync/job persistence.
-- Provider ports isolate music, metadata, and concert vendors from UI and domain code.
-- `apps/audio-worker`: isolated Python 3.12 Demucs worker; Torch and model dependencies never enter FastAPI.
+- NetEase QR connection and read-only library synchronization
+- Canonical tracks, artists, albums, playlists, artwork, search, and playback
+- Explainable recommendation and Discover flows (deterministic profile logic, not an LLM recommender)
+- Multi-provider concert intelligence with provenance and honest partial coverage
+- Local four-stem Studio: Vocals, Drums, Bass, and Other using Demucs
+- Music Universe / Insights from library affinity, playlist co-occurrence, and collaboration evidence
+- Chinese-first UI with a persisted Chinese/English language switch
+- One-click local startup with guarded setup, migration, and service reuse
 
-The database defaults to `musicscope_v2` on port `55432` with a V2-specific Compose project and volume. The API rejects PostgreSQL database names that do not contain `v2` to reduce the chance of touching the legacy database.
+## Quick start
 
-## Requirements
+Requirements: macOS, Docker Desktop, Python 3.12+, and `uv`. For first-time setup, install [nvm](https://github.com/nvm-sh/nvm) in your user account, then run `nvm install` from this repository to install the pinned Node.js 24.21.0 runtime. The launcher selects that nvm version automatically, including when started from Finder; it does not replace system Node.
 
-- Node.js 24.21.0 LTS (pinned in `.nvmrc` and `.node-version`)
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/)
-- Docker Desktop (only required for the PostgreSQL/full-stack path)
+From Finder, double-click `MusicScope.command`.
 
-## Local development
-
-The one-command launcher safely checks and reuses the local environment:
+From Terminal:
 
 ```bash
+cd /path/to/MusicScope-V2
 ./scripts/dev.sh
 ```
-
-It installs only missing or changed project dependencies, starts/reuses PostgreSQL, applies
-forward Alembic migrations, starts the loopback NetEase sidecar, FastAPI, durable audio worker,
-and Next.js, and opens
-the web app. It never logs in, synchronizes, rebuilds recommendations, enriches artwork, deletes
-data, or removes Docker volumes automatically.
 
 Useful modes:
 
 ```bash
-./scripts/dev.sh --setup     # dependencies, PostgreSQL, and migrations only
-./scripts/dev.sh --status    # read-only status; starts nothing
-./scripts/dev.sh --no-open   # normal start without opening a browser
+./scripts/dev.sh --status   # read-only health and migration report
+./scripts/dev.sh --setup    # dependencies, PostgreSQL, and migrations only
+./scripts/dev.sh --no-open  # start without opening a browser
 ```
 
-Manual prerequisites are Docker Desktop, Node.js 24.21.x, Python 3.12+, and uv. The launcher
-reports an actionable message when one is missing; it does not install system software or use
-sudo. Optional provider credentials are not required for startup, and a fresh user reaches the
-NetEase Connect/QR onboarding flow without a fabricated account or library.
+The launcher reuses healthy PostgreSQL, the NetEase sidecar, FastAPI, the audio worker, and Next.js processes. It never synchronizes a provider, deletes data, or removes Docker volumes automatically. Fresh setup generates a unique database password and encryption key in ignored, owner-only `.env`; no shared database password is shipped. A fresh database reaches the Connect/QR onboarding state without demo data.
 
-For the lower-level commands, the following remains available:
+## Architecture
 
-```bash
-cp .env.example .env
-make install
-docker compose up -d postgres
-cd apps/api && .venv/bin/alembic upgrade head
+```text
+Next.js + React + TypeScript
+          -> FastAPI + SQLAlchemy
+          -> PostgreSQL / canonical domain
+          -> provider adapters -> NetEase sidecar and concert sources
+          -> isolated audio worker -> Demucs -> four FLAC stems
 ```
 
-Run the API, web app, and loopback-only NetEase sidecar in separate terminals:
-
-```bash
-make api-dev
-make web-dev
-make netease-api-dev
-```
-
-Open [http://localhost:3000](http://localhost:3000). API documentation is at [http://localhost:8100/docs](http://localhost:8100/docs). V2 uses host port 8100 to stay isolated from a running legacy API.
-
-Alternatively, `make dev` starts the complete Compose stack.
+The browser never receives provider session material. Canonical UUIDs and `ExternalIdentity` keep provider IDs separate from durable application identity. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/DOMAIN_MODEL.md`](docs/DOMAIN_MODEL.md), and [`docs/RECOMMENDATIONS.md`](docs/RECOMMENDATIONS.md).
 
 ## Validation
 
@@ -79,10 +60,12 @@ make build
 make compose-check
 ```
 
-## Current reality boundary
+## Honest boundaries
 
-Implemented and locally testable: encrypted NetEase connection and library ingestion, recommendation intelligence, verified live-event aggregation, and R4.1 Studio. Studio accepts only user-selected local MP3/WAV/FLAC/M4A audio, validates it with ffprobe, queues durable PostgreSQL jobs, runs `htdemucs` in an isolated single-concurrency worker, publishes four validated FLAC stems and real waveform peaks, and serves user-scoped HTTP Range streams to the Web Audio mixer. Provider playback URLs are never processing inputs.
+Recommendations use library evidence, affinity, co-occurrence, collaborations, rediscovery, bounded diversification, and provider candidates. MusicScope does not claim complete listening history, play counts, psychological personality, or reliable genre/timeline analysis when those signals are absent. Concert coverage depends on configured sources. Studio processing is local and first-use model preparation may require a download; NetEase playback streams are never separation inputs.
 
-The first Studio model preparation downloads its worker-only weights into the user's external cache. Subjective separation quality on a user-owned commercial music file remains a user QA step; generated lawful audio covers the automated product path.
+MusicScope currently supports **local-machine deployment only**. The normal launcher and Compose host ports bind to `127.0.0.1`; PostgreSQL, FastAPI, the web UI, and the NetEase sidecar are not intended for LAN hosting. `X-MusicScope-User-ID` selects a local application user for development and tests; it is **not authentication**. A remote or shared multi-user deployment would need real authentication, TLS/reverse-proxy policy, and a new threat-model review.
 
-See [`docs/R0_AUDIT.md`](docs/R0_AUDIT.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and [`docs/R1_NETEASE_PLAN.md`](docs/R1_NETEASE_PLAN.md).
+## Project status
+
+R1–R6 are checkpointed. MusicScope V2 is graduation-release ready for its supported local-machine deployment. One-click startup requires the pinned nvm Node runtime described above.

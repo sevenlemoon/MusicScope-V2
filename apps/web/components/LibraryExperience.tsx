@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { TrackRow } from "@/components/TrackRow";
 import { apiRequest } from "@/lib/api-client";
 import type { components } from "@/lib/api-schema.generated";
+import { useText } from "./LocaleProvider";
 
 type Tab = "playlists" | "albums" | "artists" | "tracks";
 type Sort = "asc" | "desc";
@@ -22,8 +23,10 @@ type Summary = components["schemas"]["LibrarySummary"];
 type SearchResponse = components["schemas"]["LibrarySearchResponse"];
 
 const alphabet = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ", "#"];
+const TAB_ZH: Record<Tab, string> = { playlists: "歌单", albums: "专辑", artists: "艺人", tracks: "曲目" };
 
 export function LibraryExperience() {
+  const t = useText();
   const [tab, setTab] = useState<Tab>("playlists");
   const [summary, setSummary] = useState<Summary | null>(null);
   const [page, setPage] = useState<LibraryPage | null>(null);
@@ -92,76 +95,79 @@ export function LibraryExperience() {
     if (event.key === "Escape") clearSearch();
   };
 
-  if (failed && !page) return <EmptyState eyebrow="LIBRARY / UNAVAILABLE" title="Library could not be loaded." body="Your synchronized data remains stored. Retry after the MusicScope API is available." marker="!" />;
-  if (!summary) return <div className="library-loading">Loading your synchronized library…</div>;
-  if (!Object.values(counts ?? {}).some(Boolean)) return <EmptyState eyebrow="LIBRARY / EMPTY" title="No library synchronized." body="Connect NetEase Cloud Music, confirm the QR login, then synchronize your read-only library." action={{ href: "/connect", label: "Connect music" }} marker="03" />;
+  if (failed && !page) return <EmptyState eyebrow={t("LIBRARY / UNAVAILABLE", "资料库 / 暂不可用")} title={t("Library could not be loaded.", "无法读取资料库。") } body={t("Your synchronized data remains stored. Retry after the MusicScope API is available.", "已同步数据仍安全保存。请在 MusicScope 服务恢复后重试。") } marker="!" />;
+  if (!summary) return <div className="library-loading">{t("Loading your synchronized library…", "正在读取已同步资料库…")}</div>;
+  if (!Object.values(counts ?? {}).some(Boolean)) return <EmptyState eyebrow={t("LIBRARY / EMPTY", "资料库 / 空")} title={t("No library synchronized.", "资料库尚未同步。") } body={t("Connect NetEase Cloud Music, confirm the QR login, then synchronize your read-only library.", "连接网易云音乐并确认二维码登录，然后以只读方式同步资料库。") } action={{ href: "/connect", label: t("Connect music", "连接音乐") }} marker="03" />;
 
   const searchMode = Boolean(searchQuery);
   const visiblePage = searchMode ? searchPage : page;
   const visibleLoading = searchMode ? searchLoading : loading;
-  const range = visiblePage?.range_start ? `${visiblePage.range_start}–${visiblePage.range_end} of ${visiblePage.total}` : visibleLoading ? "Loading…" : "No results";
+  const range = visiblePage?.range_start ? `${visiblePage.range_start}–${visiblePage.range_end} ${t("of", "/")} ${visiblePage.total}` : visibleLoading ? t("Loading…", "加载中…") : t("No results", "暂无结果");
 
-  return <section className="library-browser" aria-label="Canonical music library">
+  return <section className="library-browser" aria-label={t("Canonical music library", "规范化音乐资料库")}>
     <form className="library-search" role="search" onSubmit={submitSearch}>
-      <label className="sr-only" htmlFor="library-search-input">Search your synchronized library</label>
+      <label className="sr-only" htmlFor="library-search-input">{t("Search your synchronized library", "搜索已同步资料库")}</label>
       <span aria-hidden="true">⌕</span>
-      <input id="library-search-input" type="search" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} onKeyDown={handleSearchKey} placeholder="Search tracks, artists, albums, playlists" autoComplete="off" />
-      {(searchInput || searchMode) && <button className="search-clear" type="button" onClick={clearSearch} aria-label="Clear library search">Clear</button>}
-      <button className="button button-primary search-submit" type="submit">Search</button>
+      <input id="library-search-input" type="search" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} onKeyDown={handleSearchKey} placeholder={t("Search tracks, artists, albums, playlists", "搜索曲目、艺人、专辑和歌单")} autoComplete="off" />
+      {(searchInput || searchMode) && <button className="search-clear" type="button" onClick={clearSearch} aria-label={t("Clear library search", "清除资料库搜索")}>{t("Clear", "清除")}</button>}
+      <button className="button button-primary search-submit" type="submit">{t("Search", "搜索")}</button>
     </form>
-    <div className="section-tabs" role="tablist" aria-label="Library views">{(["playlists", "albums", "artists", "tracks"] as Tab[]).map((name) => <button key={name} role="tab" aria-selected={!searchMode && tab === name} onClick={() => chooseTab(name)}>{name}<span>{counts?.[name] ?? 0}</span></button>)}</div>
+    <div className="section-tabs" role="tablist" aria-label={t("Library views", "资料库分类")}>{(["playlists", "albums", "artists", "tracks"] as Tab[]).map((name) => <button key={name} role="tab" aria-selected={!searchMode && tab === name} onClick={() => chooseTab(name)}>{t(name, TAB_ZH[name])}<span>{counts?.[name] ?? 0}</span></button>)}</div>
     <div className="library-toolbar">
-      {searchMode ? <p className="search-context">Results for <strong>“{searchQuery}”</strong> across your library</p> : <div className="sort-control" aria-label="Sort order"><button type="button" aria-pressed={sort === "asc"} onClick={() => chooseSort("asc")}>A–Z</button><button type="button" aria-pressed={sort === "desc"} onClick={() => chooseSort("desc")}>Z–A</button></div>}
+      {searchMode ? <p className="search-context">{t("Results for", "搜索结果：")} <strong>“{searchQuery}”</strong> {t("across your library", "（整个资料库）")}</p> : <div className="sort-control" aria-label={t("Sort order", "排序方式")}><button type="button" aria-pressed={sort === "asc"} onClick={() => chooseSort("asc")}>A–Z</button><button type="button" aria-pressed={sort === "desc"} onClick={() => chooseSort("desc")}>Z–A</button></div>}
       <span className="page-range">{range}</span>
     </div>
-    {!searchMode && <nav className="alphabet-strip" aria-label="Filter by first character">
-      <button type="button" aria-current={group === null ? "true" : undefined} onClick={() => chooseGroup(null)}>ALL</button>
-      {alphabet.map((letter) => <button type="button" key={letter} disabled={!groupCounts.get(letter)} aria-current={group === letter ? "true" : undefined} title={groupCounts.get(letter) ? `${groupCounts.get(letter)} items` : "No items"} onClick={() => chooseGroup(letter)}>{letter}</button>)}
+    {!searchMode && <nav className="alphabet-strip" aria-label={t("Filter by first character", "按首字母筛选")}>
+      <button type="button" aria-current={group === null ? "true" : undefined} onClick={() => chooseGroup(null)}>{t("ALL", "全部")}</button>
+      {alphabet.map((letter) => <button type="button" key={letter} disabled={!groupCounts.get(letter)} aria-current={group === letter ? "true" : undefined} title={groupCounts.get(letter) ? `${groupCounts.get(letter)} ${t("items", "项")}` : t("No items", "无项目")} onClick={() => chooseGroup(letter)}>{letter}</button>)}
     </nav>}
     <div className={visibleLoading ? "library-results results-loading" : "library-results"} aria-live="polite" aria-busy={visibleLoading}>
       {searchMode ? <SearchResults result={searchPage} failed={searchFailed} /> : <BrowseResults page={page} tab={tab} loading={loading} />}
     </div>
     <div className="pagination-controls">
-      <button className="button button-quiet" type="button" disabled={!visiblePage?.previous_cursor || visibleLoading} onClick={() => { if (searchMode) { setSearchLoading(true); setSearchCursor(visiblePage?.previous_cursor ?? null); } else chooseCursor(visiblePage?.previous_cursor ?? null); }}>Previous</button>
-      <span>{visiblePage?.range_start ? `${visiblePage.range_start}–${visiblePage.range_end} of ${visiblePage.total}` : "0 items"}</span>
-      <button className="button button-quiet" type="button" disabled={!visiblePage?.next_cursor || visibleLoading} onClick={() => { if (searchMode) { setSearchLoading(true); setSearchCursor(visiblePage?.next_cursor ?? null); } else chooseCursor(visiblePage?.next_cursor ?? null); }}>Next</button>
+      <button className="button button-quiet" type="button" disabled={!visiblePage?.previous_cursor || visibleLoading} onClick={() => { if (searchMode) { setSearchLoading(true); setSearchCursor(visiblePage?.previous_cursor ?? null); } else chooseCursor(visiblePage?.previous_cursor ?? null); }}>{t("Previous", "上一页")}</button>
+      <span>{visiblePage?.range_start ? `${visiblePage.range_start}–${visiblePage.range_end} ${t("of", "/")} ${visiblePage.total}` : t("0 items", "0 项")}</span>
+      <button className="button button-quiet" type="button" disabled={!visiblePage?.next_cursor || visibleLoading} onClick={() => { if (searchMode) { setSearchLoading(true); setSearchCursor(visiblePage?.next_cursor ?? null); } else chooseCursor(visiblePage?.next_cursor ?? null); }}>{t("Next", "下一页")}</button>
     </div>
   </section>;
 }
 
 function BrowseResults({ page, tab, loading }: { page: LibraryPage | null; tab: Tab; loading: boolean }) {
+  const t = useText();
   return <>
-    {page && tab === "playlists" && <CardGroups items={(page as Pages["playlists"]).items} render={(item) => <Link className="library-card" href={`/playlist/${item.id}`}><Artwork src={item.artwork_url} alt="" /><strong>{item.name}</strong><small>{item.track_count ?? 0} tracks</small></Link>} />}
-    {page && tab === "albums" && <CardGroups items={(page as Pages["albums"]).items} render={(item) => <Link className="library-card" href={`/album/${item.id}`}><Artwork src={item.artwork_url} alt="" /><strong>{item.title}</strong><small>{(item.artists ?? []).map((artist) => artist.name).join(", ") || "Album"}</small></Link>} />}
-    {page && tab === "artists" && <CardGroups items={(page as Pages["artists"]).items} render={(item) => <Link className="library-card" href={`/artist/${item.id}`}><Artwork src={item.artwork_url} alt="" /><strong>{item.name}</strong><small>Artist</small></Link>} />}
+    {page && tab === "playlists" && <CardGroups items={(page as Pages["playlists"]).items} render={(item, index) => <Link className="library-card" href={`/playlist/${item.id}`}><Artwork src={item.artwork_url} alt="" eager={index < 4} /><strong>{item.name}</strong><small>{item.track_count ?? 0} {t("tracks", "首曲目")}</small></Link>} />}
+    {page && tab === "albums" && <CardGroups items={(page as Pages["albums"]).items} render={(item, index) => <Link className="library-card" href={`/album/${item.id}`}><Artwork src={item.artwork_url} alt="" eager={index < 4} /><strong>{item.title}</strong><small>{(item.artists ?? []).map((artist) => artist.name).join(", ") || t("Album", "专辑")}</small></Link>} />}
+    {page && tab === "artists" && <CardGroups items={(page as Pages["artists"]).items} render={(item, index) => <Link className="library-card" href={`/artist/${item.id}`}><Artwork src={item.artwork_url} alt="" eager={index < 4} /><strong>{item.name}</strong><small>{t("Artist", "艺人")}</small></Link>} />}
     {page && tab === "tracks" && <div className="track-list">{(page as Pages["tracks"]).items.map((item, index) => <TrackRow key={item.id} track={item} index={(page.range_start || 1) + index} />)}</div>}
-    {!loading && page?.items.length === 0 && <div className="inline-empty">No {tab} in this group.</div>}
+    {!loading && page?.items.length === 0 && <div className="inline-empty">{t(`No ${tab} in this group.`, `此分组暂无${TAB_ZH[tab]}。`)}</div>}
   </>;
 }
 
 function SearchResults({ result, failed }: { result: SearchResponse | null; failed: boolean }) {
-  if (failed) return <div className="inline-empty">Search is temporarily unavailable. Your synchronized library is unchanged.</div>;
+  const t = useText();
+  if (failed) return <div className="inline-empty">{t("Search is temporarily unavailable. Your synchronized library is unchanged.", "搜索暂时不可用；已同步资料库没有变化。")}</div>;
   if (!result) return null;
-  if (!result.total) return <div className="inline-empty">No tracks, artists, albums, or playlists match “{result.query}”.</div>;
+  if (!result.total) return <div className="inline-empty">{t(`No tracks, artists, albums, or playlists match “${result.query}”.`, `没有与“${result.query}”匹配的曲目、艺人、专辑或歌单。`)}</div>;
   const tracks = result.tracks ?? [];
   const artists = result.artists ?? [];
   const albums = result.albums ?? [];
   const playlists = result.playlists ?? [];
   return <div className="search-results">
-    {tracks.length > 0 && <SearchSection title="Tracks" count={tracks.length}><div className="track-list">{tracks.map((item, index) => <TrackRow key={item.track.id} track={item.track} index={result.range_start + index} />)}</div></SearchSection>}
-    {artists.length > 0 && <SearchSection title="Artists" count={artists.length}><div className="library-grid search-grid">{artists.map(({ artist, library_track_count: trackCount, match }) => <Link className="library-card" href={`/artist/${artist.id}`} key={artist.id}><Artwork src={artist.artwork_url} alt="" /><strong>{artist.name}</strong><small>{trackCount} library tracks · {match} match</small></Link>)}</div></SearchSection>}
-    {albums.length > 0 && <SearchSection title="Albums" count={albums.length}><div className="library-grid search-grid">{albums.map(({ album, match }) => <Link className="library-card" href={`/album/${album.id}`} key={album.id}><Artwork src={album.artwork_url} alt="" /><strong>{album.title}</strong><small>{(album.artists ?? []).map((artist) => artist.name).join(", ") || "Album"} · {match} match</small></Link>)}</div></SearchSection>}
-    {playlists.length > 0 && <SearchSection title="Playlists" count={playlists.length}><div className="library-grid search-grid">{playlists.map(({ playlist, match }) => <Link className="library-card" href={`/playlist/${playlist.id}`} key={playlist.id}><Artwork src={playlist.artwork_url} alt="" /><strong>{playlist.name}</strong><small>{playlist.track_count ?? 0} tracks · {match} match</small></Link>)}</div></SearchSection>}
+    {tracks.length > 0 && <SearchSection title={t("Tracks", "曲目")} count={tracks.length}><div className="track-list">{tracks.map((item, index) => <TrackRow key={item.track.id} track={item.track} index={result.range_start + index} />)}</div></SearchSection>}
+    {artists.length > 0 && <SearchSection title={t("Artists", "艺人")} count={artists.length}><div className="library-grid search-grid">{artists.map(({ artist, library_track_count: trackCount, match }) => <Link className="library-card" href={`/artist/${artist.id}`} key={artist.id}><Artwork src={artist.artwork_url} alt="" /><strong>{artist.name}</strong><small>{trackCount} {t("library tracks", "首资料库曲目")} · {match} {t("match", "处匹配")}</small></Link>)}</div></SearchSection>}
+    {albums.length > 0 && <SearchSection title={t("Albums", "专辑")} count={albums.length}><div className="library-grid search-grid">{albums.map(({ album, match }) => <Link className="library-card" href={`/album/${album.id}`} key={album.id}><Artwork src={album.artwork_url} alt="" /><strong>{album.title}</strong><small>{(album.artists ?? []).map((artist) => artist.name).join(", ") || t("Album", "专辑")} · {match} {t("match", "处匹配")}</small></Link>)}</div></SearchSection>}
+    {playlists.length > 0 && <SearchSection title={t("Playlists", "歌单")} count={playlists.length}><div className="library-grid search-grid">{playlists.map(({ playlist, match }) => <Link className="library-card" href={`/playlist/${playlist.id}`} key={playlist.id}><Artwork src={playlist.artwork_url} alt="" /><strong>{playlist.name}</strong><small>{playlist.track_count ?? 0} {t("tracks", "首曲目")} · {match} {t("match", "处匹配")}</small></Link>)}</div></SearchSection>}
   </div>;
 }
 
 function SearchSection({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
-  return <section className="search-section" aria-labelledby={`search-${title.toLowerCase()}`}><div className="search-section-heading"><h2 id={`search-${title.toLowerCase()}`}>{title}</h2><span>{count} on this page</span></div>{children}</section>;
+  const t = useText();
+  return <section className="search-section" aria-labelledby={`search-${title.toLowerCase()}`}><div className="search-section-heading"><h2 id={`search-${title.toLowerCase()}`}>{title}</h2><span>{count} {t("on this page", "项（本页）")}</span></div>{children}</section>;
 }
 
-function CardGroups<T extends { id: string; sort_group: string }>({ items, render }: { items: T[]; render: (item: T) => React.ReactNode }) {
+function CardGroups<T extends { id: string; sort_group: string }>({ items, render }: { items: T[]; render: (item: T, index: number) => React.ReactNode }) {
   return <div className="library-grid">{items.map((item, index) => {
     const heading = index === 0 || item.sort_group !== items[index - 1].sort_group;
-    return <div className="library-card-cell" key={item.id}>{heading && <h2 className="group-heading">{item.sort_group}</h2>}{render(item)}</div>;
+    return <div className="library-card-cell" key={item.id}>{heading && <h2 className="group-heading">{item.sort_group}</h2>}{render(item, index)}</div>;
   })}</div>;
 }
