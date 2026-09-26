@@ -2,7 +2,24 @@
 
 set -u
 
-REPO_DIR="$(cd "$(dirname "$0")" && pwd -P)" || exit 1
+LAUNCHER_PATH="${BASH_SOURCE[0]}"
+symlink_hops=0
+while [[ -L "$LAUNCHER_PATH" ]]; do
+  ((symlink_hops += 1))
+  if ((symlink_hops > 16)); then
+    printf 'MusicScope launcher: too many symlink hops.\n' >&2
+    exit 1
+  fi
+  launcher_dir="$(cd "$(dirname "$LAUNCHER_PATH")" && pwd -P)" || exit 1
+  link_target="$(readlink "$LAUNCHER_PATH")" || exit 1
+  if [[ "$link_target" == /* ]]; then
+    LAUNCHER_PATH="$link_target"
+  else
+    LAUNCHER_PATH="$launcher_dir/$link_target"
+  fi
+done
+
+REPO_DIR="$(cd "$(dirname "$LAUNCHER_PATH")" && pwd -P)" || exit 1
 cd "$REPO_DIR" || exit 1
 
 ./scripts/dev.sh "$@"

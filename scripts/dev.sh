@@ -3,6 +3,10 @@
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+# Finder does not load the user's shell profile. Include conventional user and
+# Homebrew binary locations before checking the tools this launcher requires.
+PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH
 LOG_DIR="$ROOT_DIR/.logs"
 SETUP_LOG="$LOG_DIR/setup.log"
 AUDIO_WORKER_HEALTH="$LOG_DIR/audio-worker-health.json"
