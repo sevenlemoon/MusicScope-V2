@@ -47,7 +47,9 @@ function Port-Open([int]$port) {
     $client = New-Object Net.Sockets.TcpClient
     try {
         $pending = $client.BeginConnect('127.0.0.1', $port, $null, $null)
-        return $pending.AsyncWaitHandle.WaitOne(300) -and $client.Connected
+        if (-not $pending.AsyncWaitHandle.WaitOne(300)) { return $false }
+        $client.EndConnect($pending)
+        return $client.Connected
     } catch { return $false }
     finally { $client.Close() }
 }
@@ -110,7 +112,8 @@ function Ensure-Environment {
 }
 function Ensure-Postgres($values) {
     $port = [int](Env-Value $values 'POSTGRES_PORT' '55432')
-    $container = (& docker compose -f (Join-Path $root 'docker-compose.yml') ps -q postgres).Trim()
+    $container = [string](& docker compose -f (Join-Path $root 'docker-compose.yml') ps -q postgres)
+    $container = $container.Trim()
     if (-not $container -and (Port-Open $port)) {
         Fail "Port $port is already occupied. MusicScope did not change the other process."
     }
