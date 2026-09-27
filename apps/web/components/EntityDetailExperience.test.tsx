@@ -18,7 +18,7 @@ describe("canonical detail pages", () => {
     push.mockReset();
     global.fetch = jest.fn((input) => {
       const url = String(input);
-      if (url.includes("/stem-jobs")) return response({ status: "LOCAL_UPLOAD_REQUIRED", message: "Upload a local audio file instead.", studio_url: "/studio?source=local-upload&track=t1" }) as never;
+      if (url.includes("/stem-jobs")) return response({ status: "ACCOUNT_SONG_SELECTED", message: "Choose a model in Studio.", studio_url: "/studio?source=account&track=t1" }) as never;
       if (url.endsWith("/artists/a1")) return response({ id: "a1", name: "Artist One", artwork_url: "https://image.invalid/artist.jpg", library_track_count: 1, represented_album_count: 1 }) as never;
       if (url.includes("/artists/a1/tracks")) return response(trackPage) as never;
       if (url.includes("/artists/a1/albums")) return response({ items: [{ id: "al1", title: "Canonical album", artwork_url: null, artists: [{ id: "a1", name: "Artist One" }], sort_group: "C" }], total: 1, range_start: 1, range_end: 1, groups: [], sort: "asc" }) as never;
@@ -26,23 +26,23 @@ describe("canonical detail pages", () => {
       if (url.includes("/albums/al1/tracks")) return response(trackPage) as never;
       if (url.endsWith("/playlists/p1")) return response({ id: "p1", name: "Canonical playlist", artwork_url: null, provider_track_count: 1, synchronized_track_count: 1 }) as never;
       if (url.includes("/playlists/p1/tracks")) return response({ ...trackPage, sort: "original" }) as never;
-      if (url.endsWith("/tracks/t1")) return response({ id: "t1", title: "Canonical song", artwork_url: null, duration_ms: 200000, artists: [{ id: "a1", name: "Artist One" }, { id: "a2", name: "Artist Two" }], album: { id: "al1", name: "Canonical album" }, playlists: [{ id: "p1", name: "Canonical playlist" }] }) as never;
+      if (url.endsWith("/tracks/t1")) return response({ id: "t1", title: "Canonical song", artwork_url: null, duration_ms: 200000, artists: [{ id: "a1", name: "Artist One" }], album: { id: "al1", name: "Canonical album" }, playlists: [{ id: "p1", name: "Canonical playlist" }] }) as never;
       return response({}) as never;
     });
   });
   afterEach(() => jest.restoreAllMocks());
 
-  it("renders an enriched artist with saved tracks, albums, and multi-artist relationships", async () => {
+  it("renders an artist with saved tracks while keeping the list focused on the lead credit", async () => {
     renderDetail("artist", "a1");
     expect(await screen.findByRole("heading", { name: "Artist One", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Albums in your library" })).toBeInTheDocument();
-    expect(screen.getByText("Artist Two")).toBeInTheDocument();
+    expect(screen.queryByText("Artist Two")).not.toBeInTheDocument();
   });
 
   it("renders an album and its canonical track list", async () => {
     renderDetail("album", "al1");
     expect(await screen.findByRole("heading", { name: "Canonical album", level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Tracks in your library" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Liked tracks on this album" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Canonical song" })).toHaveAttribute("href", "/track/t1");
   });
 
@@ -53,12 +53,12 @@ describe("canonical detail pages", () => {
     expect(screen.getByText("1–1 of 1")).toBeInTheDocument();
   });
 
-  it("renders track relationships and routes Separate Stems to the honest local-upload fallback", async () => {
+  it("renders track relationships and routes Separate Stems to account-song mode", async () => {
     renderDetail("track", "t1");
     expect(await screen.findByRole("heading", { name: "Canonical song", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Artist One" })).toHaveAttribute("href", "/artist/a1");
-    expect(screen.getByRole("link", { name: "Artist Two" })).toHaveAttribute("href", "/artist/a2");
+    expect(screen.queryByRole("link", { name: "Artist Two" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Separate stems" }));
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/studio?source=local-upload&track=t1"));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/studio?source=account&track=t1"));
   });
 });

@@ -1,20 +1,34 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import io
 import wave
 from pathlib import Path
 from uuid import UUID, uuid4
 
+import httpx
 import pytest
+from fastapi import UploadFile
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.domain.models import AudioAsset, StemArtifact, StemJob, User
+from app.domain.models import (
+    AudioAsset,
+    MusicConnection,
+    Playlist,
+    PlaylistTrack,
+    StemArtifact,
+    StemJob,
+    Track,
+    User,
+)
 from app.main import app
-from app.services import audio_studio
+from app.providers.types import ProviderPlaybackSource
+from app.services import audio_studio, studio_provider_import
 from app.services.audio_studio import StudioError, processing_fingerprint, resolve_storage_key
+from app.services.playback import PlaybackResolution, PlaybackService
 
 
 def wav_bytes(seconds: float = 0.1) -> bytes:
@@ -104,6 +118,199 @@ def test_processing_fingerprint_is_filename_independent_and_versioned() -> None:
     checksum = "a" * 64
     assert processing_fingerprint(checksum) == processing_fingerprint(checksum)
     assert processing_fingerprint(checksum) != processing_fingerprint("b" * 64)
+    assert processing_fingerprint(checksum, "htdemucs_6s") != processing_fingerprint(checksum)
+
+
+def test_new_jobs_use_only_six_stem_model(studio_storage: Path) -> None:
+    user = create_user("Six stems")
+    with TestClient(app) as client:
+        asset = upload(client, user, wav_bytes()).json()
+        base = f"/api/v1/studio/assets/{asset['id']}/jobs"
+        headers = {"X-MusicScope-User-ID": str(user.id)}
+        six = client.post(base, headers=headers)
+        four = client.post(f"{base}?model=htdemucs", headers=headers)
+        invalid = client.post(f"{base}?model=unknown", headers=headers)
+    assert four.status_code == 422
+    assert six.status_code == 201
+    assert six.json()["model_name"] == "htdemucs_6s"
+    assert four.json()["detail"]["code"] == "UNSUPPORTED_STEM_MODEL"
+    assert invalid.status_code == 422
+
+
+def test_library_track_link_is_durable_and_user_scoped(studio_storage: Path) -> None:
+    owner = create_user("Track owner")
+    stranger = create_user("Unrelated listener")
+    db, generator = database_session()
+    try:
+        connection = MusicConnection(user_id=owner.id, provider="netease", status="CONNECTED")
+        track = Track(title="Library song")
+        db.add_all([connection, track])
+        db.flush()
+        playlist = Playlist(owner_connection_id=connection.id, name="Owned playlist")
+        db.add(playlist)
+        db.flush()
+        db.add(PlaylistTrack(playlist_id=playlist.id, track_id=track.id, position=0))
+        db.commit()
+        track_id = track.id
+    finally:
+        generator.close()  # type: ignore[attr-defined]
+    with TestClient(app) as client:
+        owned_asset = upload(client, owner, wav_bytes()).json()
+        other_asset = upload(client, stranger, wav_bytes()).json()
+        owner_headers = {"X-MusicScope-User-ID": str(owner.id)}
+        stranger_headers = {"X-MusicScope-User-ID": str(stranger.id)}
+        created = client.post(
+            f"/api/v1/studio/assets/{owned_asset['id']}/jobs?track_id={track_id}",
+            headers=owner_headers,
+        )
+        reopened = client.get(f"/api/v1/studio/jobs/{created.json()['id']}", headers=owner_headers)
+        denied = client.post(
+            f"/api/v1/studio/assets/{other_asset['id']}/jobs?track_id={track_id}",
+            headers=stranger_headers,
+        )
+    assert created.status_code == 201
+    assert created.json()["source_track_ids"] == [str(track_id)]
+    assert reopened.json()["source_track_ids"] == [str(track_id)]
+    assert denied.status_code == 404
+
+
+def provider_source(url: str = "http://m1.music.126.net/sample?token=test") -> ProviderPlaybackSource:
+    return ProviderPlaybackSource(
+        provider="netease",
+        url=url,
+        mime_type="audio/wav",
+        duration_ms=100,
+        expires_at=None,
+        quality=None,
+    )
+
+
+def test_account_song_creates_job_without_upload_and_rejects_other_user(
+    studio_storage: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    owner = create_user("Account owner")
+    stranger = create_user("Account stranger")
+    db, generator = database_session()
+    try:
+        connection = MusicConnection(user_id=owner.id, provider="netease", status="CONNECTED")
+        track = Track(title="Account song")
+        db.add_all([connection, track])
+        db.flush()
+        playlist = Playlist(owner_connection_id=connection.id, name="Owned")
+        db.add(playlist)
+        db.flush()
+        db.add(PlaylistTrack(playlist_id=playlist.id, track_id=track.id, position=0))
+        db.commit()
+        track_id = track.id
+    finally:
+        generator.close()  # type: ignore[attr-defined]
+
+    calls: list[str] = []
+
+    async def resolve(
+        self: PlaybackService, requested_id: UUID, user: User | None = None
+    ) -> PlaybackResolution:
+        assert requested_id == track_id and user is not None and user.id == owner.id
+        calls.append("resolve")
+        return PlaybackResolution(
+            track=Track(id=track_id, title="Account song"), source=provider_source(), resolution_ms=1
+        )
+
+    async def import_asset(db: Session, user: User, track: Track, source: ProviderPlaybackSource):
+        assert user.id == owner.id and track.id == track_id and source.provider == "netease"
+        calls.append("import")
+        return await audio_studio.create_audio_asset(
+            db, user, UploadFile(file=io.BytesIO(wav_bytes()), filename="account.wav")
+        )
+
+    monkeypatch.setattr(PlaybackService, "resolve", resolve)
+    monkeypatch.setattr("app.api.routes.studio.create_provider_audio_asset", import_asset)
+    url = f"/api/v1/studio/tracks/{track_id}/jobs?model=htdemucs_6s"
+    with TestClient(app) as client:
+        denied = client.post(url, headers={"X-MusicScope-User-ID": str(stranger.id)})
+        created = client.post(url, headers={"X-MusicScope-User-ID": str(owner.id)})
+    assert denied.status_code == 404
+    assert created.status_code == 201
+    assert created.json()["model_name"] == "htdemucs_6s"
+    assert created.json()["source_track_ids"] == [str(track_id)]
+    assert calls == ["resolve", "import"]
+
+
+def test_provider_import_enforces_cdn_and_cleans_temporary_audio(
+    studio_storage: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(studio_provider_import, "storage_root", lambda: studio_storage)
+    user = create_user("Provider import")
+    db, generator = database_session()
+    requested_urls: list[str] = []
+    source = provider_source()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested_urls.append(str(request.url))
+        return httpx.Response(200, headers={"content-type": "audio/wav"}, content=wav_bytes())
+
+    async def run() -> tuple[AudioAsset, bool]:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await studio_provider_import.create_provider_audio_asset(
+                db,
+                user,
+                Track(title="Imported song"),
+                source,
+                client=client,
+            )
+
+    try:
+        asset, reused = asyncio.run(run())
+        assert not reused and asset.media_type == "audio/wav"
+        assert requested_urls == ["https://m1.music.126.net/sample?token=test"]
+        assert "token=test" not in str(asset.metadata_json)
+        assert not list((studio_storage / "imports").iterdir())
+    finally:
+        generator.close()  # type: ignore[attr-defined]
+
+
+def test_provider_import_rejects_unsafe_url_and_oversized_audio(
+    studio_storage: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(studio_provider_import, "storage_root", lambda: studio_storage)
+    user = create_user("Import safety")
+    db, generator = database_session()
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        return httpx.Response(200, headers={"content-type": "audio/wav", "content-length": "999999999"})
+
+    async def run() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(StudioError) as unsafe:
+                await studio_provider_import.create_provider_audio_asset(
+                    db,
+                    user,
+                    Track(title="Unsafe"),
+                    provider_source("https://evil.example/audio"),
+                    client=client,
+                )
+            assert unsafe.value.code == "PROVIDER_SOURCE_UNSUPPORTED"
+            with pytest.raises(StudioError) as too_large:
+                await studio_provider_import.create_provider_audio_asset(
+                    db,
+                    user,
+                    Track(title="Large"),
+                    provider_source(),
+                    client=client,
+                )
+            assert too_large.value.code == "PROVIDER_AUDIO_TOO_LARGE"
+
+    try:
+        asyncio.run(run())
+        assert calls == ["https://m1.music.126.net/sample?token=test"]
+        assert not list((studio_storage / "imports").iterdir())
+    finally:
+        generator.close()  # type: ignore[attr-defined]
 
 
 def test_same_user_reuses_asset_and_job_but_other_user_does_not(studio_storage: Path) -> None:
@@ -174,9 +381,7 @@ def test_private_range_serving_and_missing_artifact(studio_storage: Path) -> Non
     path.write_bytes(payload)
     waveform_path = path.parents[1] / "waveform" / "peaks-v1.json"
     waveform_path.parent.mkdir(parents=True)
-    waveform_path.write_text(
-        '{"version":"peaks-json-v1","duration_ms":1000,"stems":{}}', encoding="utf-8"
-    )
+    waveform_path.write_text('{"version":"peaks-json-v1","duration_ms":1000,"stems":{}}', encoding="utf-8")
     db, generator = database_session()
     try:
         db.add(
@@ -227,6 +432,7 @@ def test_private_range_serving_and_missing_artifact(studio_storage: Path) -> Non
     url = f"/api/v1/studio/artifacts/{artifact_id}/stream"
     with TestClient(app) as client:
         full = client.get(url, headers={"X-MusicScope-User-ID": str(owner.id)})
+        download = client.get(f"{url}?download=true", headers={"X-MusicScope-User-ID": str(owner.id)})
         partial = client.get(
             url,
             headers={"X-MusicScope-User-ID": str(owner.id), "Range": "bytes=10-19"},
@@ -258,6 +464,7 @@ def test_private_range_serving_and_missing_artifact(studio_storage: Path) -> Non
     assert hidden.status_code == 404
     assert head.status_code == 200 and head.content == b""
     assert cached.status_code == 304
+    assert download.status_code == 200 and download.headers["content-disposition"].startswith("attachment;")
     assert waveform.status_code == 200 and waveform.json()["version"] == "peaks-json-v1"
     assert hidden_waveform.status_code == 404
     assert str(studio_storage) not in full.headers.get("content-disposition", "")

@@ -615,12 +615,26 @@ class StemJob(TimestampMixin, Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class StudioTrackJob(Base):
+    """User-scoped association; one audio job may represent multiple library tracks."""
+
+    __tablename__ = "studio_track_jobs"
+
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    track_id: Mapped[UUID] = mapped_column(ForeignKey("tracks.id", ondelete="CASCADE"), primary_key=True)
+    stem_job_id: Mapped[UUID] = mapped_column(
+        ForeignKey("stem_jobs.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+
 class StemArtifact(TimestampMixin, Base):
     __tablename__ = "stem_artifacts"
     __table_args__ = (
         UniqueConstraint("stem_job_id", "stem_type", name="uq_stem_job_type"),
         CheckConstraint(
-            "stem_type IN ('VOCALS','DRUMS','BASS','OTHER')", name="stem_artifact_type"
+            "stem_type IN ('VOCALS','DRUMS','BASS','GUITAR','PIANO','OTHER')",
+            name="stem_artifact_type",
         ),
     )
 

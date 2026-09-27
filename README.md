@@ -1,15 +1,15 @@
 # MusicScope V2
 
-MusicScope is a local-first personal music intelligence and discovery app. It connects a NetEase library, keeps canonical music entities, explains recommendations, finds verified live events, and turns a local audio file into four synchronized stems in Studio.
+MusicScope is a local-first audio separation tool. Import your own audio file, or connect NetEase and choose a playable song from your liked-music library, then separate it into six synchronized stems.
 
 ## What is implemented
 
 - NetEase QR connection and read-only library synchronization
-- Canonical tracks, artists, albums, playlists, artwork, search, and playback
-- Explainable recommendation and Discover flows (deterministic profile logic, not an LLM recommender)
-- Multi-provider concert intelligence with provenance and honest partial coverage
-- Local four-stem Studio: Vocals, Drums, Bass, and Other using Demucs
-- Music Universe / Insights from library affinity, playlist co-occurrence, and collaboration evidence
+- A focused library view of liked tracks, their related albums, the liked-music playlist, and first-credited artists
+- Two Studio sources: an independent local file or a currently playable song from the connected account
+- Local six-stem Studio: Vocals, Drums, Bass, Guitar, Piano, and Other using Demucs
+- A stem mixer with volume, mute/solo, speed, loop controls, waveform seeking, and FLAC downloads
+- Earlier recommendation, concert, and Insights routes remain in the codebase but are not the primary workflow
 - Chinese-first UI with a persisted Chinese/English language switch
 - One-click local startup with guarded setup, migration, and service reuse
 
@@ -43,7 +43,7 @@ Next.js + React + TypeScript
           -> FastAPI + SQLAlchemy
           -> PostgreSQL / canonical domain
           -> provider adapters -> NetEase sidecar and concert sources
-          -> isolated audio worker -> Demucs -> four FLAC stems
+          -> isolated audio worker -> Demucs -> six FLAC stems
 ```
 
 The browser never receives provider session material. Canonical UUIDs and `ExternalIdentity` keep provider IDs separate from durable application identity. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/DOMAIN_MODEL.md`](docs/DOMAIN_MODEL.md), and [`docs/RECOMMENDATIONS.md`](docs/RECOMMENDATIONS.md).
@@ -62,10 +62,10 @@ make compose-check
 
 ## Honest boundaries
 
-Recommendations use library evidence, affinity, co-occurrence, collaborations, rediscovery, bounded diversification, and provider candidates. MusicScope does not claim complete listening history, play counts, psychological personality, or reliable genre/timeline analysis when those signals are absent. Concert coverage depends on configured sources. Studio processing is local and first-use model preparation may require a download; NetEase playback streams are never separation inputs.
+The library shows saved-music evidence, not listening frequency or play counts. Its artist category means the first credited artist, not a verified lead vocalist. Account-song separation depends on the connected account having a playable source for that song; some songs cannot be imported. An available source is downloaded to local Studio storage for processing, while signed playback URLs and account session material are not stored with the audio job. Only process music you have the right to use. Guitar and piano stems may contain bleed or artifacts; perfect isolation is not guaranteed. Studio processing is local and first-use model preparation may require a download.
 
 MusicScope currently supports **local-machine deployment only**. The normal launcher and Compose host ports bind to `127.0.0.1`; PostgreSQL, FastAPI, the web UI, and the NetEase sidecar are not intended for LAN hosting. `X-MusicScope-User-ID` selects a local application user for development and tests; it is **not authentication**. A remote or shared multi-user deployment would need real authentication, TLS/reverse-proxy policy, and a new threat-model review.
 
 ## Project status
 
-R1–R6 are checkpointed. MusicScope V2 is graduation-release ready for its supported local-machine deployment. One-click startup requires the pinned nvm Node runtime described above.
+The current product direction is a focused six-stem separation tool for local-machine use. Existing four-stem jobs remain readable, while new Studio jobs use six stems. One-click startup requires the pinned nvm Node runtime described above.

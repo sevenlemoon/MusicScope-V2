@@ -103,7 +103,7 @@ def test_exactly_four_stems_are_required(tmp_path: Path) -> None:
         (output / f"{stem.casefold()}.flac").write_bytes(b"flac")
     assert set(worker._find_stems(output)) == set(worker.STEM_TYPES)
     (output / "bass.flac").unlink()
-    with pytest.raises(worker.WorkerFailure, match="exactly four"):
+    with pytest.raises(worker.WorkerFailure, match="exactly 4"):
         worker._find_stems(output)
     (output / "bass.flac").write_bytes(b"flac")
     nested = output / "duplicate"
@@ -111,6 +111,18 @@ def test_exactly_four_stems_are_required(tmp_path: Path) -> None:
     (nested / "vocals.flac").write_bytes(b"flac")
     with pytest.raises(worker.WorkerFailure, match="Duplicate"):
         worker._find_stems(output)
+
+
+def test_six_stem_model_requires_guitar_and_piano(tmp_path: Path) -> None:
+    output = tmp_path / "output"
+    output.mkdir()
+    expected = ("VOCALS", "DRUMS", "BASS", "GUITAR", "PIANO", "OTHER")
+    for stem in expected:
+        (output / f"{stem.casefold()}.flac").write_bytes(b"flac")
+    assert set(worker._find_stems(output, expected)) == set(expected)
+    (output / "piano.flac").unlink()
+    with pytest.raises(worker.WorkerFailure, match="exactly 6"):
+        worker._find_stems(output, expected)
 
 
 def test_stem_validation_rejects_corrupt_or_desynchronized_output(

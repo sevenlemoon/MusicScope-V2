@@ -856,6 +856,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/studio/tracks/{track_id}/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Library Track Job
+         * @description Import playable account audio locally, then queue a normal Studio job.
+         */
+        post: operations["start_library_track_job_api_v1_studio_tracks__track_id__jobs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tracks/{track_id}": {
         parameters: {
             query?: never;
@@ -2297,7 +2317,7 @@ export interface components {
              * Status
              * @constant
              */
-            status: "LOCAL_UPLOAD_REQUIRED";
+            status: "ACCOUNT_SONG_SELECTED";
             /** Studio Url */
             studio_url: string;
         };
@@ -2325,7 +2345,7 @@ export interface components {
              * Stem Type
              * @enum {string}
              */
-            stem_type: "VOCALS" | "DRUMS" | "BASS" | "OTHER";
+            stem_type: "VOCALS" | "DRUMS" | "BASS" | "GUITAR" | "PIANO" | "OTHER";
             /** Stream Url */
             stream_url: string;
         };
@@ -2410,6 +2430,8 @@ export interface components {
             safe_error_code?: string | null;
             /** Safe Error Message */
             safe_error_message?: string | null;
+            /** Source Track Ids */
+            source_track_ids?: string[];
             /** Stage */
             stage: string;
             /** Started At */
@@ -2602,7 +2624,9 @@ export type $defs = Record<string, never>;
 export interface operations {
     album_detail_api_v1_albums__album_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                scope?: "liked" | "all";
+            };
             header?: never;
             path: {
                 album_id: string;
@@ -2637,6 +2661,7 @@ export interface operations {
                 cursor?: string | null;
                 limit?: number;
                 sort?: "asc" | "desc";
+                scope?: "liked" | "all";
             };
             header?: never;
             path: {
@@ -2668,7 +2693,9 @@ export interface operations {
     };
     artist_detail_api_v1_artists__artist_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                scope?: "liked" | "all";
+            };
             header?: never;
             path: {
                 artist_id: string;
@@ -2703,6 +2730,7 @@ export interface operations {
                 cursor?: string | null;
                 limit?: number;
                 sort?: "asc" | "desc";
+                scope?: "liked" | "all";
             };
             header?: never;
             path: {
@@ -2771,6 +2799,7 @@ export interface operations {
                 cursor?: string | null;
                 limit?: number;
                 sort?: "asc" | "desc";
+                scope?: "liked" | "all";
             };
             header?: never;
             path: {
@@ -2933,6 +2962,7 @@ export interface operations {
                 limit?: number;
                 sort?: "asc" | "desc";
                 group?: string | null;
+                scope?: "liked" | "all";
             };
             header?: never;
             path?: never;
@@ -2967,6 +2997,7 @@ export interface operations {
                 limit?: number;
                 sort?: "asc" | "desc";
                 group?: string | null;
+                scope?: "liked" | "all";
             };
             header?: never;
             path?: never;
@@ -3021,6 +3052,7 @@ export interface operations {
                 limit?: number;
                 sort?: "asc" | "desc";
                 group?: string | null;
+                scope?: "liked" | "all";
             };
             header?: never;
             path?: never;
@@ -3056,6 +3088,7 @@ export interface operations {
                 types?: string | null;
                 cursor?: string | null;
                 limit?: number;
+                scope?: "liked" | "all";
             };
             header?: never;
             path?: never;
@@ -3085,7 +3118,9 @@ export interface operations {
     };
     library_summary_api_v1_library_summary_get: {
         parameters: {
-            query?: never;
+            query?: {
+                scope?: "liked" | "all";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3101,6 +3136,15 @@ export interface operations {
                     "application/json": components["schemas"]["LibrarySummary"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     tracks_api_v1_library_tracks_get: {
@@ -3110,6 +3154,7 @@ export interface operations {
                 limit?: number;
                 sort?: "asc" | "desc";
                 group?: string | null;
+                scope?: "liked" | "all";
             };
             header?: never;
             path?: never;
@@ -3545,7 +3590,9 @@ export interface operations {
     };
     playlist_detail_api_v1_playlists__playlist_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                scope?: "liked" | "all";
+            };
             header?: never;
             path: {
                 playlist_id: string;
@@ -3580,6 +3627,7 @@ export interface operations {
                 cursor?: string | null;
                 limit?: number;
                 sort?: "original" | "asc" | "desc";
+                scope?: "liked" | "all";
             };
             header?: never;
             path: {
@@ -3962,7 +4010,9 @@ export interface operations {
     };
     stream_studio_artifact: {
         parameters: {
-            query?: never;
+            query?: {
+                download?: boolean;
+            };
             header?: {
                 "if-none-match"?: string | null;
                 "x-musicscope-user-id"?: string | null;
@@ -4031,7 +4081,10 @@ export interface operations {
     };
     start_job_api_v1_studio_assets__asset_id__jobs_post: {
         parameters: {
-            query?: never;
+            query?: {
+                model?: string;
+                track_id?: string | null;
+            };
             header?: {
                 "x-musicscope-user-id"?: string | null;
             };
@@ -4227,9 +4280,46 @@ export interface operations {
             };
         };
     };
+    start_library_track_job_api_v1_studio_tracks__track_id__jobs_post: {
+        parameters: {
+            query?: {
+                model?: string;
+            };
+            header?: {
+                "x-musicscope-user-id"?: string | null;
+            };
+            path: {
+                track_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioJobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     track_detail_api_v1_tracks__track_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                scope?: "liked" | "all";
+            };
             header?: never;
             path: {
                 track_id: string;

@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, File, Header, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse
+from sqlalchemy import select
 
 from app.api.dependencies import CurrentUser, DbSession
 from app.api.schemas import (
@@ -15,7 +16,8 @@ from app.api.schemas import (
     StudioJobResponse,
 )
 from app.domain.enums import StemJobStatus
-from app.domain.models import AudioAsset, StemArtifact, StemJob
+from app.domain.models import AudioAsset, StemArtifact, StemJob, StudioTrackJob, Track
+from app.providers.errors import ProviderAuthenticationExpired, ProviderError, ProviderPlaybackUnavailable
 from app.services.audio_studio import (
     StudioError,
     artifact_for_user,
@@ -28,10 +30,18 @@ from app.services.audio_studio import (
     resolve_storage_key,
     retry_job,
     user_job,
+    validate_library_track,
     waveform_for_user,
 )
+from app.services.playback import PlaybackService
+from app.services.studio_provider_import import create_provider_audio_asset
 
 router = APIRouter(prefix="/studio", tags=["studio"])
+
+
+def _require_six_stems(model: str) -> None:
+    if model != "htdemucs_6s":
+        raise StudioError(422, "UNSUPPORTED_STEM_MODEL", "New Studio jobs use six-stem separation only.")
 
 
 def _raise(error: StudioError) -> None:
@@ -83,6 +93,14 @@ def _job_response(db: DbSession, job: StemJob, *, reused: bool = False) -> Studi
         configuration=job.configuration,
         asset=_asset_response(asset),
         artifacts=[_artifact_response(item) for item in artifacts],
+        source_track_ids=[
+            str(track_id)
+            for track_id in db.scalars(
+                select(StudioTrackJob.track_id)
+                .where(StudioTrackJob.stem_job_id == job.id, StudioTrackJob.user_id == job.user_id)
+                .order_by(StudioTrackJob.created_at.desc())
+            )
+        ],
         waveform_url=f"/api/v1/studio/jobs/{job.id}/waveform" if artifacts else None,
         cancellable=job.status
         in {
@@ -115,11 +133,68 @@ async def upload_asset(
 
 
 @router.post("/assets/{asset_id}/jobs", response_model=StudioJobResponse, status_code=201)
-def start_job(asset_id: UUID, db: DbSession, user: CurrentUser, response: Response) -> StudioJobResponse:
+def start_job(
+    asset_id: UUID,
+    db: DbSession,
+    user: CurrentUser,
+    response: Response,
+    model: str = "htdemucs_6s",
+    track_id: UUID | None = None,
+) -> StudioJobResponse:
     try:
-        job, reused = create_stem_job(db, user, asset_id)
+        _require_six_stems(model)
+        job, reused = create_stem_job(db, user, asset_id, model, track_id)
     except StudioError as error:
         _raise(error)
+    if reused or job.status != StemJobStatus.QUEUED.value:
+        response.status_code = status.HTTP_200_OK
+    return _job_response(db, job, reused=reused)
+
+
+@router.post("/tracks/{track_id}/jobs", response_model=StudioJobResponse, status_code=201)
+async def start_library_track_job(
+    track_id: UUID,
+    db: DbSession,
+    user: CurrentUser,
+    response: Response,
+    model: str = "htdemucs_6s",
+) -> StudioJobResponse:
+    """Import playable account audio locally, then queue a normal Studio job."""
+    try:
+        _require_six_stems(model)
+        validate_library_track(db, user, track_id)
+        track = db.get(Track, track_id)
+        if track is None:
+            raise StudioError(404, "LIBRARY_TRACK_NOT_FOUND", "Track is not in this user's library.")
+        resolved = await PlaybackService(db).resolve(track_id, user)
+        asset, _ = await create_provider_audio_asset(db, user, track, resolved.source)
+        job, reused = create_stem_job(db, user, asset.id, model, track_id)
+    except StudioError as error:
+        _raise(error)
+    except PermissionError:
+        _raise(
+            StudioError(409, "NETEASE_NOT_CONNECTED", "Connect NetEase before separating an account song.")
+        )
+    except LookupError:
+        _raise(
+            StudioError(
+                422, "PROVIDER_AUDIO_UNAVAILABLE", "This library song has no playable NetEase source."
+            )
+        )
+    except ProviderPlaybackUnavailable:
+        _raise(
+            StudioError(
+                422, "PROVIDER_AUDIO_UNAVAILABLE", "This song cannot be played with the current account."
+            )
+        )
+    except ProviderAuthenticationExpired:
+        _raise(StudioError(401, "NETEASE_SESSION_EXPIRED", "Reconnect NetEase before separating this song."))
+    except ProviderError:
+        _raise(
+            StudioError(
+                503, "PROVIDER_UNAVAILABLE", "The NetEase playback source is temporarily unavailable."
+            )
+        )
     if reused or job.status != StemJobStatus.QUEUED.value:
         response.status_code = status.HTTP_200_OK
     return _job_response(db, job, reused=reused)
@@ -176,6 +251,7 @@ def _stream_artifact(
     db: DbSession,
     user: CurrentUser,
     if_none_match: Annotated[str | None, Header()] = None,
+    download: bool = False,
 ) -> Response:
     try:
         artifact = artifact_for_user(db, user.id, artifact_id)
@@ -195,7 +271,7 @@ def _stream_artifact(
         path,
         media_type="audio/flac",
         filename=f"{artifact.stem_type.casefold()}.flac",
-        content_disposition_type="inline",
+        content_disposition_type="attachment" if download else "inline",
         headers=headers,
     )
 
@@ -207,8 +283,9 @@ def stream_artifact(
     db: DbSession,
     user: CurrentUser,
     if_none_match: Annotated[str | None, Header()] = None,
+    download: bool = False,
 ) -> Response:
-    return _stream_artifact(artifact_id, request, db, user, if_none_match)
+    return _stream_artifact(artifact_id, request, db, user, if_none_match, download)
 
 
 @router.head("/artifacts/{artifact_id}/stream", include_in_schema=False)

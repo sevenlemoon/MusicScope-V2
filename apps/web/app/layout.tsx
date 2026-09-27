@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "MusicScope", template: "%s · MusicScope" },
-  description: "Personal music intelligence, discovery, live music, and audio exploration.",
+  description: "A focused audio stem-separation tool with your connected music library.",
 };
 
 export const viewport: Viewport = {

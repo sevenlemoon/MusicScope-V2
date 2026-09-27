@@ -169,6 +169,7 @@ class NetEaseProvider:
                     "description": item.get("description"),
                     "creator_nickname": (item.get("creator") or {}).get("nickname"),
                     "subscribed": bool(item.get("subscribed", False)),
+                    "special_type": item.get("specialType"),
                     "provider_update_time": item.get("updateTime"),
                 },
             )

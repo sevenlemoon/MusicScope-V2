@@ -3,6 +3,7 @@ import base64
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
@@ -71,15 +72,24 @@ def connected_user(db: Session) -> MusicConnection:
 
 
 def test_global_sort_group_and_pagination_put_non_latin_last(db: Session) -> None:
-    for name in ("Beta", " alpha ", "Ado", "#KTCHAN", "中文艺人"):
-        db.add(Artist(name=name))
+    connection = connected_user(db)
+    playlist = Playlist(name="Main", owner_connection_id=connection.id)
+    db.add(playlist)
+    db.flush()
+    for position, name in enumerate(("Beta", " alpha ", "Ado", "#KTCHAN", "中文艺人")):
+        artist = Artist(name=name)
+        track = Track(title=f"Song by {name}")
+        db.add_all([artist, track])
+        db.flush()
+        db.add(TrackArtist(track_id=track.id, artist_id=artist.id, position=0))
+        db.add(PlaylistTrack(playlist_id=playlist.id, track_id=track.id, position=position))
     db.flush()
 
-    first = library.artists(db, cursor=None, limit=2, sort="asc", group=None)
-    second = library.artists(db, cursor=first.next_cursor, limit=2, sort="asc", group=None)
-    final = library.artists(db, cursor=second.next_cursor, limit=2, sort="asc", group=None)
-    descending = library.artists(db, cursor=None, limit=10, sort="desc", group=None)
-    other = library.artists(db, cursor=None, limit=10, sort="asc", group="#")
+    first = library.artists(db, cursor=None, limit=2, sort="asc", group=None, scope="all")
+    second = library.artists(db, cursor=first.next_cursor, limit=2, sort="asc", group=None, scope="all")
+    final = library.artists(db, cursor=second.next_cursor, limit=2, sort="asc", group=None, scope="all")
+    descending = library.artists(db, cursor=None, limit=10, sort="desc", group=None, scope="all")
+    other = library.artists(db, cursor=None, limit=10, sort="asc", group="#", scope="all")
 
     assert [item.name.strip() for item in first.items] == ["Ado", "alpha"]
     assert [item.name.strip() for item in second.items] == ["Beta", "#KTCHAN"]
@@ -90,6 +100,112 @@ def test_global_sort_group_and_pagination_put_non_latin_last(db: Session) -> Non
     assert [group.key for group in first.groups] == ["A", "B", "#"]
     assert first.range_start == 1 and first.range_end == 2
     assert second.previous_cursor == "0"
+
+
+def test_liked_scope_counts_only_liked_tracks_and_first_credited_artists(db: Session) -> None:
+    connection = connected_user(db)
+    connection.metadata_json = {"nickname": "Listener"}
+    liked = Playlist(
+        name="Listener喜欢的音乐",
+        owner_connection_id=connection.id,
+        metadata_json={"special_type": 5, "subscribed": False},
+    )
+    subscribed = Playlist(
+        name="Someone else's playlist",
+        owner_connection_id=connection.id,
+        metadata_json={"subscribed": True},
+    )
+    lead = Artist(name="Lead Singer")
+    guest = Artist(name="Guest Singer")
+    other = Artist(name="Other Singer")
+    liked_album = Album(title="Liked Album")
+    other_album = Album(title="Other Album")
+    db.add_all([liked, subscribed, lead, guest, other, liked_album, other_album])
+    db.flush()
+    liked_track = Track(title="Liked Song", album_id=liked_album.id)
+    other_track = Track(title="Other Song", album_id=other_album.id)
+    db.add_all([liked_track, other_track])
+    db.flush()
+    db.add_all(
+        [
+            PlaylistTrack(playlist_id=liked.id, track_id=liked_track.id, position=0),
+            PlaylistTrack(playlist_id=subscribed.id, track_id=other_track.id, position=0),
+            TrackArtist(track_id=liked_track.id, artist_id=lead.id, position=0),
+            TrackArtist(track_id=liked_track.id, artist_id=guest.id, position=1),
+            TrackArtist(track_id=other_track.id, artist_id=other.id, position=0),
+        ]
+    )
+    db.flush()
+
+    assert library.library_summary(db).counts.model_dump() == {
+        "playlists": 1,
+        "tracks": 1,
+        "albums": 1,
+        "artists": 1,
+    }
+    assert library.library_summary(db, scope="all").counts.model_dump() == {
+        "playlists": 2,
+        "tracks": 2,
+        "albums": 2,
+        "artists": 2,
+    }
+    assert [item.name for item in library.artists(db, None, 24, "asc", None, "liked").items] == [
+        "Lead Singer"
+    ]
+    assert library.tracks(db, None, 50, "asc", None, "liked").total == 1
+    liked_albums = library.albums(db, None, 24, "asc", None, "liked")
+    assert liked_albums.total == 1
+    assert [artist.name for artist in liked_albums.items[0].artists] == ["Lead Singer"]
+    assert library.playlists(db, None, 24, "asc", None, "liked").total == 1
+    assert library.search_library(db, "Guest", "artist", None, 24, "liked").total == 0
+    assert library.search_library(db, "Someone", "playlist", None, 24, "liked").total == 0
+    assert library.search_library(db, "Someone", "playlist", None, 24, "all").total == 1
+    assert catalog.artist_detail(lead.id, db).library_track_count == 1
+    assert catalog.artist_detail(guest.id, db).library_track_count == 0
+    assert catalog.artist_tracks(lead.id, db, None, 50, "asc").total == 1
+    assert catalog.artist_tracks(guest.id, db, None, 50, "asc").total == 0
+    assert catalog.artist_albums(lead.id, db, None, 24, "asc").total == 1
+    assert catalog.artist_albums(guest.id, db, None, 24, "asc").total == 0
+    assert catalog.album_detail(liked_album.id, db).library_track_count == 1
+    assert catalog.album_tracks(liked_album.id, db, None, 50, "asc").total == 1
+    assert [artist.name for artist in catalog.track_detail(liked_track.id, db).artists] == ["Lead Singer"]
+    assert [playlist.name for playlist in catalog.track_detail(liked_track.id, db).playlists] == [
+        "Listener喜欢的音乐"
+    ]
+    with pytest.raises(HTTPException) as error:
+        catalog.playlist_detail(subscribed.id, db)
+    assert error.value.status_code == 404
+
+
+def test_liked_scope_recognizes_the_older_exact_account_playlist_name(db: Session) -> None:
+    connection = connected_user(db)
+    connection.metadata_json = {"nickname": "Listener"}
+    liked = Playlist(
+        name="Listener喜欢的音乐",
+        owner_connection_id=connection.id,
+        metadata_json={"subscribed": False},
+    )
+    similarly_named = Playlist(
+        name="Listener喜欢的音乐（备份）",
+        owner_connection_id=connection.id,
+        metadata_json={"subscribed": False},
+    )
+    db.add_all([liked, similarly_named])
+    db.flush()
+    first, second = Track(title="Liked"), Track(title="Backup")
+    db.add_all([first, second])
+    db.flush()
+    db.add_all(
+        [
+            PlaylistTrack(playlist_id=liked.id, track_id=first.id, position=0),
+            PlaylistTrack(playlist_id=similarly_named.id, track_id=second.id, position=0),
+        ]
+    )
+    db.flush()
+
+    result = library.tracks(db, None, 50, "asc", None, "liked")
+    assert result.total == 1
+    assert result.items[0].title == "Liked"
 
 
 def test_detail_queries_use_canonical_multi_artist_relationships_and_playlist_order(
@@ -119,15 +235,15 @@ def test_detail_queries_use_canonical_multi_artist_relationships_and_playlist_or
         db.add(PlaylistTrack(playlist_id=playlist.id, track_id=track.id, position=index))
     db.flush()
 
-    detail_a = catalog.artist_detail(artist_a.id, db)
-    detail_b = catalog.artist_detail(artist_b.id, db)
-    tracks_b = catalog.artist_tracks(artist_b.id, db, None, 50, "asc")
-    album_detail = catalog.album_detail(album.id, db)
-    playlist_detail = catalog.playlist_detail(playlist.id, db)
-    original = catalog.playlist_tracks(playlist.id, db, None, 50, "original")
-    second = catalog.playlist_tracks(playlist.id, db, original.next_cursor, 50, "original")
-    alphabetical = catalog.playlist_tracks(playlist.id, db, None, 50, "asc")
-    track_detail = catalog.track_detail(tracks[0].id, db)
+    detail_a = catalog.artist_detail(artist_a.id, db, "all")
+    detail_b = catalog.artist_detail(artist_b.id, db, "all")
+    tracks_b = catalog.artist_tracks(artist_b.id, db, None, 50, "asc", "all")
+    album_detail = catalog.album_detail(album.id, db, "all")
+    playlist_detail = catalog.playlist_detail(playlist.id, db, "all")
+    original = catalog.playlist_tracks(playlist.id, db, None, 50, "original", "all")
+    second = catalog.playlist_tracks(playlist.id, db, original.next_cursor, 50, "original", "all")
+    alphabetical = catalog.playlist_tracks(playlist.id, db, None, 50, "asc", "all")
+    track_detail = catalog.track_detail(tracks[0].id, db, "all")
 
     assert detail_a.library_track_count == 120
     assert detail_a.represented_album_count == 1
@@ -184,7 +300,7 @@ def test_playback_uses_authenticated_provider_result_and_stem_entry_is_honest(db
     assert result.source.duration_ms == 180_000
     assert result.source.quality == "standard"
     entry = catalog.stem_entry(track.id, db)
-    assert entry.status == "LOCAL_UPLOAD_REQUIRED"
+    assert entry.status == "ACCOUNT_SONG_SELECTED"
     assert db.scalar(select(func.count()).select_from(AudioAsset)) == 0
     assert db.scalar(select(func.count()).select_from(StemJob)) == 0
 

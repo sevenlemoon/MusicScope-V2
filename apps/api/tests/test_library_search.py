@@ -3,15 +3,34 @@ from sqlalchemy.orm import Session
 
 from app.api.routes import library
 from app.core.database import Base
-from app.domain.models import Album, AlbumArtist, Artist, Playlist, Track, TrackArtist
+from app.domain.models import (
+    Album,
+    AlbumArtist,
+    Artist,
+    MusicConnection,
+    Playlist,
+    PlaylistTrack,
+    Track,
+    TrackArtist,
+    User,
+)
 
 
 def make_library(db: Session) -> dict[str, object]:
+    user = User()
+    db.add(user)
+    db.flush()
+    connection = MusicConnection(user_id=user.id, provider="netease", provider_user_id="listener")
+    db.add(connection)
+    db.flush()
     milet = Artist(name="milet", artwork_url="https://p1.music.126.net/milet.jpg")
     yoasobi = Artist(name="YOASOBI")
     japanese = Artist(name="宇多田ヒカル")
     album = Album(title="milet Live Album", artwork_url="https://p1.music.126.net/album.jpg")
-    playlist = Playlist(name="milet favorites", track_count=1)
+    playlist = Playlist(
+        name="milet favorites", track_count=1, owner_connection_id=connection.id,
+        metadata_json={"special_type": 5},
+    )
     track = Track(title="milet song", album_id=None, artwork_url="https://p1.music.126.net/track.jpg")
     non_latin_track = Track(title="夜に駆ける")
     db.add_all([milet, yoasobi, japanese, album, playlist, track, non_latin_track])
@@ -22,10 +41,15 @@ def make_library(db: Session) -> dict[str, object]:
             TrackArtist(track_id=track.id, artist_id=milet.id, position=0),
             TrackArtist(track_id=non_latin_track.id, artist_id=yoasobi.id, position=0),
             AlbumArtist(album_id=album.id, artist_id=milet.id, position=0),
+            PlaylistTrack(playlist_id=playlist.id, track_id=track.id, position=0),
+            PlaylistTrack(playlist_id=playlist.id, track_id=non_latin_track.id, position=1),
         ]
     )
     for index in range(6):
-        db.add(Track(title=f"Milestone {index:02}"))
+        milestone = Track(title=f"Milestone {index:02}")
+        db.add(milestone)
+        db.flush()
+        db.add(PlaylistTrack(playlist_id=playlist.id, track_id=milestone.id, position=index + 2))
     db.flush()
     return {"milet": milet, "album": album, "playlist": playlist, "track": track}
 

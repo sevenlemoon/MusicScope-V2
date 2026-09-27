@@ -270,7 +270,7 @@ class PlaybackSourceResponse(BaseModel):
 
 
 class StemEntryResponse(BaseModel):
-    status: Literal["LOCAL_UPLOAD_REQUIRED"]
+    status: Literal["ACCOUNT_SONG_SELECTED"]
     message: str
     studio_url: str
 
@@ -290,7 +290,7 @@ class StudioAssetResponse(BaseModel):
 
 class StudioArtifactResponse(BaseModel):
     id: str
-    stem_type: Literal["VOCALS", "DRUMS", "BASS", "OTHER"]
+    stem_type: Literal["VOCALS", "DRUMS", "BASS", "GUITAR", "PIANO", "OTHER"]
     media_type: Literal["audio/flac"] = "audio/flac"
     size_bytes: int
     duration_ms: int | None = None
@@ -314,6 +314,7 @@ class StudioJobResponse(BaseModel):
     configuration: dict[str, object] = Field(default_factory=dict)
     asset: StudioAssetResponse
     artifacts: list[StudioArtifactResponse] = Field(default_factory=list)
+    source_track_ids: list[str] = Field(default_factory=list)
     waveform_url: str | None = None
     cancellable: bool = False
     retryable: bool = False

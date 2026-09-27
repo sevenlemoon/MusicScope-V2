@@ -34,7 +34,7 @@ describe("LibraryExperience", () => {
         }) as never;
       }
       if (url.includes("/playback-source")) return response({ track_id: "st1", source_type: "provider_stream", url: "https://temporary.invalid/audio", mime_type: "audio/mpeg", provider: "netease", resolution_ms: 20 }) as never;
-      if (url.includes("/stem-jobs")) return response({ status: "LOCAL_UPLOAD_REQUIRED", studio_url: "/studio?source=local-upload&track=st1" }) as never;
+      if (url.includes("/stem-jobs")) return response({ status: "ACCOUNT_SONG_SELECTED", studio_url: "/studio?source=account&track=st1" }) as never;
       if (url.includes("/playlists")) return response({ ...pageBase, next_cursor: "24", items: [{ id: "p1", name: "Real playlist", artwork_url: null, track_count: 120, sort_group: "R" }] }) as never;
       if (url.includes("/albums")) return response({ ...pageBase, items: [{ id: "al1", title: "Real album", artwork_url: null, artists: [{ id: "a1", name: "Artist A" }], sort_group: "R" }] }) as never;
       if (url.includes("/artists")) return response({ ...pageBase, items: [{ id: "a1", name: "Real artist", artwork_url: null, sort_group: "R" }] }) as never;
@@ -45,7 +45,14 @@ describe("LibraryExperience", () => {
 
   it("provides global pagination and an accessible A–Z index with empty groups disabled", async () => {
     render(<PlayerProvider><LibraryExperience /></PlayerProvider>);
+    expect(await screen.findByText("Real track")).toBeInTheDocument();
+    expect(screen.getByText(/Only your liked-songs playlist is shown/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "All playlists" })).not.toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/library/tracks?sort=asc&limit=50&scope=liked"), expect.anything());
+    expect(screen.getByRole("tab", { name: /tracks/i })).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(screen.getByRole("tab", { name: /playlists/i }));
     expect(await screen.findByText("Real playlist")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/library/playlists?sort=asc&limit=24&scope=liked"), expect.anything());
     expect(screen.getByRole("link", { name: /Real playlist/ })).toHaveAttribute("href", "/playlist/p1");
     expect(screen.getByRole("button", { name: "A" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "R" })).toBeEnabled();
@@ -54,9 +61,9 @@ describe("LibraryExperience", () => {
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("cursor=24"), expect.anything()));
   });
 
-  it("links every canonical card and displays all artists on a track", async () => {
+  it("links every canonical card and shows only the lead artist in track rows", async () => {
     render(<PlayerProvider><LibraryExperience /></PlayerProvider>);
-    await screen.findByText("Real playlist");
+    await screen.findByText("Real track");
     fireEvent.click(screen.getByRole("tab", { name: /albums/i }));
     expect(await screen.findByRole("link", { name: /Real album/ })).toHaveAttribute("href", "/album/al1");
     fireEvent.click(screen.getByRole("tab", { name: /artists/i }));
@@ -64,26 +71,27 @@ describe("LibraryExperience", () => {
     fireEvent.click(screen.getByRole("tab", { name: /tracks/i }));
     expect(await screen.findByRole("link", { name: "Real track" })).toHaveAttribute("href", "/track/t1");
     expect(screen.getByText("Artist A")).toBeInTheDocument();
-    expect(screen.getByText("Artist B")).toBeInTheDocument();
+    expect(screen.queryByText("Artist B")).not.toBeInTheDocument();
   });
 
   it("searches all entity types, preserves actions and pagination, and clears with Escape", async () => {
     render(<PlayerProvider><LibraryExperience /></PlayerProvider>);
-    await screen.findByText("Real playlist");
-    const input = screen.getByPlaceholderText("Search tracks, artists, albums, playlists");
+    await screen.findByText("Real track");
+    const input = screen.getByPlaceholderText("Search liked tracks, lead artists, related albums and the playlist");
     fireEvent.change(input, { target: { value: "  MILET  " } });
     fireEvent.submit(screen.getByRole("search"));
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("scope=liked"), expect.anything());
 
     expect(await screen.findByRole("link", { name: "Search track" })).toHaveAttribute("href", "/track/st1");
     expect(screen.getByRole("link", { name: "Search artist 8 library tracks · exact match" })).toHaveAttribute("href", "/artist/sa1");
     expect(screen.getByRole("link", { name: "Search album Search artist · prefix match" })).toHaveAttribute("href", "/album/sal1");
-    expect(screen.getByRole("link", { name: "Search playlist 12 tracks · substring match" })).toHaveAttribute("href", "/playlist/sp1");
+    expect(screen.getByRole("link", { name: "Search playlist 1 synchronized tracks · substring match" })).toHaveAttribute("href", "/playlist/sp1");
     expect(screen.queryByRole("navigation", { name: "Filter by first character" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Play Search track" }));
     expect(await screen.findByRole("button", { name: "Pause" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Separate stems for Search track" }));
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/studio?source=local-upload&track=st1"));
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/studio?source=account&track=st1"));
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("cursor=24"), expect.anything()));
@@ -93,8 +101,8 @@ describe("LibraryExperience", () => {
 
   it("renders Unicode and honest no-result searches", async () => {
     render(<PlayerProvider><LibraryExperience /></PlayerProvider>);
-    await screen.findByText("Real playlist");
-    const input = screen.getByPlaceholderText("Search tracks, artists, albums, playlists");
+    await screen.findByText("Real track");
+    const input = screen.getByPlaceholderText("Search liked tracks, lead artists, related albums and the playlist");
     fireEvent.change(input, { target: { value: "夜" } });
     fireEvent.submit(screen.getByRole("search"));
     expect(await screen.findByRole("link", { name: "夜に駆ける" })).toBeInTheDocument();

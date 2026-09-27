@@ -10,12 +10,8 @@ export type NavigationItem = {
 };
 
 export const primaryRoutes: NavigationItem[] = [
-  { href: "/", label: "Home", zhLabel: "首页", shortLabel: "Home", zhShortLabel: "首页", icon: "home" },
-  { href: "/discover", label: "Discover", zhLabel: "发现", shortLabel: "Discover", zhShortLabel: "发现", icon: "discover" },
+  { href: "/", label: "Stem Studio", zhLabel: "音轨分离", shortLabel: "Studio", zhShortLabel: "分轨", icon: "studio" },
   { href: "/library", label: "Library", zhLabel: "资料库", shortLabel: "Library", zhShortLabel: "资料库", icon: "library" },
-  { href: "/live", label: "Live", zhLabel: "现场", shortLabel: "Live", zhShortLabel: "现场", icon: "live" },
-  { href: "/studio", label: "Studio", zhLabel: "工作室", shortLabel: "Studio", zhShortLabel: "工作室", icon: "studio" },
-  { href: "/insights", label: "Insights", zhLabel: "洞察", shortLabel: "Insights", zhShortLabel: "洞察", icon: "insights" },
 ];
 
 export const secondaryRoutePatterns = [
@@ -26,4 +22,6 @@ export const secondaryRoutePatterns = [
   "/track/[id]",
   "/profile",
   "/settings",
+  "/studio",
+  "/studio/jobs/[id]",
 ] as const;

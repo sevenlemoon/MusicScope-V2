@@ -45,7 +45,7 @@ class PlaybackService:
         self.provider_factory = provider_factory or (lambda cookie: NetEaseProvider(session_cookie=cookie))
         self.cipher = cipher
 
-    async def resolve(self, track_id: UUID) -> PlaybackResolution:
+    async def resolve(self, track_id: UUID, user: User | None = None) -> PlaybackResolution:
         track = self.session.get(Track, track_id)
         if track is None:
             raise LookupError("Track not found.")
@@ -58,14 +58,14 @@ class PlaybackService:
         )
         if identity is None:
             raise LookupError("Track has no NetEase identity.")
+        connection_query = select(MusicConnection).where(
+            MusicConnection.provider == "netease",
+            MusicConnection.status == ConnectionStatus.CONNECTED.value,
+        )
+        if user is not None:
+            connection_query = connection_query.where(MusicConnection.user_id == user.id)
         connection = self.session.scalar(
-            select(MusicConnection)
-            .where(
-                MusicConnection.provider == "netease",
-                MusicConnection.status == ConnectionStatus.CONNECTED.value,
-            )
-            .order_by(MusicConnection.updated_at.desc())
-            .limit(1)
+            connection_query.order_by(MusicConnection.updated_at.desc()).limit(1)
         )
         if connection is None:
             raise PermissionError("A connected NetEase account is required.")

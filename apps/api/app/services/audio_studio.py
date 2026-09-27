@@ -17,12 +17,25 @@ from sqlalchemy.orm import Session
 
 from app.core.config import V2_ROOT, get_settings
 from app.domain.enums import StemJobStatus
-from app.domain.models import AudioAsset, StemArtifact, StemJob, User, utc_now
+from app.domain.models import (
+    AudioAsset,
+    LibraryItem,
+    MusicConnection,
+    Playlist,
+    PlaylistTrack,
+    StemArtifact,
+    StemJob,
+    StudioTrackJob,
+    Track,
+    User,
+    utc_now,
+)
 
 if TYPE_CHECKING:
     from fastapi import UploadFile
 
 STEM_TYPES = ("VOCALS", "DRUMS", "BASS", "OTHER")
+SIX_STEM_TYPES = ("VOCALS", "DRUMS", "BASS", "GUITAR", "PIANO", "OTHER")
 PROCESSING_CONFIGURATION: dict[str, Any] = {
     "version": 1,
     "model": "htdemucs",
@@ -236,9 +249,7 @@ async def create_audio_asset(db: Session, user: User, upload: UploadFile) -> tup
         except IntegrityError:
             db.rollback()
             existing = db.scalar(
-                select(AudioAsset).where(
-                    AudioAsset.user_id == user.id, AudioAsset.sha256 == checksum
-                )
+                select(AudioAsset).where(AudioAsset.user_id == user.id, AudioAsset.sha256 == checksum)
             )
             if existing is None:
                 raise
@@ -255,15 +266,35 @@ async def create_audio_asset(db: Session, user: User, upload: UploadFile) -> tup
         await upload.close()
 
 
-def processing_fingerprint(source_sha256: str) -> str:
-    canonical = {"source_sha256": source_sha256, **PROCESSING_CONFIGURATION}
+def stem_types_for_model(model_name: str) -> tuple[str, ...]:
+    if model_name == "htdemucs":
+        return STEM_TYPES
+    if model_name == "htdemucs_6s":
+        return SIX_STEM_TYPES
+    raise StudioError(422, "UNSUPPORTED_STEM_MODEL", "Unsupported separation model.")
+
+
+def processing_configuration(model_name: str) -> dict[str, Any]:
+    stem_types_for_model(model_name)
+    if model_name == "htdemucs":
+        return PROCESSING_CONFIGURATION.copy()
+    return {
+        **PROCESSING_CONFIGURATION,
+        "version": 2,
+        "model": model_name,
+        "model_identity": "htdemucs_6s-demucs-4.1.0",
+    }
+
+
+def processing_fingerprint(source_sha256: str, model_name: str = "htdemucs") -> str:
+    canonical = {"source_sha256": source_sha256, **processing_configuration(model_name)}
     encoded = json.dumps(canonical, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
 def _artifacts_are_valid(job: StemJob, artifacts: list[StemArtifact]) -> bool:
     if job.status != StemJobStatus.SUCCEEDED.value or {item.stem_type for item in artifacts} != set(
-        STEM_TYPES
+        stem_types_for_model(job.model_name)
     ):
         return False
     try:
@@ -274,27 +305,63 @@ def _artifacts_are_valid(job: StemJob, artifacts: list[StemArtifact]) -> bool:
         return False
 
 
-def create_stem_job(db: Session, user: User, asset_id: UUID) -> tuple[StemJob, bool]:
+def validate_library_track(db: Session, user: User, track_id: UUID) -> None:
+    in_playlist = db.scalar(
+        select(Track.id)
+        .join(PlaylistTrack, PlaylistTrack.track_id == Track.id)
+        .join(Playlist, Playlist.id == PlaylistTrack.playlist_id)
+        .join(MusicConnection, MusicConnection.id == Playlist.owner_connection_id)
+        .where(Track.id == track_id, MusicConnection.user_id == user.id)
+        .limit(1)
+    )
+    saved = db.scalar(
+        select(LibraryItem.id)
+        .where(
+            LibraryItem.track_id == track_id,
+            LibraryItem.user_id == user.id,
+            LibraryItem.active.is_(True),
+        )
+        .limit(1)
+    )
+    if in_playlist is None and saved is None:
+        raise StudioError(404, "LIBRARY_TRACK_NOT_FOUND", "Track is not in this user's library.")
+
+
+def _link_library_track(db: Session, user: User, job: StemJob, track_id: UUID) -> None:
+    key = (user.id, track_id, job.id)
+    if db.get(StudioTrackJob, key) is None:
+        db.add(StudioTrackJob(user_id=user.id, track_id=track_id, stem_job_id=job.id))
+        db.commit()
+
+
+def create_stem_job(
+    db: Session,
+    user: User,
+    asset_id: UUID,
+    model_name: str = "htdemucs_6s",
+    track_id: UUID | None = None,
+) -> tuple[StemJob, bool]:
+    configuration = processing_configuration(model_name)
     asset = db.scalar(select(AudioAsset).where(AudioAsset.id == asset_id, AudioAsset.user_id == user.id))
     if asset is None:
         raise StudioError(404, "AUDIO_ASSET_NOT_FOUND", "Audio asset not found.")
-    fingerprint = processing_fingerprint(asset.sha256)
+    if track_id is not None:
+        validate_library_track(db, user, track_id)
+    fingerprint = processing_fingerprint(asset.sha256, model_name)
     existing = db.scalar(
         select(StemJob).where(StemJob.user_id == user.id, StemJob.fingerprint == fingerprint)
     )
     if existing is not None:
-        artifacts = list(
-            db.scalars(select(StemArtifact).where(StemArtifact.stem_job_id == existing.id))
-        )
-        if existing.status == StemJobStatus.SUCCEEDED.value and not _artifacts_are_valid(
-            existing, artifacts
-        ):
+        artifacts = list(db.scalars(select(StemArtifact).where(StemArtifact.stem_job_id == existing.id)))
+        if existing.status == StemJobStatus.SUCCEEDED.value and not _artifacts_are_valid(existing, artifacts):
             existing.status = StemJobStatus.FAILED.value
             existing.stage = "FAILED"
             existing.safe_error_code = "ARTIFACT_VALIDATION_FAILED"
             existing.safe_error_message = "Stored stem artifacts require regeneration."
             existing.completed_at = utc_now()
             db.commit()
+        if track_id is not None:
+            _link_library_track(db, user, existing, track_id)
         return existing, True
     job = StemJob(
         user_id=user.id,
@@ -302,10 +369,10 @@ def create_stem_job(db: Session, user: User, asset_id: UUID) -> tuple[StemJob, b
         status=StemJobStatus.QUEUED.value,
         stage="QUEUED",
         fingerprint=fingerprint,
-        model_name=str(PROCESSING_CONFIGURATION["model"]),
-        model_version=str(PROCESSING_CONFIGURATION["model_identity"]),
-        demucs_version=str(PROCESSING_CONFIGURATION["demucs_version"]),
-        configuration=PROCESSING_CONFIGURATION,
+        model_name=model_name,
+        model_version=str(configuration["model_identity"]),
+        demucs_version=str(configuration["demucs_version"]),
+        configuration=configuration,
         progress=0,
     )
     db.add(job)
@@ -318,8 +385,12 @@ def create_stem_job(db: Session, user: User, asset_id: UUID) -> tuple[StemJob, b
         )
         if existing is None:
             raise
+        if track_id is not None:
+            _link_library_track(db, user, existing, track_id)
         return existing, existing.status == StemJobStatus.SUCCEEDED.value
     db.refresh(job)
+    if track_id is not None:
+        _link_library_track(db, user, job, track_id)
     return job, False
 
 

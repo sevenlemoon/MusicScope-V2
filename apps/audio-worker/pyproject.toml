@@ -1,7 +1,7 @@
 [project]
 name = "musicscope-audio-worker"
 version = "0.1.0"
-description = "Isolated local four-stem separation worker for MusicScope V2"
+description = "Isolated local four- or six-stem separation worker for MusicScope V2"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "demucs==4.1.0",

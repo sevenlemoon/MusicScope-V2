@@ -28,11 +28,9 @@ from app.api.schemas import (
 from app.core.database import get_db
 from app.domain.models import (
     Album,
-    AlbumArtist,
     Artist,
     MusicConnection,
     Playlist,
-    PlaylistTrack,
     SyncState,
     Track,
     TrackArtist,
@@ -49,21 +47,28 @@ from app.services.library_queries import (
     sort_clauses,
     track_items,
 )
+from app.services.library_scope import (
+    LibraryScope,
+    album_ids_for_scope,
+    lead_artist_ids_for_scope,
+    playlist_ids_for_scope,
+    track_ids_for_scope,
+)
 
 router = APIRouter(prefix="/library", tags=["library"])
 DbSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/summary", response_model=LibrarySummary)
-def library_summary(db: DbSession) -> LibrarySummary:
+def library_summary(db: DbSession, scope: LibraryScope = "liked") -> LibrarySummary:
     user = db.scalar(select(User).order_by(User.created_at, User.id).limit(1))
     if user is None:
         return LibrarySummary(connection_state="not_connected", sync_state="idle", counts=LibraryCounts())
     connection_ids = select(MusicConnection.id).where(MusicConnection.user_id == user.id)
-    playlist_ids = select(Playlist.id).where(Playlist.owner_connection_id.in_(connection_ids))
-    track_ids = select(PlaylistTrack.track_id).where(PlaylistTrack.playlist_id.in_(playlist_ids))
-    album_ids = select(Track.album_id).where(Track.id.in_(track_ids), Track.album_id.is_not(None))
-    artist_ids = select(TrackArtist.artist_id).where(TrackArtist.track_id.in_(track_ids))
+    playlist_ids = playlist_ids_for_scope(db, scope)
+    track_ids = track_ids_for_scope(db, scope)
+    album_ids = album_ids_for_scope(db, scope)
+    artist_ids = lead_artist_ids_for_scope(db, scope)
     counts = LibraryCounts(
         playlists=db.scalar(select(func.count()).select_from(Playlist).where(Playlist.id.in_(playlist_ids)))
         or 0,
@@ -120,6 +125,7 @@ def search_library(
     types: str | None = Query(None, description="Comma-separated track,artist,album,playlist"),
     cursor: str | None = None,
     limit: int = Query(24, ge=1, le=100),
+    scope: LibraryScope = "liked",
 ) -> LibrarySearchResponse:
     query = q.strip()
     if not query:
@@ -138,7 +144,19 @@ def search_library(
         "album": (Album, Album.title),
         "playlist": (Playlist, Playlist.name),
     }
-    hits = union_all(*[_search_select(kind, *models[kind], query) for kind in requested]).subquery()
+    candidates = []
+    for kind in requested:
+        candidate = _search_select(kind, *models[kind], query)
+        if kind == "track":
+            candidate = candidate.where(Track.id.in_(track_ids_for_scope(db, scope)))
+        elif kind == "album":
+            candidate = candidate.where(Album.id.in_(album_ids_for_scope(db, scope)))
+        elif kind == "artist":
+            candidate = candidate.where(Artist.id.in_(lead_artist_ids_for_scope(db, scope)))
+        elif kind == "playlist":
+            candidate = candidate.where(Playlist.id.in_(playlist_ids_for_scope(db, scope)))
+        candidates.append(candidate)
+    hits = union_all(*candidates).subquery()
     offset = offset_from_cursor(cursor)
     total = db.scalar(select(func.count()).select_from(hits)) or 0
     rows = list(
@@ -167,7 +185,11 @@ def search_library(
         dict(
             db.execute(
                 select(TrackArtist.artist_id, func.count())
-                .where(TrackArtist.artist_id.in_(ids_by_type["artist"]))
+                .where(
+                    TrackArtist.artist_id.in_(ids_by_type["artist"]),
+                    TrackArtist.position == 0,
+                    TrackArtist.track_id.in_(track_ids_for_scope(db, scope)),
+                )
                 .group_by(TrackArtist.artist_id)
             ).all()
         )
@@ -179,13 +201,19 @@ def search_library(
     }
     artists_by_album: dict[UUID, list[EntityReference]] = {album_id: [] for album_id in ids_by_type["album"]}
     if ids_by_type["album"]:
-        for album_id, artist in db.execute(
-            select(AlbumArtist.album_id, Artist)
-            .join(Artist, Artist.id == AlbumArtist.artist_id)
-            .where(AlbumArtist.album_id.in_(ids_by_type["album"]))
-            .order_by(AlbumArtist.album_id, AlbumArtist.position)
+        for album_id, artist_id, artist_name in db.execute(
+            select(Track.album_id, Artist.id, Artist.name)
+            .join(TrackArtist, TrackArtist.track_id == Track.id)
+            .join(Artist, Artist.id == TrackArtist.artist_id)
+            .where(
+                Track.album_id.in_(ids_by_type["album"]),
+                Track.id.in_(track_ids_for_scope(db, scope)),
+                TrackArtist.position == 0,
+            )
+            .distinct()
+            .order_by(Track.album_id, Artist.name)
         ):
-            artists_by_album[album_id].append(EntityReference(id=str(artist.id), name=artist.name))
+            artists_by_album[album_id].append(EntityReference(id=str(artist_id), name=artist_name))
     playlist_models = {
         item.id: item for item in db.scalars(select(Playlist).where(Playlist.id.in_(ids_by_type["playlist"])))
     }
@@ -253,9 +281,11 @@ def playlists(
     limit: int = Query(24, ge=1, le=100),
     sort: SortOrder = "asc",
     group: str | None = Query(None, pattern=r"^(?:[A-Z]|#)$"),
+    scope: LibraryScope = "liked",
 ) -> PlaylistPage:
     offset = offset_from_cursor(cursor)
-    statement = apply_group(select(Playlist), Playlist.name, group)
+    scope_condition = Playlist.id.in_(playlist_ids_for_scope(db, scope))
+    statement = apply_group(select(Playlist).where(scope_condition), Playlist.name, group)
     total = db.scalar(select(func.count()).select_from(statement.order_by(None).subquery())) or 0
     rows = list(
         db.scalars(
@@ -275,7 +305,9 @@ def playlists(
             for row in rows
         ],
         total=total,
-        groups=alphabet_groups(db, model=Playlist, column=Playlist.name, order=sort),
+        groups=alphabet_groups(
+            db, model=Playlist, column=Playlist.name, conditions=(scope_condition,), order=sort
+        ),
         sort=sort,
         group=group,
         **page_metadata(offset, len(rows), total, limit),
@@ -289,9 +321,11 @@ def albums(
     limit: int = Query(24, ge=1, le=100),
     sort: SortOrder = "asc",
     group: str | None = Query(None, pattern=r"^(?:[A-Z]|#)$"),
+    scope: LibraryScope = "liked",
 ) -> AlbumPage:
     offset = offset_from_cursor(cursor)
-    statement = apply_group(select(Album), Album.title, group)
+    scope_condition = Album.id.in_(album_ids_for_scope(db, scope))
+    statement = apply_group(select(Album).where(scope_condition), Album.title, group)
     total = db.scalar(select(func.count()).select_from(statement.order_by(None).subquery())) or 0
     rows = list(
         db.scalars(statement.order_by(*sort_clauses(Album.title, Album.id, sort)).offset(offset).limit(limit))
@@ -299,13 +333,19 @@ def albums(
     artists_by_album: dict[object, list[EntityReference]] = {row.id: [] for row in rows}
     if rows:
         artist_rows = db.execute(
-            select(AlbumArtist.album_id, Artist)
-            .join(Artist, Artist.id == AlbumArtist.artist_id)
-            .where(AlbumArtist.album_id.in_([row.id for row in rows]))
-            .order_by(AlbumArtist.album_id, AlbumArtist.position)
+            select(Track.album_id, Artist.id, Artist.name)
+            .join(TrackArtist, TrackArtist.track_id == Track.id)
+            .join(Artist, Artist.id == TrackArtist.artist_id)
+            .where(
+                Track.album_id.in_([row.id for row in rows]),
+                Track.id.in_(track_ids_for_scope(db, scope)),
+                TrackArtist.position == 0,
+            )
+            .distinct()
+            .order_by(Track.album_id, Artist.name)
         )
-        for album_id, artist in artist_rows:
-            artists_by_album[album_id].append(EntityReference(id=str(artist.id), name=artist.name))
+        for album_id, artist_id, artist_name in artist_rows:
+            artists_by_album[album_id].append(EntityReference(id=str(artist_id), name=artist_name))
     return AlbumPage(
         items=[
             AlbumItem(
@@ -318,7 +358,9 @@ def albums(
             for row in rows
         ],
         total=total,
-        groups=alphabet_groups(db, model=Album, column=Album.title, order=sort),
+        groups=alphabet_groups(
+            db, model=Album, column=Album.title, conditions=(scope_condition,), order=sort
+        ),
         sort=sort,
         group=group,
         **page_metadata(offset, len(rows), total, limit),
@@ -332,9 +374,11 @@ def artists(
     limit: int = Query(24, ge=1, le=100),
     sort: SortOrder = "asc",
     group: str | None = Query(None, pattern=r"^(?:[A-Z]|#)$"),
+    scope: LibraryScope = "liked",
 ) -> ArtistPage:
     offset = offset_from_cursor(cursor)
-    statement = apply_group(select(Artist), Artist.name, group)
+    scope_condition = Artist.id.in_(lead_artist_ids_for_scope(db, scope))
+    statement = apply_group(select(Artist).where(scope_condition), Artist.name, group)
     total = db.scalar(select(func.count()).select_from(statement.order_by(None).subquery())) or 0
     rows = list(
         db.scalars(
@@ -352,7 +396,9 @@ def artists(
             for row in rows
         ],
         total=total,
-        groups=alphabet_groups(db, model=Artist, column=Artist.name, order=sort),
+        groups=alphabet_groups(
+            db, model=Artist, column=Artist.name, conditions=(scope_condition,), order=sort
+        ),
         sort=sort,
         group=group,
         **page_metadata(offset, len(rows), total, limit),
@@ -366,9 +412,11 @@ def tracks(
     limit: int = Query(50, ge=1, le=100),
     sort: SortOrder = "asc",
     group: str | None = Query(None, pattern=r"^(?:[A-Z]|#)$"),
+    scope: LibraryScope = "liked",
 ) -> TrackPage:
     offset = offset_from_cursor(cursor)
-    statement = apply_group(select(Track), Track.title, group)
+    scope_condition = Track.id.in_(track_ids_for_scope(db, scope))
+    statement = apply_group(select(Track).where(scope_condition), Track.title, group)
     total = db.scalar(select(func.count()).select_from(statement.order_by(None).subquery())) or 0
     rows = list(
         db.scalars(statement.order_by(*sort_clauses(Track.title, Track.id, sort)).offset(offset).limit(limit))
@@ -377,7 +425,9 @@ def tracks(
     return TrackPage(
         items=items,
         total=total,
-        groups=alphabet_groups(db, model=Track, column=Track.title, order=sort),
+        groups=alphabet_groups(
+            db, model=Track, column=Track.title, conditions=(scope_condition,), order=sort
+        ),
         sort=sort,
         group=group,
         **page_metadata(offset, len(items), total, limit),

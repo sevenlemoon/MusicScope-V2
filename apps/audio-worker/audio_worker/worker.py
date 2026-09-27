@@ -30,6 +30,7 @@ from app.services.audio_studio import (  # noqa: E402
     StudioError,
     probe_audio,
     resolve_storage_key,
+    stem_types_for_model,
     storage_root,
     user_storage_bytes,
 )
@@ -285,16 +286,16 @@ def _canonical_input(db: Session, job: StemJob, source: Path, work: Path) -> Pat
     return target
 
 
-def _find_stems(output: Path) -> dict[str, Path]:
+def _find_stems(output: Path, expected: tuple[str, ...] = STEM_TYPES) -> dict[str, Path]:
     discovered: dict[str, Path] = {}
     for candidate in output.rglob("*.flac"):
         stem = candidate.stem.upper()
-        if stem in STEM_TYPES:
+        if stem in expected:
             if stem in discovered:
                 raise WorkerFailure("ARTIFACT_VALIDATION_FAILED", "Duplicate stem output was produced.")
             discovered[stem] = candidate
-    if set(discovered) != set(STEM_TYPES):
-        raise WorkerFailure("ARTIFACT_VALIDATION_FAILED", "Separation did not produce exactly four stems.")
+    if set(discovered) != set(expected):
+        raise WorkerFailure("ARTIFACT_VALIDATION_FAILED", f"Separation did not produce exactly {len(expected)} stems.")
     return discovered
 
 
@@ -423,7 +424,7 @@ def _publish(
         ) from exc
     waveform_key = (final_waveform / "peaks-v1.json").relative_to(root).as_posix()
     db.execute(delete(StemArtifact).where(StemArtifact.stem_job_id == job.id))
-    for stem in STEM_TYPES:
+    for stem in stem_types_for_model(job.model_name):
         final_path = final_stems / f"{stem.casefold()}.flac"
         item = metadata[stem]
         db.add(
@@ -510,7 +511,7 @@ def process_job(db: Session, job: StemJob) -> None:
         timings["separation_seconds"] = round(time.monotonic() - phase_started, 3)
         set_stage(db, job, StemJobStatus.RUNNING, "VALIDATING")
         phase_started = time.monotonic()
-        stems = _find_stems(output)
+        stems = _find_stems(output, stem_types_for_model(job.model_name))
         metadata = _validate_stems(stems, asset.duration_ms or 0)
         timings["validation_seconds"] = round(time.monotonic() - phase_started, 3)
         set_stage(db, job, StemJobStatus.RUNNING, "GENERATING_WAVEFORM")
