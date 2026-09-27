@@ -87,6 +87,11 @@ class SyncResponse(BaseModel):
     partial_failures: int
 
 
+class SavedAlbumSyncResponse(BaseModel):
+    status: str
+    albums: int
+
+
 class SyncStateResponse(BaseModel):
     status: str
     processed_items: int

@@ -16,6 +16,8 @@ describe("LibraryExperience", () => {
     pushMock.mockReset();
     global.fetch = jest.fn((input) => {
       const url = String(input);
+      if (url.includes("/saved-albums/sync")) return response({ status: "SYNCED", albums: 23 }) as never;
+      if (url.endsWith("/music-connections")) return response({ items: [{ id: "connection-1", status: "CONNECTED" }] }) as never;
       if (url.includes("/summary")) return response({ connection_state: "connected", sync_state: "complete", counts: { playlists: 1, albums: 1, artists: 1, tracks: 1 }, items: [] }) as never;
       if (url.includes("/search")) {
         if (url.includes("no-match")) return response({ query: "no-match", tracks: [], artists: [], albums: [], playlists: [], total: 0, next_cursor: null, previous_cursor: null, range_start: 0, range_end: 0 }) as never;
@@ -37,7 +39,6 @@ describe("LibraryExperience", () => {
       if (url.includes("/stem-jobs")) return response({ status: "ACCOUNT_SONG_SELECTED", studio_url: "/studio?source=account&track=st1" }) as never;
       if (url.includes("/playlists")) return response({ ...pageBase, next_cursor: "24", items: [{ id: "p1", name: "Real playlist", artwork_url: null, track_count: 120, sort_group: "R" }] }) as never;
       if (url.includes("/albums")) return response({ ...pageBase, items: [{ id: "al1", title: "Real album", artwork_url: null, artists: [{ id: "a1", name: "Artist A" }], sort_group: "R" }] }) as never;
-      if (url.includes("/artists")) return response({ ...pageBase, items: [{ id: "a1", name: "Real artist", artwork_url: null, sort_group: "R" }] }) as never;
       return response({ ...pageBase, items: [{ id: "t1", title: "Real track", artwork_url: null, album_id: "al1", album: "Real album", artists: ["Artist A", "Artist B"], artist_items: [{ id: "a1", name: "Artist A" }, { id: "a2", name: "Artist B" }], sort_group: "R" }] }) as never;
     });
   });
@@ -46,13 +47,17 @@ describe("LibraryExperience", () => {
   it("provides global pagination and an accessible A–Z index with empty groups disabled", async () => {
     render(<PlayerProvider><LibraryExperience /></PlayerProvider>);
     expect(await screen.findByText("Real track")).toBeInTheDocument();
-    expect(screen.getByText(/Only your liked-songs playlist is shown/)).toBeInTheDocument();
+    expect(screen.getByText(/Playlists are account-created; albums are explicitly saved/)).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /artists/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Refresh saved albums →" }));
+    expect(await screen.findByText("23 saved albums refreshed.")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/music-connections/connection-1/saved-albums/sync"), expect.objectContaining({ method: "POST" }));
     expect(screen.queryByRole("button", { name: "All playlists" })).not.toBeInTheDocument();
-    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/library/tracks?sort=asc&limit=50&scope=liked"), expect.anything());
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/library/tracks?sort=asc&limit=50&scope=personal"), expect.anything());
     expect(screen.getByRole("tab", { name: /tracks/i })).toHaveAttribute("aria-selected", "true");
     fireEvent.click(screen.getByRole("tab", { name: /playlists/i }));
     expect(await screen.findByText("Real playlist")).toBeInTheDocument();
-    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/library/playlists?sort=asc&limit=24&scope=liked"), expect.anything());
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/library/playlists?sort=asc&limit=24&scope=personal"), expect.anything());
     expect(screen.getByRole("link", { name: /Real playlist/ })).toHaveAttribute("href", "/playlist/p1");
     expect(screen.getByRole("button", { name: "A" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "R" })).toBeEnabled();
@@ -61,31 +66,31 @@ describe("LibraryExperience", () => {
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("cursor=24"), expect.anything()));
   });
 
-  it("links every canonical card and shows only the lead artist in track rows", async () => {
+  it("links tracks and albums while keeping artist credits as plain text", async () => {
     render(<PlayerProvider><LibraryExperience /></PlayerProvider>);
     await screen.findByText("Real track");
     fireEvent.click(screen.getByRole("tab", { name: /albums/i }));
     expect(await screen.findByRole("link", { name: /Real album/ })).toHaveAttribute("href", "/album/al1");
-    fireEvent.click(screen.getByRole("tab", { name: /artists/i }));
-    expect(await screen.findByRole("link", { name: /Real artist/ })).toHaveAttribute("href", "/artist/a1");
     fireEvent.click(screen.getByRole("tab", { name: /tracks/i }));
     expect(await screen.findByRole("link", { name: "Real track" })).toHaveAttribute("href", "/track/t1");
     expect(screen.getByText("Artist A")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Artist A" })).not.toBeInTheDocument();
     expect(screen.queryByText("Artist B")).not.toBeInTheDocument();
   });
 
-  it("searches all entity types, preserves actions and pagination, and clears with Escape", async () => {
+  it("searches tracks, albums and playlists without artist results", async () => {
     render(<PlayerProvider><LibraryExperience /></PlayerProvider>);
     await screen.findByText("Real track");
-    const input = screen.getByPlaceholderText("Search liked tracks, lead artists, related albums and the playlist");
+    const input = screen.getByPlaceholderText("Search liked tracks, created playlists and saved albums");
     fireEvent.change(input, { target: { value: "  MILET  " } });
     fireEvent.submit(screen.getByRole("search"));
-    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("scope=liked"), expect.anything());
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("scope=personal"), expect.anything());
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("types=track%2Calbum%2Cplaylist"), expect.anything());
 
     expect(await screen.findByRole("link", { name: "Search track" })).toHaveAttribute("href", "/track/st1");
-    expect(screen.getByRole("link", { name: "Search artist 8 library tracks · exact match" })).toHaveAttribute("href", "/artist/sa1");
+    expect(screen.queryByRole("link", { name: /Search artist 8 library tracks/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Search album Search artist · prefix match" })).toHaveAttribute("href", "/album/sal1");
-    expect(screen.getByRole("link", { name: "Search playlist 1 synchronized tracks · substring match" })).toHaveAttribute("href", "/playlist/sp1");
+    expect(screen.getByRole("link", { name: "Search playlist 12 provider-reported tracks · substring match" })).toHaveAttribute("href", "/playlist/sp1");
     expect(screen.queryByRole("navigation", { name: "Filter by first character" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Play Search track" }));
@@ -102,12 +107,12 @@ describe("LibraryExperience", () => {
   it("renders Unicode and honest no-result searches", async () => {
     render(<PlayerProvider><LibraryExperience /></PlayerProvider>);
     await screen.findByText("Real track");
-    const input = screen.getByPlaceholderText("Search liked tracks, lead artists, related albums and the playlist");
+    const input = screen.getByPlaceholderText("Search liked tracks, created playlists and saved albums");
     fireEvent.change(input, { target: { value: "夜" } });
     fireEvent.submit(screen.getByRole("search"));
     expect(await screen.findByRole("link", { name: "夜に駆ける" })).toBeInTheDocument();
     fireEvent.change(input, { target: { value: "no-match" } });
     fireEvent.submit(screen.getByRole("search"));
-    expect(await screen.findByText(/No tracks, artists, albums, or playlists match/)).toBeInTheDocument();
+    expect(await screen.findByText(/No tracks, albums, or playlists match/)).toBeInTheDocument();
   });
 });

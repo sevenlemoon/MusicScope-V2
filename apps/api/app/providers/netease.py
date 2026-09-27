@@ -168,6 +168,9 @@ class NetEaseProvider:
                 metadata={
                     "description": item.get("description"),
                     "creator_nickname": (item.get("creator") or {}).get("nickname"),
+                    "creator_user_id": str((item.get("creator") or {}).get("userId"))
+                    if (item.get("creator") or {}).get("userId") is not None
+                    else None,
                     "subscribed": bool(item.get("subscribed", False)),
                     "special_type": item.get("specialType"),
                     "provider_update_time": item.get("updateTime"),
@@ -178,6 +181,57 @@ class NetEaseProvider:
         ]
         next_cursor = str(offset + len(items)) if result.get("more") and items else None
         return Page(items=items, next_cursor=next_cursor)
+
+    async def list_collected_albums(self, cursor: str | None = None) -> Page[ProviderAlbum]:
+        offset = int(cursor or 0)
+        limit = 100
+        result = await self._post(
+            "collected_albums",
+            "/v1/albums/collected",
+            self._authenticated_payload(limit=limit, offset=offset),
+        )
+        if result.get("code") == 301:
+            raise ProviderAuthenticationExpired("Provider session expired.")
+        if result.get("code") not in (None, 200):
+            raise ProviderTemporarilyUnavailable("Collected albums are temporarily unavailable.")
+        raw_items = result.get("data")
+        if not isinstance(raw_items, list):
+            raise ProviderTemporarilyUnavailable("Collected albums returned an invalid response.")
+        items: list[ProviderAlbum] = []
+        for raw in raw_items:
+            if not isinstance(raw, dict) or raw.get("id") is None:
+                continue
+            raw_artists = raw.get("artists") or []
+            if not raw_artists and isinstance(raw.get("artist"), dict):
+                raw_artists = [raw["artist"]]
+            artists = tuple(
+                ProviderArtist(
+                    provider_id=str(artist["id"]),
+                    name=str(artist.get("name") or "Unknown artist"),
+                    artwork_url=normalize_artwork_url(artist.get("img1v1Url")),
+                )
+                for artist in raw_artists
+                if isinstance(artist, dict) and artist.get("id") is not None
+            )
+            items.append(
+                ProviderAlbum(
+                    provider_id=str(raw["id"]),
+                    title=str(raw.get("name") or "Unknown album"),
+                    artist_provider_ids=tuple(artist.provider_id for artist in artists),
+                    artwork_url=normalize_artwork_url(raw.get("picUrl")),
+                    artists=artists,
+                )
+            )
+        total = result.get("count")
+        has_more = result.get("hasMore", result.get("more"))
+        next_offset = offset + len(raw_items)
+        if isinstance(has_more, bool):
+            more = has_more
+        elif isinstance(total, int):
+            more = next_offset < total
+        else:
+            more = len(raw_items) >= limit
+        return Page(items=items, next_cursor=str(next_offset) if more and raw_items else None)
 
     async def list_playlist_track_ids(self, playlist_id: str, cursor: str | None = None) -> Page[str]:
         if cursor:

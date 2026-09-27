@@ -534,6 +534,8 @@ h2 { font-size: clamp(22px, 2.3vw, 34px); line-height: 1.12; letter-spacing: -.0
 .library-compact-heading h1 { font-size: 27px; }
 .library-compact-heading p { max-width: 400px; margin: 0; font-size: 11px; }
 .library-scope-note { margin: 14px 0 0; color: var(--text-faint); font-size: 11px; line-height: 1.5; }
+.library-scope-note button, .library-scope-note a { padding: 0; border: 0; background: transparent; color: var(--accent); font: inherit; cursor: pointer; }
+.library-scope-note button:disabled { opacity: .6; cursor: wait; }
 .library-search { margin-top: 18px; }
 .section-tabs { padding-top: 15px; }
 .detail-hero h1 { font-size: clamp(30px, 3.4vw, 48px); }

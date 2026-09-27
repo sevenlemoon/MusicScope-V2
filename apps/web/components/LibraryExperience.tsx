@@ -10,12 +10,11 @@ import { apiRequest } from "@/lib/api-client";
 import type { components } from "@/lib/api-schema.generated";
 import { useText } from "./LocaleProvider";
 
-type Tab = "playlists" | "albums" | "artists" | "tracks";
+type Tab = "playlists" | "albums" | "tracks";
 type Sort = "asc" | "desc";
 type Pages = {
   playlists: components["schemas"]["PlaylistPage"];
   albums: components["schemas"]["AlbumPage"];
-  artists: components["schemas"]["ArtistPage"];
   tracks: components["schemas"]["TrackPage"];
 };
 type LibraryPage = Pages[Tab];
@@ -23,9 +22,9 @@ type Summary = components["schemas"]["LibrarySummary"];
 type SearchResponse = components["schemas"]["LibrarySearchResponse"];
 
 const alphabet = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ", "#"];
-const TAB_ZH: Record<Tab, string> = { playlists: "歌单", albums: "涉及专辑", artists: "主艺人", tracks: "曲目" };
-const TAB_EN: Record<Tab, string> = { playlists: "Playlists", albums: "Related albums", artists: "Lead artists", tracks: "Tracks" };
-const LIBRARY_SCOPE = "liked";
+const TAB_ZH: Record<Tab, string> = { playlists: "自建歌单", albums: "收藏专辑", tracks: "曲目" };
+const TAB_EN: Record<Tab, string> = { playlists: "Created playlists", albums: "Saved albums", tracks: "Tracks" };
+const LIBRARY_SCOPE = "personal";
 
 export function LibraryExperience() {
   const t = useText();
@@ -44,6 +43,9 @@ export function LibraryExperience() {
   const [searchPage, setSearchPage] = useState<SearchResponse | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchFailed, setSearchFailed] = useState(false);
+  const [albumSyncing, setAlbumSyncing] = useState(false);
+  const [albumSyncMessage, setAlbumSyncMessage] = useState("");
+  const [refreshRevision, setRefreshRevision] = useState(0);
 
   useEffect(() => {
     let current = true;
@@ -51,7 +53,7 @@ export function LibraryExperience() {
       .then((result) => { if (current) setSummary(result); })
       .catch(() => { if (current) setFailed(true); });
     return () => { current = false; };
-  }, []);
+  }, [refreshRevision]);
 
   useEffect(() => {
     let current = true;
@@ -62,18 +64,37 @@ export function LibraryExperience() {
       if (current) { setPage(result); setLoading(false); }
     }).catch(() => { if (current) { setFailed(true); setLoading(false); } });
     return () => { current = false; };
-  }, [cursor, group, sort, tab]);
+  }, [cursor, group, refreshRevision, sort, tab]);
 
   useEffect(() => {
     if (!searchQuery) return;
     let current = true;
-    const query = new URLSearchParams({ q: searchQuery, limit: "24", scope: LIBRARY_SCOPE });
+    const query = new URLSearchParams({ q: searchQuery, types: "track,album,playlist", limit: "24", scope: LIBRARY_SCOPE });
     if (searchCursor) query.set("cursor", searchCursor);
     apiRequest<SearchResponse>(`/api/v1/library/search?${query}`).then((result) => {
       if (current) { setSearchPage(result); setSearchLoading(false); }
     }).catch(() => { if (current) { setSearchFailed(true); setSearchLoading(false); } });
     return () => { current = false; };
-  }, [searchCursor, searchQuery, searchRevision]);
+  }, [refreshRevision, searchCursor, searchQuery, searchRevision]);
+
+  const refreshSavedAlbums = async () => {
+    setAlbumSyncing(true);
+    setAlbumSyncMessage("");
+    try {
+      const connections = await apiRequest<components["schemas"]["ConnectionList"]>("/api/v1/music-connections");
+      const connected = (connections.items ?? []).find((item) => item.status === "CONNECTED");
+      if (!connected) throw new Error("No connected account");
+      const result = await apiRequest<components["schemas"]["SavedAlbumSyncResponse"]>(
+        `/api/v1/music-connections/${connected.id}/saved-albums/sync`, { method: "POST" },
+      );
+      setAlbumSyncMessage(t(`${result.albums} saved albums refreshed.`, `已更新 ${result.albums} 张收藏专辑。`));
+      setRefreshRevision((value) => value + 1);
+    } catch {
+      setAlbumSyncMessage(t("Could not refresh saved albums. Check the connection and retry.", "收藏专辑更新失败，请检查账号连接后重试。"));
+    } finally {
+      setAlbumSyncing(false);
+    }
+  };
 
   const counts = summary?.counts;
   const groupCounts = useMemo(() => new Map((page?.groups ?? []).map((item) => [item.key, item.count])), [page]);
@@ -111,18 +132,18 @@ export function LibraryExperience() {
   const range = visiblePage?.range_start ? `${visiblePage.range_start}–${visiblePage.range_end} ${t("of", "/")} ${visiblePage.total}` : visibleLoading ? t("Loading…", "加载中…") : t("No results", "暂无结果");
 
   return <section className="library-browser" aria-label={t("Canonical music library", "规范化音乐资料库")}>
-    <header className="library-compact-heading"><div><span className="eyebrow">LIBRARY</span><h1>{t("Your library", "资料库")}</h1></div><p>{t("Choose a track to separate, or browse its album and artist.", "选一首曲目直接分轨，也可以浏览专辑与艺人。")}</p></header>
-    <p className="library-scope-note">{t("Only your liked-songs playlist is shown. Albums come from its tracks; lead artists mean first credited artists, not verified vocalists.", "仅显示“我喜欢的音乐”歌单及其曲目、涉及专辑和首位署名艺人；首位署名不等于已核实的主唱身份。")}</p>
+    <header className="library-compact-heading"><div><span className="eyebrow">LIBRARY</span><h1>{t("Your library", "资料库")}</h1></div><p>{t("Choose a track to separate, or browse your saved albums and created playlists.", "选一首曲目直接分轨，也可以浏览收藏专辑和自建歌单。")}</p></header>
+    <p className="library-scope-note">{t("Tracks come from your liked songs. Playlists are account-created; albums are explicitly saved by your account, not every album linked to a liked song.", "曲目来自“我喜欢的音乐”；歌单仅显示账号创建的，专辑仅显示账号收藏的，不再按喜欢的歌曲推算。")} {summary.connection_state === "connected" ? <button type="button" onClick={() => void refreshSavedAlbums()} disabled={albumSyncing}>{albumSyncing ? t("Refreshing saved albums…", "正在更新收藏专辑…") : t("Refresh saved albums →", "更新收藏专辑 →")}</button> : <Link href="/connect">{t("Connect an account →", "连接账号 →")}</Link>}{albumSyncMessage && <span role="status"> {albumSyncMessage}</span>}</p>
     <form className="library-search" role="search" onSubmit={submitSearch}>
       <label className="sr-only" htmlFor="library-search-input">{t("Search your synchronized library", "搜索已同步资料库")}</label>
       <span aria-hidden="true">⌕</span>
-      <input id="library-search-input" type="search" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} onKeyDown={handleSearchKey} placeholder={t("Search liked tracks, lead artists, related albums and the playlist", "搜索喜欢的曲目、主艺人、涉及专辑和歌单")} autoComplete="off" />
+      <input id="library-search-input" type="search" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} onKeyDown={handleSearchKey} placeholder={t("Search liked tracks, created playlists and saved albums", "搜索喜欢的曲目、自建歌单和收藏专辑")} autoComplete="off" />
       {(searchInput || searchMode) && <button className="search-clear" type="button" onClick={clearSearch} aria-label={t("Clear library search", "清除资料库搜索")}>{t("Clear", "清除")}</button>}
       <button className="button button-primary search-submit" type="submit">{t("Search", "搜索")}</button>
     </form>
-    <div className="section-tabs" role="tablist" aria-label={t("Library views", "资料库分类")}>{(["tracks", "albums", "playlists", "artists"] as Tab[]).map((name) => <button key={name} role="tab" aria-selected={!searchMode && tab === name} onClick={() => chooseTab(name)}>{t(TAB_EN[name], TAB_ZH[name])}<span>{counts?.[name] ?? 0}</span></button>)}</div>
+    <div className="section-tabs" role="tablist" aria-label={t("Library views", "资料库分类")}>{(["tracks", "albums", "playlists"] as Tab[]).map((name) => <button key={name} role="tab" aria-selected={!searchMode && tab === name} onClick={() => chooseTab(name)}>{t(TAB_EN[name], TAB_ZH[name])}<span>{counts?.[name] ?? 0}</span></button>)}</div>
     <div className="library-toolbar">
-      {searchMode ? <p className="search-context">{t("Results for", "搜索结果：")} <strong>“{searchQuery}”</strong> {t("in your liked songs", "（我喜欢的音乐）")}</p> : <div className="sort-control" aria-label={t("Sort order", "排序方式")}><button type="button" aria-pressed={sort === "asc"} onClick={() => chooseSort("asc")}>A–Z</button><button type="button" aria-pressed={sort === "desc"} onClick={() => chooseSort("desc")}>Z–A</button></div>}
+      {searchMode ? <p className="search-context">{t("Results for", "搜索结果：")} <strong>“{searchQuery}”</strong> {t("in your personal library", "（个人资料库）")}</p> : <div className="sort-control" aria-label={t("Sort order", "排序方式")}><button type="button" aria-pressed={sort === "asc"} onClick={() => chooseSort("asc")}>A–Z</button><button type="button" aria-pressed={sort === "desc"} onClick={() => chooseSort("desc")}>Z–A</button></div>}
       <span className="page-range">{range}</span>
     </div>
     {!searchMode && <nav className="alphabet-strip" aria-label={t("Filter by first character", "按首字母筛选")}>
@@ -130,7 +151,7 @@ export function LibraryExperience() {
       {alphabet.map((letter) => <button type="button" key={letter} disabled={!groupCounts.get(letter)} aria-current={group === letter ? "true" : undefined} title={groupCounts.get(letter) ? `${groupCounts.get(letter)} ${t("items", "项")}` : t("No items", "无项目")} onClick={() => chooseGroup(letter)}>{letter}</button>)}
     </nav>}
     <div className={visibleLoading ? "library-results results-loading" : "library-results"} aria-live="polite" aria-busy={visibleLoading}>
-      {searchMode ? <SearchResults result={searchPage} failed={searchFailed} likedTrackCount={counts?.tracks ?? 0} /> : <BrowseResults page={page} tab={tab} loading={loading} likedTrackCount={counts?.tracks ?? 0} />}
+      {searchMode ? <SearchResults result={searchPage} failed={searchFailed} /> : <BrowseResults page={page} tab={tab} loading={loading} />}
     </div>
     <div className="pagination-controls">
       <button className="button button-quiet" type="button" disabled={!visiblePage?.previous_cursor || visibleLoading} onClick={() => { if (searchMode) { setSearchLoading(true); setSearchCursor(visiblePage?.previous_cursor ?? null); } else chooseCursor(visiblePage?.previous_cursor ?? null); }}>{t("Previous", "上一页")}</button>
@@ -140,31 +161,28 @@ export function LibraryExperience() {
   </section>;
 }
 
-function BrowseResults({ page, tab, loading, likedTrackCount }: { page: LibraryPage | null; tab: Tab; loading: boolean; likedTrackCount: number }) {
+function BrowseResults({ page, tab, loading }: { page: LibraryPage | null; tab: Tab; loading: boolean }) {
   const t = useText();
   return <>
-    {page && tab === "playlists" && <CardGroups items={(page as Pages["playlists"]).items} render={(item, index) => <Link className="library-card" href={`/playlist/${item.id}`}><Artwork src={item.artwork_url} alt="" eager={index < 4} /><strong>{item.name}</strong><small>{likedTrackCount} {t("synchronized tracks", "首已同步曲目")}</small></Link>} />}
+    {page && tab === "playlists" && <CardGroups items={(page as Pages["playlists"]).items} render={(item, index) => <Link className="library-card" href={`/playlist/${item.id}`}><Artwork src={item.artwork_url} alt="" eager={index < 4} /><strong>{item.name}</strong><small>{item.track_count ?? "—"} {t("provider-reported tracks", "首曲目（来源报告）")}</small></Link>} />}
     {page && tab === "albums" && <CardGroups items={(page as Pages["albums"]).items} render={(item, index) => <Link className="library-card" href={`/album/${item.id}`}><Artwork src={item.artwork_url} alt="" eager={index < 4} /><strong>{item.title}</strong><small>{item.artists?.[0]?.name || t("Album", "专辑")}</small></Link>} />}
-    {page && tab === "artists" && <CardGroups items={(page as Pages["artists"]).items} render={(item, index) => <Link className="library-card" href={`/artist/${item.id}`}><Artwork src={item.artwork_url} alt="" eager={index < 4} /><strong>{item.name}</strong><small>{t("Artist", "艺人")}</small></Link>} />}
     {page && tab === "tracks" && <div className="track-list">{(page as Pages["tracks"]).items.map((item, index) => <TrackRow key={item.id} track={item} index={(page.range_start || 1) + index} />)}</div>}
     {!loading && page?.items.length === 0 && <div className="inline-empty">{t(`No ${tab} in this group.`, `此分组暂无${TAB_ZH[tab]}。`)}</div>}
   </>;
 }
 
-function SearchResults({ result, failed, likedTrackCount }: { result: SearchResponse | null; failed: boolean; likedTrackCount: number }) {
+function SearchResults({ result, failed }: { result: SearchResponse | null; failed: boolean }) {
   const t = useText();
   if (failed) return <div className="inline-empty">{t("Search is temporarily unavailable. Your synchronized library is unchanged.", "搜索暂时不可用；已同步资料库没有变化。")}</div>;
   if (!result) return null;
-  if (!result.total) return <div className="inline-empty">{t(`No tracks, artists, albums, or playlists match “${result.query}”.`, `没有与“${result.query}”匹配的曲目、艺人、专辑或歌单。`)}</div>;
+  if (!result.total) return <div className="inline-empty">{t(`No tracks, albums, or playlists match “${result.query}”.`, `没有与“${result.query}”匹配的曲目、专辑或歌单。`)}</div>;
   const tracks = result.tracks ?? [];
-  const artists = result.artists ?? [];
   const albums = result.albums ?? [];
   const playlists = result.playlists ?? [];
   return <div className="search-results">
     {tracks.length > 0 && <SearchSection title={t("Tracks", "曲目")} count={tracks.length}><div className="track-list">{tracks.map((item, index) => <TrackRow key={item.track.id} track={item.track} index={result.range_start + index} />)}</div></SearchSection>}
-    {artists.length > 0 && <SearchSection title={t("Artists", "艺人")} count={artists.length}><div className="library-grid search-grid">{artists.map(({ artist, library_track_count: trackCount, match }) => <Link className="library-card" href={`/artist/${artist.id}`} key={artist.id}><Artwork src={artist.artwork_url} alt="" /><strong>{artist.name}</strong><small>{trackCount} {t("library tracks", "首资料库曲目")} · {match} {t("match", "处匹配")}</small></Link>)}</div></SearchSection>}
     {albums.length > 0 && <SearchSection title={t("Albums", "专辑")} count={albums.length}><div className="library-grid search-grid">{albums.map(({ album, match }) => <Link className="library-card" href={`/album/${album.id}`} key={album.id}><Artwork src={album.artwork_url} alt="" /><strong>{album.title}</strong><small>{album.artists?.[0]?.name || t("Album", "专辑")} · {match} {t("match", "处匹配")}</small></Link>)}</div></SearchSection>}
-    {playlists.length > 0 && <SearchSection title={t("Playlists", "歌单")} count={playlists.length}><div className="library-grid search-grid">{playlists.map(({ playlist, match }) => <Link className="library-card" href={`/playlist/${playlist.id}`} key={playlist.id}><Artwork src={playlist.artwork_url} alt="" /><strong>{playlist.name}</strong><small>{likedTrackCount} {t("synchronized tracks", "首已同步曲目")} · {match} {t("match", "处匹配")}</small></Link>)}</div></SearchSection>}
+    {playlists.length > 0 && <SearchSection title={t("Created playlists", "自建歌单")} count={playlists.length}><div className="library-grid search-grid">{playlists.map(({ playlist, match }) => <Link className="library-card" href={`/playlist/${playlist.id}`} key={playlist.id}><Artwork src={playlist.artwork_url} alt="" /><strong>{playlist.name}</strong><small>{playlist.track_count ?? "—"} {t("provider-reported tracks", "首曲目（来源报告）")} · {match} {t("match", "处匹配")}</small></Link>)}</div></SearchSection>}
   </div>;
 }
 

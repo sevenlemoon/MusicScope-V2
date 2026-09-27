@@ -21,6 +21,7 @@ from app.domain.models import (
     MusicConnectionSecret,
     Playlist,
     PlaylistTrack,
+    SavedAlbum,
     StemJob,
     Track,
     TrackArtist,
@@ -115,12 +116,17 @@ def test_liked_scope_counts_only_liked_tracks_and_first_credited_artists(db: Ses
         owner_connection_id=connection.id,
         metadata_json={"subscribed": True},
     )
+    created = Playlist(
+        name="My own playlist",
+        owner_connection_id=connection.id,
+        metadata_json={"creator_user_id": "listener", "subscribed": False},
+    )
     lead = Artist(name="Lead Singer")
     guest = Artist(name="Guest Singer")
     other = Artist(name="Other Singer")
     liked_album = Album(title="Liked Album")
     other_album = Album(title="Other Album")
-    db.add_all([liked, subscribed, lead, guest, other, liked_album, other_album])
+    db.add_all([liked, subscribed, created, lead, guest, other, liked_album, other_album])
     db.flush()
     liked_track = Track(title="Liked Song", album_id=liked_album.id)
     other_track = Track(title="Other Song", album_id=other_album.id)
@@ -130,6 +136,9 @@ def test_liked_scope_counts_only_liked_tracks_and_first_credited_artists(db: Ses
         [
             PlaylistTrack(playlist_id=liked.id, track_id=liked_track.id, position=0),
             PlaylistTrack(playlist_id=subscribed.id, track_id=other_track.id, position=0),
+            PlaylistTrack(playlist_id=created.id, track_id=other_track.id, position=0),
+            SavedAlbum(connection_id=connection.id, album_id=other_album.id),
+            AlbumArtist(album_id=other_album.id, artist_id=other.id, position=0),
             TrackArtist(track_id=liked_track.id, artist_id=lead.id, position=0),
             TrackArtist(track_id=liked_track.id, artist_id=guest.id, position=1),
             TrackArtist(track_id=other_track.id, artist_id=other.id, position=0),
@@ -144,7 +153,7 @@ def test_liked_scope_counts_only_liked_tracks_and_first_credited_artists(db: Ses
         "artists": 1,
     }
     assert library.library_summary(db, scope="all").counts.model_dump() == {
-        "playlists": 2,
+        "playlists": 3,
         "tracks": 2,
         "albums": 2,
         "artists": 2,
@@ -157,6 +166,22 @@ def test_liked_scope_counts_only_liked_tracks_and_first_credited_artists(db: Ses
     assert liked_albums.total == 1
     assert [artist.name for artist in liked_albums.items[0].artists] == ["Lead Singer"]
     assert library.playlists(db, None, 24, "asc", None, "liked").total == 1
+    assert library.library_summary(db, scope="personal").counts.model_dump() == {
+        "playlists": 2,
+        "tracks": 1,
+        "albums": 1,
+        "artists": 1,
+    }
+    assert {item.name for item in library.playlists(db, None, 24, "asc", None, "personal").items} == {
+        "Listener喜欢的音乐", "My own playlist"
+    }
+    saved_albums = library.albums(db, None, 24, "asc", None, "personal")
+    assert [item.title for item in saved_albums.items] == ["Other Album"]
+    assert [artist.name for artist in saved_albums.items[0].artists] == ["Other Singer"]
+    assert library.search_library(db, "Liked Album", "album", None, 24, "personal").total == 0
+    assert library.search_library(db, "Other Album", "album", None, 24, "personal").total == 1
+    assert library.search_library(db, "My own", "playlist", None, 24, "personal").total == 1
+    assert library.search_library(db, "Someone", "playlist", None, 24, "personal").total == 0
     assert library.search_library(db, "Guest", "artist", None, 24, "liked").total == 0
     assert library.search_library(db, "Someone", "playlist", None, 24, "liked").total == 0
     assert library.search_library(db, "Someone", "playlist", None, 24, "all").total == 1
@@ -168,6 +193,7 @@ def test_liked_scope_counts_only_liked_tracks_and_first_credited_artists(db: Ses
     assert catalog.artist_albums(guest.id, db, None, 24, "asc").total == 0
     assert catalog.album_detail(liked_album.id, db).library_track_count == 1
     assert catalog.album_tracks(liked_album.id, db, None, 50, "asc").total == 1
+    assert catalog.playlist_detail(created.id, db, "personal").name == "My own playlist"
     assert [artist.name for artist in catalog.track_detail(liked_track.id, db).artists] == ["Lead Singer"]
     assert [playlist.name for playlist in catalog.track_detail(liked_track.id, db).playlists] == [
         "Listener喜欢的音乐"

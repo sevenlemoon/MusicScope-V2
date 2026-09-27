@@ -3401,6 +3401,24 @@
         "title": "RelationshipItem",
         "type": "object"
       },
+      "SavedAlbumSyncResponse": {
+        "properties": {
+          "albums": {
+            "title": "Albums",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "albums"
+        ],
+        "title": "SavedAlbumSyncResponse",
+        "type": "object"
+      },
       "SearchAlbumResult": {
         "properties": {
           "album": {
@@ -4388,6 +4406,7 @@
               "default": "liked",
               "enum": [
                 "liked",
+                "personal",
                 "all"
               ],
               "title": "Scope",
@@ -4487,6 +4506,7 @@
               "default": "liked",
               "enum": [
                 "liked",
+                "personal",
                 "all"
               ],
               "title": "Scope",
@@ -4544,6 +4564,7 @@
               "default": "liked",
               "enum": [
                 "liked",
+                "personal",
                 "all"
               ],
               "title": "Scope",
@@ -4643,6 +4664,7 @@
               "default": "liked",
               "enum": [
                 "liked",
+                "personal",
                 "all"
               ],
               "title": "Scope",
@@ -4801,6 +4823,7 @@
               "default": "liked",
               "enum": [
                 "liked",
+                "personal",
                 "all"
               ],
               "title": "Scope",
@@ -5115,6 +5138,7 @@
               "default": "liked",
               "enum": [
                 "liked",
+                "personal",
                 "all"
               ],
               "title": "Scope",
@@ -5221,6 +5245,7 @@
               "default": "liked",
               "enum": [
                 "liked",
+                "personal",
                 "all"
               ],
               "title": "Scope",
@@ -5348,6 +5373,7 @@
               "default": "liked",
               "enum": [
                 "liked",
+                "personal",
                 "all"
               ],
               "title": "Scope",
@@ -5451,6 +5477,7 @@
               "default": "liked",
               "enum": [
                 "liked",
+                "personal",
                 "all"
               ],
               "title": "Scope",
@@ -5498,6 +5525,7 @@
               "default": "liked",
               "enum": [
                 "liked",
+                "personal",
                 "all"
               ],
               "title": "Scope",
@@ -5604,6 +5632,7 @@
               "default": "liked",
               "enum": [
                 "liked",
+                "personal",
                 "all"
               ],
               "title": "Scope",
@@ -6248,6 +6277,49 @@
         ]
       }
     },
+    "/api/v1/music-connections/{connection_id}/saved-albums/sync": {
+      "post": {
+        "operationId": "synchronize_saved_albums_api_v1_music_connections__connection_id__saved_albums_sync_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedAlbumSyncResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Synchronize Saved Albums",
+        "tags": [
+          "music-connections"
+        ]
+      }
+    },
     "/api/v1/music-connections/{connection_id}/sync": {
       "get": {
         "operationId": "synchronization_state_api_v1_music_connections__connection_id__sync_get",
@@ -6354,6 +6426,7 @@
               "default": "liked",
               "enum": [
                 "liked",
+                "personal",
                 "all"
               ],
               "title": "Scope",
@@ -6454,6 +6527,7 @@
               "default": "liked",
               "enum": [
                 "liked",
+                "personal",
                 "all"
               ],
               "title": "Scope",
@@ -7706,6 +7780,7 @@
               "default": "liked",
               "enum": [
                 "liked",
+                "personal",
                 "all"
               ],
               "title": "Scope",

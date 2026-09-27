@@ -28,6 +28,7 @@ from app.api.schemas import (
 from app.core.database import get_db
 from app.domain.models import (
     Album,
+    AlbumArtist,
     Artist,
     MusicConnection,
     Playlist,
@@ -201,18 +202,27 @@ def search_library(
     }
     artists_by_album: dict[UUID, list[EntityReference]] = {album_id: [] for album_id in ids_by_type["album"]}
     if ids_by_type["album"]:
-        for album_id, artist_id, artist_name in db.execute(
-            select(Track.album_id, Artist.id, Artist.name)
-            .join(TrackArtist, TrackArtist.track_id == Track.id)
-            .join(Artist, Artist.id == TrackArtist.artist_id)
-            .where(
-                Track.album_id.in_(ids_by_type["album"]),
-                Track.id.in_(track_ids_for_scope(db, scope)),
-                TrackArtist.position == 0,
+        if scope == "personal":
+            album_artists = (
+                select(AlbumArtist.album_id, Artist.id, Artist.name)
+                .join(Artist, Artist.id == AlbumArtist.artist_id)
+                .where(AlbumArtist.album_id.in_(ids_by_type["album"]))
+                .order_by(AlbumArtist.album_id, AlbumArtist.position)
             )
-            .distinct()
-            .order_by(Track.album_id, Artist.name)
-        ):
+        else:
+            album_artists = (
+                select(Track.album_id, Artist.id, Artist.name)
+                .join(TrackArtist, TrackArtist.track_id == Track.id)
+                .join(Artist, Artist.id == TrackArtist.artist_id)
+                .where(
+                    Track.album_id.in_(ids_by_type["album"]),
+                    Track.id.in_(track_ids_for_scope(db, scope)),
+                    TrackArtist.position == 0,
+                )
+                .distinct()
+                .order_by(Track.album_id, Artist.name)
+            )
+        for album_id, artist_id, artist_name in db.execute(album_artists):
             artists_by_album[album_id].append(EntityReference(id=str(artist_id), name=artist_name))
     playlist_models = {
         item.id: item for item in db.scalars(select(Playlist).where(Playlist.id.in_(ids_by_type["playlist"])))
@@ -332,18 +342,27 @@ def albums(
     )
     artists_by_album: dict[object, list[EntityReference]] = {row.id: [] for row in rows}
     if rows:
-        artist_rows = db.execute(
-            select(Track.album_id, Artist.id, Artist.name)
-            .join(TrackArtist, TrackArtist.track_id == Track.id)
-            .join(Artist, Artist.id == TrackArtist.artist_id)
-            .where(
-                Track.album_id.in_([row.id for row in rows]),
-                Track.id.in_(track_ids_for_scope(db, scope)),
-                TrackArtist.position == 0,
+        if scope == "personal":
+            artist_statement = (
+                select(AlbumArtist.album_id, Artist.id, Artist.name)
+                .join(Artist, Artist.id == AlbumArtist.artist_id)
+                .where(AlbumArtist.album_id.in_([row.id for row in rows]))
+                .order_by(AlbumArtist.album_id, AlbumArtist.position)
             )
-            .distinct()
-            .order_by(Track.album_id, Artist.name)
-        )
+        else:
+            artist_statement = (
+                select(Track.album_id, Artist.id, Artist.name)
+                .join(TrackArtist, TrackArtist.track_id == Track.id)
+                .join(Artist, Artist.id == TrackArtist.artist_id)
+                .where(
+                    Track.album_id.in_([row.id for row in rows]),
+                    Track.id.in_(track_ids_for_scope(db, scope)),
+                    TrackArtist.position == 0,
+                )
+                .distinct()
+                .order_by(Track.album_id, Artist.name)
+            )
+        artist_rows = db.execute(artist_statement)
         for album_id, artist_id, artist_name in artist_rows:
             artists_by_album[album_id].append(EntityReference(id=str(artist_id), name=artist_name))
     return AlbumPage(

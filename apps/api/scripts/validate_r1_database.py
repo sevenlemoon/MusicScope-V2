@@ -41,6 +41,12 @@ CHECKS = {
         LEFT JOIN artists artist ON artist.id = relationship.artist_id
         WHERE album.id IS NULL OR artist.id IS NULL
     """,
+    "orphan_saved_albums": """
+        SELECT count(*) FROM saved_albums relationship
+        LEFT JOIN albums album ON album.id = relationship.album_id
+        LEFT JOIN music_connections connection ON connection.id = relationship.connection_id
+        WHERE album.id IS NULL OR connection.id IS NULL
+    """,
     "orphan_playlist_tracks": """
         SELECT count(*) FROM playlist_tracks relationship
         LEFT JOIN playlists playlist ON playlist.id = relationship.playlist_id

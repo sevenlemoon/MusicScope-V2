@@ -25,7 +25,7 @@ export function TrackRow({ track, index }: { track: TrackItem; index?: number })
   return <article className={`track-row${active ? " track-row-active" : ""}`}>
     <span className="track-number">{track.playlist_position ?? index ?? "·"}</span>
     <Artwork src={track.artwork_url} alt="" sizes="48px" className="track-artwork" eager={index === 1} />
-    <div className="track-primary"><Link href={`/track/${track.id}`}>{track.title}</Link><span>{leadArtist ? <Link href={`/artist/${leadArtist.id}`}>{leadArtist.name}</Link> : track.artists?.[0] || t("Unknown artist", "未知艺人")}</span></div>
+    <div className="track-primary"><Link href={`/track/${track.id}`}>{track.title}</Link><span>{leadArtist?.name || track.artists?.[0] || t("Unknown artist", "未知艺人")}</span></div>
     <div className="track-album">{track.album_id && track.album ? <Link href={`/album/${track.album_id}`}>{track.album}</Link> : track.album ?? "—"}</div>
     <span className="track-duration">{durationLabel(track.duration_ms)}</span>
     <div className="track-actions">

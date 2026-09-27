@@ -17,6 +17,7 @@ from app.domain.models import (
     MusicConnectionSecret,
     Playlist,
     PlaylistTrack,
+    SavedAlbum,
     Track,
     TrackArtist,
     User,
@@ -43,6 +44,7 @@ class FakeLibraryProvider:
         self.fail_track_id = fail_track_id
         self.reported_track_count_adjustment = reported_track_count_adjustment
         self.playlist_offsets: list[str | None] = []
+        self.album_offsets: list[str | None] = []
         self.track_batches: list[list[str]] = []
         self.tracks = {
             "t1": self._track("t1", "One", ("a1", "a2", "a2"), "al1"),
@@ -86,6 +88,10 @@ class FakeLibraryProvider:
         del cursor
         ids = ["t1", "t2"] if playlist_id == "p1" else ["t1", "t3"]
         return Page(ids, total=len(ids) + self.reported_track_count_adjustment)
+
+    async def list_collected_albums(self, cursor: str | None = None) -> Page[ProviderAlbum]:
+        self.album_offsets.append(cursor)
+        return Page([ProviderAlbum("al1", "Album al1", (), "https://p1.music.126.net/al1.jpg")])
 
     async def get_tracks(self, provider_ids: list[str]) -> list[ProviderTrack]:
         self.track_batches.append(list(provider_ids))
@@ -157,6 +163,7 @@ def test_paginated_sync_is_batched_multi_artist_deduplicated_and_idempotent(
     assert first.albums == 2
     assert first_counts == second_counts
     assert second.tracks == 3
+    assert db.scalar(select(func.count()).select_from(SavedAlbum)) == 1
     assert LibrarySyncService.active_progress(str(connection.id))["status"] == "SYNCED"
     assert (
         db.scalar(
@@ -207,3 +214,41 @@ def test_partial_batch_failure_preserves_successful_data(
     assert result.partial_failures > 0
     assert db.scalar(select(func.count()).select_from(Track)) == 2
     assert db.scalar(select(func.count()).select_from(PlaylistTrack)) >= 2
+
+
+def test_collected_album_outage_preserves_last_good_snapshot(
+    db_connection: tuple[Session, MusicConnection, ProviderSecretCipher],
+) -> None:
+    db, connection, cipher = db_connection
+    provider = FakeLibraryProvider()
+    service = LibrarySyncService(db, provider_factory=lambda _cookie: provider, cipher=cipher)
+    assert asyncio.run(service.sync(connection)).status == "COMPLETED"
+    saved_before = set(db.scalars(select(SavedAlbum.album_id)))
+
+    async def unavailable(_cursor: str | None = None) -> Page[ProviderAlbum]:
+        raise ProviderTemporarilyUnavailable("temporary provider outage")
+
+    provider.list_collected_albums = unavailable  # type: ignore[method-assign]
+    result = asyncio.run(service.sync(connection))
+    assert result.status == "PARTIAL"
+    assert set(db.scalars(select(SavedAlbum.album_id))) == saved_before
+
+
+def test_collected_album_only_refresh_is_lightweight_and_reconciles_membership(
+    db_connection: tuple[Session, MusicConnection, ProviderSecretCipher],
+) -> None:
+    db, connection, cipher = db_connection
+    provider = FakeLibraryProvider()
+    service = LibrarySyncService(db, provider_factory=lambda _cookie: provider, cipher=cipher)
+    assert asyncio.run(service.sync_collected_albums_only(connection)) == 1
+    assert provider.playlist_offsets == [] and provider.track_batches == []
+    assert db.scalar(select(func.count()).select_from(SavedAlbum)) == 1
+    assert db.scalar(select(func.count()).select_from(Track)) == 0
+
+    async def empty(_cursor: str | None = None) -> Page[ProviderAlbum]:
+        return Page([])
+
+    provider.list_collected_albums = empty  # type: ignore[method-assign]
+    assert asyncio.run(service.sync_collected_albums_only(connection)) == 0
+    assert db.scalar(select(func.count()).select_from(SavedAlbum)) == 0
+    assert db.scalar(select(func.count()).select_from(Album)) == 1

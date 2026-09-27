@@ -47,11 +47,11 @@ function AlbumExperience({ id }: { id: string }) {
   const [tracks, setTracks] = useState<TrackPage | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
-  useEffect(() => { apiRequest<components["schemas"]["AlbumDetail"]>(`/api/v1/albums/${id}`).then(setDetail).catch(() => setFailed(true)); }, [id]);
-  useEffect(() => { const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""; apiRequest<TrackPage>(`/api/v1/albums/${id}/tracks${query}`).then(setTracks).catch(() => setFailed(true)); }, [cursor, id]);
+  useEffect(() => { apiRequest<components["schemas"]["AlbumDetail"]>(`/api/v1/albums/${id}?scope=all`).then(setDetail).catch(() => setFailed(true)); }, [id]);
+  useEffect(() => { const query = new URLSearchParams({ scope: "all" }); if (cursor) query.set("cursor", cursor); apiRequest<TrackPage>(`/api/v1/albums/${id}/tracks?${query}`).then(setTracks).catch(() => setFailed(true)); }, [cursor, id]);
   if (failed) return <MissingEntity type="album" />;
   if (!detail || !tracks) return <DetailLoading />;
-  return <div className="detail-view"><DetailHero eyebrow={t("ALBUM / LIKED SONGS", "专辑 / 我喜欢的音乐")} name={detail.title} artwork={detail.artwork_url} meta={t(`${detail.library_track_count} liked tracks on this album`, `此专辑中喜欢的曲目 ${detail.library_track_count} 首`)} relationships={(detail.artists ?? []).map((artist) => <Link key={artist.id} href={`/artist/${artist.id}`}>{artist.name}</Link>)} /><PagedTracks title={t("Liked tracks on this album", "此专辑中的喜欢曲目")} page={tracks} setCursor={setCursor} /></div>;
+  return <div className="detail-view"><DetailHero eyebrow={t("ALBUM / SYNCED TRACKS", "专辑 / 已同步曲目")} name={detail.title} artwork={detail.artwork_url} meta={t(`${detail.library_track_count} synchronized tracks on this album`, `此专辑中已同步曲目 ${detail.library_track_count} 首`)} relationships={(detail.artists ?? []).map((artist) => <span key={artist.id}>{artist.name}</span>)} />{tracks.total ? <PagedTracks title={t("Synchronized tracks on this album", "此专辑中已同步的曲目")} page={tracks} setCursor={setCursor} /> : <p className="detail-description">{t("This album is saved in your account, but none of its songs are in the synchronized library yet.", "这张专辑已在账号中收藏，但目前没有属于已同步资料库的曲目。")}</p>}</div>;
 }
 
 function PlaylistExperience({ id }: { id: string }) {
@@ -61,8 +61,8 @@ function PlaylistExperience({ id }: { id: string }) {
   const [cursor, setCursor] = useState<string | null>(null);
   const [sort, setSort] = useState<"original" | "asc" | "desc">("original");
   const [failed, setFailed] = useState(false);
-  useEffect(() => { apiRequest<components["schemas"]["PlaylistDetail"]>(`/api/v1/playlists/${id}`).then(setDetail).catch(() => setFailed(true)); }, [id]);
-  useEffect(() => { const query = new URLSearchParams({ sort }); if (cursor) query.set("cursor", cursor); apiRequest<TrackPage>(`/api/v1/playlists/${id}/tracks?${query}`).then(setTracks).catch(() => setFailed(true)); }, [cursor, id, sort]);
+  useEffect(() => { apiRequest<components["schemas"]["PlaylistDetail"]>(`/api/v1/playlists/${id}?scope=personal`).then(setDetail).catch(() => setFailed(true)); }, [id]);
+  useEffect(() => { const query = new URLSearchParams({ sort, scope: "personal" }); if (cursor) query.set("cursor", cursor); apiRequest<TrackPage>(`/api/v1/playlists/${id}/tracks?${query}`).then(setTracks).catch(() => setFailed(true)); }, [cursor, id, sort]);
   if (failed) return <MissingEntity type="playlist" />;
   if (!detail || !tracks) return <DetailLoading />;
   return <div className="detail-view"><DetailHero eyebrow={t("PLAYLIST / NETEASE", "歌单 / 网易云音乐")} name={detail.name} artwork={detail.artwork_url} meta={t(`${detail.synchronized_track_count} synchronized tracks${detail.provider_track_count !== null && detail.provider_track_count !== detail.synchronized_track_count ? ` · ${detail.provider_track_count} reported by provider` : ""}`, `${detail.synchronized_track_count} 首已同步曲目${detail.provider_track_count !== null && detail.provider_track_count !== detail.synchronized_track_count ? ` · 来源报告 ${detail.provider_track_count} 首` : ""}`)} description={detail.description} />
@@ -83,7 +83,7 @@ function TrackExperience({ id }: { id: string }) {
   const track: TrackItem = { id: detail.id, title: detail.title, artwork_url: detail.artwork_url, duration_ms: detail.duration_ms, album_id: detail.album?.id ?? null, album: detail.album?.name ?? null, artists: (detail.artists ?? []).map((artist) => artist.name), artist_items: detail.artists ?? [], sort_group: "#", playlist_position: null };
   const active = player.current?.id === id;
   const separate = () => router.push(`/studio?source=account&track=${id}`);
-  return <div className="detail-view"><DetailHero eyebrow={t("TRACK / CANONICAL", "曲目 / 规范化资料")} name={detail.title} artwork={detail.artwork_url} meta={durationText(detail.duration_ms, t("en", "zh"))} relationships={<>{(detail.artists ?? []).map((artist, index) => <span key={artist.id}>{index > 0 && ", "}<Link href={`/artist/${artist.id}`}>{artist.name}</Link></span>)}{detail.album && <> · <Link href={`/album/${detail.album.id}`}>{detail.album.name}</Link></>}</>} />
+  return <div className="detail-view"><DetailHero eyebrow={t("TRACK / CANONICAL", "曲目 / 规范化资料")} name={detail.title} artwork={detail.artwork_url} meta={durationText(detail.duration_ms, t("en", "zh"))} relationships={<>{(detail.artists ?? []).map((artist, index) => <span key={artist.id}>{index > 0 && ", "}{artist.name}</span>)}{detail.album && <> · <Link href={`/album/${detail.album.id}`}>{detail.album.name}</Link></>}</>} />
     <div className="detail-actions"><button className="button button-primary" type="button" onClick={() => void (active ? player.toggle() : player.playTrack(track))}>{active && player.status === "playing" ? t("Pause", "暂停") : t("Play from NetEase", "从网易云音乐播放")}</button><button className="button button-quiet" type="button" onClick={separate}>{t("Separate stems", "分离声部")}</button></div>
     <section className="detail-section"><div className="detail-section-heading"><h2>{t("Liked playlist", "我喜欢的音乐")}</h2><span>{(detail.playlists ?? []).length}</span></div>{(detail.playlists ?? []).length ? <div className="relationship-list">{(detail.playlists ?? []).map((playlist) => <Link key={playlist.id} href={`/playlist/${playlist.id}`}>{playlist.name}<span>{t("Open playlist →", "打开歌单 →")}</span></Link>)}</div> : <p>{t("This track is not currently in your synchronized liked-songs playlist.", "此曲目目前不在已同步的“我喜欢的音乐”歌单中。")}</p>}</section>
   </div>;

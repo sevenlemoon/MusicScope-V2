@@ -22,9 +22,9 @@ describe("canonical detail pages", () => {
       if (url.endsWith("/artists/a1")) return response({ id: "a1", name: "Artist One", artwork_url: "https://image.invalid/artist.jpg", library_track_count: 1, represented_album_count: 1 }) as never;
       if (url.includes("/artists/a1/tracks")) return response(trackPage) as never;
       if (url.includes("/artists/a1/albums")) return response({ items: [{ id: "al1", title: "Canonical album", artwork_url: null, artists: [{ id: "a1", name: "Artist One" }], sort_group: "C" }], total: 1, range_start: 1, range_end: 1, groups: [], sort: "asc" }) as never;
-      if (url.endsWith("/albums/al1")) return response({ id: "al1", title: "Canonical album", artwork_url: null, artists: [{ id: "a1", name: "Artist One" }], library_track_count: 1 }) as never;
+      if (url.includes("/albums/al1?")) return response({ id: "al1", title: "Canonical album", artwork_url: null, artists: [{ id: "a1", name: "Artist One" }], library_track_count: 1 }) as never;
       if (url.includes("/albums/al1/tracks")) return response(trackPage) as never;
-      if (url.endsWith("/playlists/p1")) return response({ id: "p1", name: "Canonical playlist", artwork_url: null, provider_track_count: 1, synchronized_track_count: 1 }) as never;
+      if (url.includes("/playlists/p1?")) return response({ id: "p1", name: "Canonical playlist", artwork_url: null, provider_track_count: 1, synchronized_track_count: 1 }) as never;
       if (url.includes("/playlists/p1/tracks")) return response({ ...trackPage, sort: "original" }) as never;
       if (url.endsWith("/tracks/t1")) return response({ id: "t1", title: "Canonical song", artwork_url: null, duration_ms: 200000, artists: [{ id: "a1", name: "Artist One" }], album: { id: "al1", name: "Canonical album" }, playlists: [{ id: "p1", name: "Canonical playlist" }] }) as never;
       return response({}) as never;
@@ -42,7 +42,7 @@ describe("canonical detail pages", () => {
   it("renders an album and its canonical track list", async () => {
     renderDetail("album", "al1");
     expect(await screen.findByRole("heading", { name: "Canonical album", level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Liked tracks on this album" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Synchronized tracks on this album" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Canonical song" })).toHaveAttribute("href", "/track/t1");
   });
 
@@ -56,7 +56,8 @@ describe("canonical detail pages", () => {
   it("renders track relationships and routes Separate Stems to account-song mode", async () => {
     renderDetail("track", "t1");
     expect(await screen.findByRole("heading", { name: "Canonical song", level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Artist One" })).toHaveAttribute("href", "/artist/a1");
+    expect(screen.getByText("Artist One")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Artist One" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Artist Two" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Separate stems" }));
     await waitFor(() => expect(push).toHaveBeenCalledWith("/studio?source=account&track=t1"));

@@ -51,6 +51,7 @@ module.exports = {
   login_qr_check: moduleCall("login_qr_check"),
   user_account: moduleCall("user_account"),
   user_playlist: moduleCall("user_playlist"),
+  album_sublist: moduleCall("album_sublist"),
   playlist_detail: moduleCall("playlist_detail"),
   song_detail: moduleCall("song_detail"),
   song_url_v1: async (data) => {

@@ -19,12 +19,17 @@ from app.domain.models import (
     MusicConnection,
     Playlist,
     PlaylistTrack,
+    SavedAlbum,
     SyncState,
     Track,
     TrackArtist,
     utc_now,
 )
-from app.providers.errors import ProviderAuthenticationExpired, ProviderError
+from app.providers.errors import (
+    ProviderAuthenticationExpired,
+    ProviderError,
+    ProviderTemporarilyUnavailable,
+)
 from app.providers.netease import NetEaseProvider
 from app.providers.types import ProviderAlbum, ProviderArtist, ProviderPlaylist, ProviderTrack
 from app.services.identity_resolution import bind_external_identity
@@ -263,6 +268,16 @@ class LibrarySyncService:
                 if not is_complete:
                     partial_failures += 1
 
+            collected_started = perf_counter()
+            try:
+                await self._sync_collected_albums(connection, provider)
+            except ProviderAuthenticationExpired:
+                raise
+            except ProviderError:
+                # An unavailable provider list must not erase a prior saved-album snapshot.
+                partial_failures += 1
+            timings["collected_album_retrieval"] = round((perf_counter() - collected_started) * 1000)
+
             connection.last_sync_at = utc_now()
             timings["database_reconciliation"] = round((perf_counter() - started) * 1000)
             timings["total"] = round((perf_counter() - total_started) * 1000)
@@ -371,7 +386,58 @@ class LibrarySyncService:
             raise RuntimeError("Album identity resolved to the wrong canonical type.")
         entity.title = item.title
         entity.artwork_url = item.artwork_url
+        existing_artists = self._album_artist_cache.setdefault(entity.id, set())
+        for artist in item.artists:
+            canonical_artist = self._upsert_artist(artist)
+            if canonical_artist.id not in existing_artists:
+                self.session.add(
+                    AlbumArtist(
+                        album_id=entity.id,
+                        artist_id=canonical_artist.id,
+                        position=len(existing_artists),
+                    )
+                )
+                existing_artists.add(canonical_artist.id)
         return entity
+
+    def _reconcile_saved_albums(self, connection: MusicConnection, album_ids: set[UUID]) -> None:
+        existing = set(
+            self.session.scalars(
+                select(SavedAlbum.album_id).where(SavedAlbum.connection_id == connection.id)
+            )
+        )
+        removed = existing - album_ids
+        if removed:
+            self.session.execute(
+                delete(SavedAlbum).where(
+                    SavedAlbum.connection_id == connection.id,
+                    SavedAlbum.album_id.in_(removed),
+                )
+            )
+        for album_id in album_ids - existing:
+            self.session.add(SavedAlbum(connection_id=connection.id, album_id=album_id))
+
+    async def _sync_collected_albums(self, connection: MusicConnection, provider: NetEaseProvider) -> int:
+        collected: list[ProviderAlbum] = []
+        cursor = None
+        for _ in range(100):
+            page = await provider.list_collected_albums(cursor)
+            collected.extend(page.items)
+            cursor = page.next_cursor
+            if cursor is None:
+                break
+        else:
+            raise ProviderTemporarilyUnavailable("Collected album pagination exceeded its limit.")
+        album_ids = {self._upsert_album(album).id for album in collected}
+        self.session.flush()
+        self._reconcile_saved_albums(connection, album_ids)
+        return len(album_ids)
+
+    async def sync_collected_albums_only(self, connection: MusicConnection) -> int:
+        cookie = MusicConnectionService(self.session, cipher=self.cipher).decrypt_session(connection)
+        provider = self.provider_factory(cookie)
+        self._prepare_caches()
+        return await self._sync_collected_albums(connection, provider)
 
     def _upsert_track(self, item: ProviderTrack) -> Track:
         provider_artists = {artist.provider_id: artist for artist in item.artists}

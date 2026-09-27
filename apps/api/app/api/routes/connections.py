@@ -12,6 +12,7 @@ from app.api.schemas import (
     OperationResponse,
     QrChallengeResponse,
     QrStatusResponse,
+    SavedAlbumSyncResponse,
     SyncResponse,
     SyncStateResponse,
 )
@@ -154,6 +155,30 @@ async def synchronize(connection_id: UUID, db: DbSession) -> SyncResponse:
     except Exception as exc:
         db.commit()
         raise HTTPException(status_code=503, detail="Library synchronization could not complete.") from exc
+
+
+@router.post("/{connection_id}/saved-albums/sync", response_model=SavedAlbumSyncResponse)
+async def synchronize_saved_albums(connection_id: UUID, db: DbSession) -> SavedAlbumSyncResponse:
+    connection = db.get(MusicConnection, connection_id)
+    if connection is None:
+        raise HTTPException(status_code=404, detail="Music connection not found.")
+    if connection.status != ConnectionStatus.CONNECTED.value:
+        raise HTTPException(status_code=409, detail="Reconnect NetEase before syncing saved albums.")
+    try:
+        count = await LibrarySyncService(db).sync_collected_albums_only(connection)
+        db.commit()
+        return SavedAlbumSyncResponse(status="SYNCED", albums=count)
+    except ProviderAuthenticationExpired as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=401, detail="NetEase session expired. Reconnect to continue."
+        ) from exc
+    except ProviderError as exc:
+        db.rollback()
+        raise HTTPException(status_code=503, detail="Saved albums could not be refreshed.") from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=503, detail="Saved albums could not be refreshed.") from exc
 
 
 @router.get("/{connection_id}/sync", response_model=SyncStateResponse)

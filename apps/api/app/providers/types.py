@@ -67,6 +67,7 @@ class ProviderAlbum:
     title: str
     artist_provider_ids: tuple[str, ...]
     artwork_url: str | None
+    artists: tuple["ProviderArtist", ...] = field(default_factory=tuple)
     metadata: dict[str, object] = field(default_factory=dict)
 
 

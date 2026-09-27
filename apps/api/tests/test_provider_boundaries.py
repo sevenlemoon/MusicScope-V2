@@ -75,6 +75,33 @@ def test_netease_track_normalization_deduplicates_repeated_artist_identities() -
     assert track.album.artist_provider_ids == ("10", "20")
 
 
+def test_collected_album_list_uses_explicit_provider_collection_and_paginates() -> None:
+    provider = NetEaseProvider(session_cookie="test-session-placeholder")
+    provider._post = AsyncMock(  # type: ignore[method-assign]
+        return_value={
+            "code": 200,
+            "count": 2,
+            "data": [
+                {
+                    "id": 301,
+                    "name": "Actually collected",
+                    "picUrl": "http://p1.music.126.net/album.jpg",
+                    "artists": [{"id": 11, "name": "Artist"}],
+                }
+            ],
+        }
+    )
+    page = asyncio.run(provider.list_collected_albums())
+    assert page.next_cursor == "1"
+    assert [(item.provider_id, item.title) for item in page.items] == [("301", "Actually collected")]
+    assert page.items[0].artist_provider_ids == ("11",)
+    assert page.items[0].artwork_url == "https://p1.music.126.net/album.jpg"
+    assert provider._post.call_args.args[1] == "/v1/albums/collected"
+
+    provider._post.return_value = {"code": 200, "count": 2, "data": [{"id": 302, "name": "Two"}]}
+    assert asyncio.run(provider.list_collected_albums("1")).next_cursor is None
+
+
 def test_read_only_discovery_mapping_preserves_provider_metadata_and_multi_artist_ids() -> None:
     provider = NetEaseProvider(session_cookie="test-session-placeholder")
     provider._post = AsyncMock(  # type: ignore[method-assign]

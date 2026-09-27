@@ -134,6 +134,18 @@ class Album(TimestampMixin, Base):
     metadata_json: Mapped[dict[str, Any]] = mapped_column("metadata", JSON, default=dict, nullable=False)
 
 
+class SavedAlbum(Base):
+    __tablename__ = "saved_albums"
+
+    connection_id: Mapped[UUID] = mapped_column(
+        ForeignKey("music_connections.id", ondelete="CASCADE"), primary_key=True
+    )
+    album_id: Mapped[UUID] = mapped_column(
+        ForeignKey("albums.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    saved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Track(TimestampMixin, Base):
     __tablename__ = "tracks"
     __table_args__ = (Index("ix_tracks_title", "title"),)

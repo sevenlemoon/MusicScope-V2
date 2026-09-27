@@ -481,6 +481,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/music-connections/{connection_id}/saved-albums/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Synchronize Saved Albums */
+        post: operations["synchronize_saved_albums_api_v1_music_connections__connection_id__saved_albums_sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/music-connections/{connection_id}/sync": {
         parameters: {
             query?: never;
@@ -2247,6 +2264,13 @@ export interface components {
             /** Weight */
             weight: number;
         };
+        /** SavedAlbumSyncResponse */
+        SavedAlbumSyncResponse: {
+            /** Albums */
+            albums: number;
+            /** Status */
+            status: string;
+        };
         /** SearchAlbumResult */
         SearchAlbumResult: {
             album: components["schemas"]["AlbumItem"];
@@ -2625,7 +2649,7 @@ export interface operations {
     album_detail_api_v1_albums__album_id__get: {
         parameters: {
             query?: {
-                scope?: "liked" | "all";
+                scope?: "liked" | "personal" | "all";
             };
             header?: never;
             path: {
@@ -2661,7 +2685,7 @@ export interface operations {
                 cursor?: string | null;
                 limit?: number;
                 sort?: "asc" | "desc";
-                scope?: "liked" | "all";
+                scope?: "liked" | "personal" | "all";
             };
             header?: never;
             path: {
@@ -2694,7 +2718,7 @@ export interface operations {
     artist_detail_api_v1_artists__artist_id__get: {
         parameters: {
             query?: {
-                scope?: "liked" | "all";
+                scope?: "liked" | "personal" | "all";
             };
             header?: never;
             path: {
@@ -2730,7 +2754,7 @@ export interface operations {
                 cursor?: string | null;
                 limit?: number;
                 sort?: "asc" | "desc";
-                scope?: "liked" | "all";
+                scope?: "liked" | "personal" | "all";
             };
             header?: never;
             path: {
@@ -2799,7 +2823,7 @@ export interface operations {
                 cursor?: string | null;
                 limit?: number;
                 sort?: "asc" | "desc";
-                scope?: "liked" | "all";
+                scope?: "liked" | "personal" | "all";
             };
             header?: never;
             path: {
@@ -2962,7 +2986,7 @@ export interface operations {
                 limit?: number;
                 sort?: "asc" | "desc";
                 group?: string | null;
-                scope?: "liked" | "all";
+                scope?: "liked" | "personal" | "all";
             };
             header?: never;
             path?: never;
@@ -2997,7 +3021,7 @@ export interface operations {
                 limit?: number;
                 sort?: "asc" | "desc";
                 group?: string | null;
-                scope?: "liked" | "all";
+                scope?: "liked" | "personal" | "all";
             };
             header?: never;
             path?: never;
@@ -3052,7 +3076,7 @@ export interface operations {
                 limit?: number;
                 sort?: "asc" | "desc";
                 group?: string | null;
-                scope?: "liked" | "all";
+                scope?: "liked" | "personal" | "all";
             };
             header?: never;
             path?: never;
@@ -3088,7 +3112,7 @@ export interface operations {
                 types?: string | null;
                 cursor?: string | null;
                 limit?: number;
-                scope?: "liked" | "all";
+                scope?: "liked" | "personal" | "all";
             };
             header?: never;
             path?: never;
@@ -3119,7 +3143,7 @@ export interface operations {
     library_summary_api_v1_library_summary_get: {
         parameters: {
             query?: {
-                scope?: "liked" | "all";
+                scope?: "liked" | "personal" | "all";
             };
             header?: never;
             path?: never;
@@ -3154,7 +3178,7 @@ export interface operations {
                 limit?: number;
                 sort?: "asc" | "desc";
                 group?: string | null;
-                scope?: "liked" | "all";
+                scope?: "liked" | "personal" | "all";
             };
             header?: never;
             path?: never;
@@ -3526,6 +3550,37 @@ export interface operations {
             };
         };
     };
+    synchronize_saved_albums_api_v1_music_connections__connection_id__saved_albums_sync_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedAlbumSyncResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     synchronization_state_api_v1_music_connections__connection_id__sync_get: {
         parameters: {
             query?: never;
@@ -3591,7 +3646,7 @@ export interface operations {
     playlist_detail_api_v1_playlists__playlist_id__get: {
         parameters: {
             query?: {
-                scope?: "liked" | "all";
+                scope?: "liked" | "personal" | "all";
             };
             header?: never;
             path: {
@@ -3627,7 +3682,7 @@ export interface operations {
                 cursor?: string | null;
                 limit?: number;
                 sort?: "original" | "asc" | "desc";
-                scope?: "liked" | "all";
+                scope?: "liked" | "personal" | "all";
             };
             header?: never;
             path: {
@@ -4318,7 +4373,7 @@ export interface operations {
     track_detail_api_v1_tracks__track_id__get: {
         parameters: {
             query?: {
-                scope?: "liked" | "all";
+                scope?: "liked" | "personal" | "all";
             };
             header?: never;
             path: {

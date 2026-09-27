@@ -250,7 +250,7 @@ def album_tracks(
 @router.get("/playlists/{playlist_id}", response_model=PlaylistDetail)
 def playlist_detail(playlist_id: UUID, db: DbSession, scope: LibraryScope = "liked") -> PlaylistDetail:
     playlist = db.get(Playlist, playlist_id)
-    if playlist is None or (scope == "liked" and playlist_id not in playlist_ids_for_scope(db, scope)):
+    if playlist is None or (scope != "all" and playlist_id not in playlist_ids_for_scope(db, scope)):
         raise HTTPException(status_code=404, detail="Playlist not found.")
     synchronized_count = (
         db.scalar(
@@ -280,7 +280,7 @@ def playlist_tracks(
     scope: LibraryScope = "liked",
 ) -> TrackPage:
     if db.get(Playlist, playlist_id) is None or (
-        scope == "liked" and playlist_id not in playlist_ids_for_scope(db, scope)
+        scope != "all" and playlist_id not in playlist_ids_for_scope(db, scope)
     ):
         raise HTTPException(status_code=404, detail="Playlist not found.")
     offset = offset_from_cursor(cursor)

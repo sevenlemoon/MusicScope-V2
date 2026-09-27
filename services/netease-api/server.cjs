@@ -222,6 +222,7 @@ async function route(request, response) {
   }
   if (path === "/v1/account") return send(response, 200, await providerRead(payload, api.user_account, "account"));
   if (path === "/v1/playlists") return send(response, 200, await providerRead(payload, api.user_playlist, "playlists"));
+  if (path === "/v1/albums/collected") return send(response, 200, await providerRead(payload, api.album_sublist, "collected_albums"));
   if (path === "/v1/playlist/detail") return send(response, 200, await providerRead(payload, api.playlist_detail, "playlist_detail"));
   if (path === "/v1/songs/detail") return send(response, 200, await providerRead(payload, api.song_detail, "song_detail"));
   if (path === "/v1/song/url") return send(response, 200, await playbackSource(payload));
