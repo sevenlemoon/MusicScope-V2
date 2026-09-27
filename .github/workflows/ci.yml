@@ -84,6 +84,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           uv sync --project apps/audio-worker --extra dev --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install Windows audio tools
+        shell: powershell
+        run: |
+          choco install ffmpeg --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ffmpeg -version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ffprobe -version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Run native Python checks
         shell: powershell
         run: |
