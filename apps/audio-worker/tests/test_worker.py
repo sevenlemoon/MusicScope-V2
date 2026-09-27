@@ -15,6 +15,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from audio_worker import worker
+from audio_worker.beat_analysis import SAMPLE_RATE, estimate_beat_grid
 
 
 def make_database() -> tuple[object, Session, User, AudioAsset]:
@@ -203,22 +204,45 @@ def test_waveform_uses_real_sample_extrema(tmp_path: Path, monkeypatch: pytest.M
     payload = worker.generate_waveform(paths, 1000, destination)
     assert destination.is_file()
     assert payload["version"] == "peaks-json-v1"
+    assert payload["beat_grid"] is None
     assert payload["stems"]["VOCALS"]["peaks"] == [[-0.75, -0.75], [0.5, 0.5], [-0.25, -0.25], [0.9, 0.9]]
+
+
+def test_steady_drum_hits_produce_estimated_bpm_and_beat_positions() -> None:
+    samples = np.zeros(SAMPLE_RATE * 20, dtype="<f4")
+    for time_seconds in np.arange(0.25, 20, 0.5):
+        start = round(time_seconds * SAMPLE_RATE)
+        samples[start : start + 40] = np.linspace(1, 0, 40)
+    beat_grid = estimate_beat_grid(samples, 20_000)
+    assert beat_grid is not None
+    assert beat_grid["bpm"] == 120
+    assert beat_grid["source"] == "drums"
+    assert abs(beat_grid["beats_ms"][0] - 250) <= 30
+    assert len(beat_grid["beats_ms"]) == 40
+
+
+def test_silence_and_unstructured_noise_do_not_invent_beats() -> None:
+    assert estimate_beat_grid(np.zeros(SAMPLE_RATE * 20, dtype="<f4"), 20_000) is None
+    noise = np.random.default_rng(42).normal(0, 0.02, SAMPLE_RATE * 20).astype("<f4")
+    assert estimate_beat_grid(noise, 20_000) is None
 
 
 def test_device_policy_is_explicit_and_never_silently_falls_back(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    fake_torch = SimpleNamespace(backends=SimpleNamespace(mps=SimpleNamespace(is_available=lambda: False)))
+    fake_torch = SimpleNamespace(
+        backends=SimpleNamespace(mps=SimpleNamespace(is_available=lambda: False)),
+        cuda=SimpleNamespace(is_available=lambda: False),
+    )
     monkeypatch.setitem(sys.modules, "torch", fake_torch)
 
     monkeypatch.setenv("AUDIO_WORKER_DEVICE", "cpu")
     assert worker.select_device() == "cpu"
 
     monkeypatch.setenv("AUDIO_WORKER_DEVICE", "cuda")
-    with pytest.raises(worker.WorkerFailure) as invalid:
+    with pytest.raises(worker.WorkerFailure) as unavailable_cuda:
         worker.select_device()
-    assert invalid.value.code == "MODEL_UNAVAILABLE"
+    assert unavailable_cuda.value.code == "MODEL_UNAVAILABLE"
 
     monkeypatch.setenv("AUDIO_WORKER_DEVICE", "mps")
     with pytest.raises(worker.WorkerFailure) as unavailable:
@@ -227,6 +251,9 @@ def test_device_policy_is_explicit_and_never_silently_falls_back(
 
     monkeypatch.delenv("AUDIO_WORKER_DEVICE")
     assert worker.select_device() == "cpu"
+
+    fake_torch.cuda.is_available = lambda: True
+    assert worker.select_device() == "cuda"
 
 
 def test_failure_mapping_persists_only_safe_public_error(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,5 +1,6 @@
 import base64
 import importlib.util
+import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -23,7 +24,8 @@ def test_fresh_environment_generates_unique_local_secrets(tmp_path: Path) -> Non
     assert urlsplit(values["DATABASE_URL"]).password == password
     assert urlsplit(values["DATABASE_URL"]).hostname == "127.0.0.1"
     assert len(base64.urlsafe_b64decode(values["SECRET_ENCRYPTION_KEY"])) == 32
-    assert environment.stat().st_mode & 0o777 == 0o600
+    if os.name != "nt":
+        assert environment.stat().st_mode & 0o777 == 0o600
 
     second = tmp_path / "second.env"
     module.bootstrap_environment(second, ROOT / ".env.example")

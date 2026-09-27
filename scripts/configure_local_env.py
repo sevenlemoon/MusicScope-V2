@@ -50,7 +50,8 @@ def prepared_file(path: Path, contents: str) -> Path:
     fd, name = tempfile.mkstemp(prefix=".env.", dir=path.parent, text=True)
     temporary = Path(name)
     try:
-        os.fchmod(fd, 0o600)
+        if hasattr(os, "fchmod"):
+            os.fchmod(fd, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
             stream.write(contents)
             stream.flush()

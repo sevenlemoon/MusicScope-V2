@@ -53,3 +53,64 @@ jobs:
         run: cd apps/api && .venv/bin/alembic upgrade head
       - name: Validate
         run: make check
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            services/netease-api/package-lock.json
+      - name: Install uv
+        run: python -m pip install uv==0.7.6
+      - name: Check native launcher syntax and read-only status
+        shell: powershell
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path scripts/dev.ps1), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count -ne 0) { throw ($parseErrors | Out-String) }
+          .\scripts\dev.ps1 -Status
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install Python dependencies from Windows lock
+        run: |
+          uv sync --project apps/api --extra dev --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          uv sync --project apps/audio-worker --extra dev --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run native Python checks
+        shell: powershell
+        run: |
+          Push-Location apps/api
+          & ./.venv/Scripts/python.exe -m pytest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+          Push-Location apps/audio-worker
+          & ./.venv/Scripts/python.exe -m pytest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+          & ./apps/api/.venv/Scripts/ruff.exe check apps/api/app apps/api/tests apps/audio-worker/audio_worker apps/audio-worker/tests
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run Windows frontend checks
+        shell: powershell
+        run: |
+          npm ci --prefix apps/web
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm ci --prefix services/netease-api
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix apps/web run lint
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix apps/web run typecheck
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix apps/web test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix apps/web run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix services/netease-api test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

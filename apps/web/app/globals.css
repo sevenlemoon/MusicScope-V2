@@ -429,6 +429,14 @@ body::before { display: none; }
 .studio-recent > a strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .studio-recent > a span { flex: none; color: var(--text-faint); font-size: 10px; }
 .studio-mixer { padding-top: 42px; }
+.studio-beat-summary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 15px; margin-bottom: 9px; color: var(--text-soft); font-size: 11px; }
+.studio-beat-summary > span { color: var(--accent); font: 750 9px/1 ui-monospace, monospace; letter-spacing: .1em; }
+.studio-beat-summary > strong { color: var(--text); font: 750 18px/1 ui-monospace, monospace; }
+.studio-beat-summary > small { color: var(--text-faint); font-size: 10px; }
+.studio-transport-timeline { position: relative; min-width: 0; }
+.studio-transport-timeline input { position: relative; width: 100%; z-index: 1; }
+.studio-beat-ticks { position: absolute; inset: 50% 0 auto; z-index: 2; width: 100%; height: 10px; transform: translateY(-50%); color: var(--accent); pointer-events: none; }
+.studio-beat-ticks path { fill: none; stroke: currentColor; stroke-width: 1; opacity: .65; vector-effect: non-scaling-stroke; }
 .studio-practice { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-top: 12px; padding: 12px 16px; background: #11161a; border: 1px solid var(--line); border-radius: 10px; }
 .studio-practice label { display: flex; align-items: center; gap: 10px; color: var(--text-soft); font-size: 11px; }
 .studio-practice select { padding: 7px 9px; color: var(--text); background: #1b2025; border: 1px solid var(--line); border-radius: 6px; }

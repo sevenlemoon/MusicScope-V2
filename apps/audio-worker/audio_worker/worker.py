@@ -37,6 +37,8 @@ from app.services.audio_studio import (  # noqa: E402
 from sqlalchemy import delete, select, text  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
+from audio_worker.beat_analysis import estimate_beat_grid  # noqa: E402
+
 ADVISORY_LOCK_ID = 4_672_041
 STOP_REQUESTED = False
 ACTIVE_PROCESS: subprocess.Popen[bytes] | None = None
@@ -145,26 +147,37 @@ def set_stage(db: Session, job: StemJob, status: StemJobStatus, stage: str) -> N
 def select_device() -> str:
     configured = os.getenv("AUDIO_WORKER_DEVICE", "").strip().casefold()
     if configured:
-        if configured not in {"mps", "cpu"}:
+        if configured not in {"mps", "cuda", "cpu"}:
             raise WorkerFailure("MODEL_UNAVAILABLE", "Configured audio device is invalid.")
         if configured == "mps":
             import torch
 
             if not torch.backends.mps.is_available():
                 raise WorkerFailure("MODEL_UNAVAILABLE", "The configured MPS device is unavailable.")
+        if configured == "cuda":
+            import torch
+
+            if not torch.cuda.is_available():
+                raise WorkerFailure("MODEL_UNAVAILABLE", "The configured CUDA device is unavailable.")
         return configured
     import torch
 
-    return "mps" if torch.backends.mps.is_available() else "cpu"
+    if torch.backends.mps.is_available():
+        return "mps"
+    if torch.cuda.is_available():
+        return "cuda"
+    return "cpu"
 
 
 def _worker_cache() -> Path:
     configured = os.getenv("MUSICSCOPE_MODEL_CACHE")
-    cache = (
-        Path(configured).expanduser()
-        if configured
-        else Path.home() / "Library" / "Caches" / "MusicScope" / "models"
-    )
+    if configured:
+        cache = Path(configured).expanduser()
+    elif os.name == "nt":
+        local_app_data = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
+        cache = Path(local_app_data) / "MusicScope" / "models"
+    else:
+        cache = Path.home() / "Library" / "Caches" / "MusicScope" / "models"
     cache.mkdir(parents=True, exist_ok=True)
     return cache.resolve()
 
@@ -179,6 +192,16 @@ def _sha256(path: Path) -> str:
 
 def _terminate_process_group(process: subprocess.Popen[bytes]) -> None:
     if process.poll() is not None:
+        return
+    if os.name == "nt":
+        subprocess.run(
+            ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+            capture_output=True,
+            check=False,
+        )
+        if process.poll() is None:
+            process.terminate()
+        process.wait(timeout=5)
         return
     try:
         os.killpg(process.pid, signal.SIGTERM)
@@ -209,7 +232,8 @@ def _run_owned_process(
                 command,
                 stdout=log,
                 stderr=subprocess.STDOUT,
-                start_new_session=True,
+                start_new_session=os.name != "nt",
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
                 env=environment,
             )
             last_heartbeat = 0.0
@@ -295,7 +319,9 @@ def _find_stems(output: Path, expected: tuple[str, ...] = STEM_TYPES) -> dict[st
                 raise WorkerFailure("ARTIFACT_VALIDATION_FAILED", "Duplicate stem output was produced.")
             discovered[stem] = candidate
     if set(discovered) != set(expected):
-        raise WorkerFailure("ARTIFACT_VALIDATION_FAILED", f"Separation did not produce exactly {len(expected)} stems.")
+        raise WorkerFailure(
+            "ARTIFACT_VALIDATION_FAILED", f"Separation did not produce exactly {len(expected)} stems."
+        )
     return discovered
 
 
@@ -325,6 +351,7 @@ def generate_waveform(paths: dict[str, Path], duration_ms: int, destination: Pat
 
     target_buckets = 2000
     stems: dict[str, Any] = {}
+    beat_grid: dict[str, object] | None = None
     for stem, path in sorted(paths.items()):
         try:
             completed = subprocess.run(
@@ -352,6 +379,8 @@ def generate_waveform(paths: dict[str, Path], duration_ms: int, destination: Pat
         samples = np.frombuffer(completed.stdout, dtype="<f4")
         if samples.size == 0 or not np.isfinite(samples).all():
             raise WorkerFailure("ARTIFACT_VALIDATION_FAILED", "Waveform samples are invalid.")
+        if stem == "DRUMS":
+            beat_grid = estimate_beat_grid(samples, duration_ms)
         bucket_count = min(target_buckets, int(samples.size))
         boundaries = np.linspace(0, samples.size, bucket_count + 1, dtype=np.int64)
         peaks = [
@@ -362,7 +391,12 @@ def generate_waveform(paths: dict[str, Path], duration_ms: int, destination: Pat
             for index in range(bucket_count)
         ]
         stems[stem] = {"bucket_count": bucket_count, "peaks": peaks}
-    payload = {"version": "peaks-json-v1", "duration_ms": duration_ms, "stems": stems}
+    payload = {
+        "version": "peaks-json-v1",
+        "duration_ms": duration_ms,
+        "stems": stems,
+        "beat_grid": beat_grid,
+    }
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(payload, separators=(",", ":"), allow_nan=False), encoding="utf-8")
     return payload

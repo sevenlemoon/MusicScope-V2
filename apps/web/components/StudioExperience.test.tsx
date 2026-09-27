@@ -146,6 +146,7 @@ describe("StudioExperience", () => {
       : response(completed) as never);
     render(<StudioExperience initialJobId="job-1" />);
     expect(await screen.findByText("四条 FLAC 音轨已经保存在本机。刷新或稍后返回，不会重新处理。")).toBeInTheDocument();
+    expect(await screen.findByText("此任务暂无节拍分析数据。")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /波形中定位/ })).toHaveLength(4);
     fireEvent.change(screen.getByLabelText("人声增益"), { target: { value: "0.42" } });
     fireEvent.click(screen.getByRole("button", { name: "人声静音" }));
@@ -171,12 +172,27 @@ describe("StudioExperience", () => {
       id: `artifact-${stem}`, stem_type: stem, stream_url: `/stream/${stem}`,
       size_bytes: 1024, duration_ms: 180000,
     }));
-    global.fetch = jest.fn(() => response(job("SUCCEEDED", { model_name: "htdemucs_6s", artifacts })) as never);
+    global.fetch = jest.fn((input) => String(input).endsWith("/waveform")
+      ? response({ version: "peaks-json-v1", duration_ms: 180000, stems: peaks, beat_grid: {
+        bpm: 120, beats_ms: [250, 750, 1250], source: "drums", method: "onset-autocorrelation-v1",
+      } }) as never
+      : response(job("SUCCEEDED", { model_name: "htdemucs_6s", artifacts, waveform_url: "/waveform" })) as never);
     render(<StudioExperience initialJobId="job-1" />);
     expect(await screen.findByText("六条 FLAC 音轨已保存在本机。吉他和钢琴可能有串音或伪影。")).toBeInTheDocument();
+    expect(await screen.findByText("120 BPM")).toBeInTheDocument();
+    expect(screen.getByLabelText("估算节拍位置").querySelector("path")).toHaveAttribute("d", expect.stringContaining("M1.39"));
     expect(screen.getAllByRole("button", { name: /波形中定位/ })).toHaveLength(6);
     expect(screen.getByRole("button", { name: "吉他独奏" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "下载钢琴 FLAC" })).toBeInTheDocument();
+  });
+
+  test("does not claim a tempo when the drums have no stable beat", async () => {
+    global.fetch = jest.fn((input) => String(input).endsWith("/waveform")
+      ? response({ version: "peaks-json-v1", duration_ms: 180000, stems: peaks, beat_grid: null }) as never
+      : response(job("SUCCEEDED", { waveform_url: "/waveform" })) as never);
+    render(<StudioExperience initialJobId="job-1" />);
+    expect(await screen.findByText("鼓组中未检测到稳定节拍。")).toBeInTheDocument();
+    expect(screen.queryByText(/BPM/)).not.toBeInTheDocument();
   });
 
   test("reopened projects recover their library track from the saved association", async () => {

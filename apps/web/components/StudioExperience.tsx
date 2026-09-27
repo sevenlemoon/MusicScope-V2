@@ -22,7 +22,8 @@ type StudioJob = {
 };
 type JobList = { items: StudioJob[] };
 type WaveformStem = { bucket_count: number; peaks: [number, number][] };
-type Waveform = { version: string; duration_ms: number; stems: Record<StemType, WaveformStem> };
+type BeatGrid = { bpm: number; beats_ms: number[]; source: "drums"; method: string };
+type Waveform = { version: string; duration_ms: number; stems: Record<StemType, WaveformStem>; beat_grid?: BeatGrid | null };
 
 const STEMS: StemType[] = ["VOCALS", "DRUMS", "BASS", "OTHER"];
 const SIX_STEMS: StemType[] = ["VOCALS", "DRUMS", "BASS", "GUITAR", "PIANO", "OTHER"];
@@ -198,6 +199,7 @@ function StemMixer({ job }: { job: StudioJob }) {
   const nodes = useRef(new Map<StemType, GainNode>());
   const masterNode = useRef<GainNode | null>(null);
   const duration = job.asset.duration_ms / 1000;
+  const beatGrid = waveform?.beat_grid;
 
   useEffect(() => {
     if (!job.waveform_url) return;
@@ -282,7 +284,8 @@ function StemMixer({ job }: { job: StudioJob }) {
 
   return <section className="studio-mixer">
     <header><div><p className="eyebrow">{t("COMPLETE", "已完成")} · {stems.length} {t("STEMS", "音轨")}</p><h2>{job.asset.original_filename}</h2><p>{stems.length === 4 ? t("Four FLAC stems are saved locally. Reloading or returning later will not process the audio again.", "四条 FLAC 音轨已经保存在本机。刷新或稍后返回，不会重新处理。") : t("Six FLAC stems are saved locally. Guitar and piano isolation may contain bleed or artifacts.", "六条 FLAC 音轨已保存在本机。吉他和钢琴可能有串音或伪影。")}</p></div><span>{formatDuration(duration)}</span></header>
-    <div className="studio-transport"><button type="button" className="studio-play" aria-label={playing ? t(`Pause ${stems.length} stems`, `暂停${stems.length === 4 ? "四" : "六"}个声部`) : t(`Play ${stems.length} stems`, `播放${stems.length === 4 ? "四" : "六"}个声部`)} onClick={() => void togglePlay()}>{playing ? "Ⅱ" : "▶"}</button><span>{formatDuration(position)}</span><input aria-label={t("Playback position", "播放位置")} type="range" min={0} max={duration || 1} step={0.01} value={position} onChange={(event) => seek(Number(event.target.value))} /><span>{formatDuration(duration)}</span></div>
+    <div className="studio-beat-summary" aria-live="polite"><span>{t("BEAT GRID", "节拍刻度")}</span>{beatGrid ? <><strong>{beatGrid.bpm} BPM</strong><small>{t("Estimated from drums · beat positions are approximate, not a time signature.", "根据鼓组估算 · 节拍位置仅供参考，不代表拍号。")}</small></> : <small>{waveform?.beat_grid === null ? t("No steady beat detected in the drums.", "鼓组中未检测到稳定节拍。") : t("Beat analysis is unavailable for this project.", "此任务暂无节拍分析数据。")}</small>}</div>
+    <div className="studio-transport"><button type="button" className="studio-play" aria-label={playing ? t(`Pause ${stems.length} stems`, `暂停${stems.length === 4 ? "四" : "六"}个声部`) : t(`Play ${stems.length} stems`, `播放${stems.length === 4 ? "四" : "六"}个声部`)} onClick={() => void togglePlay()}>{playing ? "Ⅱ" : "▶"}</button><span>{formatDuration(position)}</span><div className="studio-transport-timeline"><BeatTicks grid={beatGrid} durationMs={job.asset.duration_ms} /><input aria-label={t("Playback position", "播放位置")} type="range" min={0} max={duration || 1} step={0.01} value={position} onChange={(event) => seek(Number(event.target.value))} /></div><span>{formatDuration(duration)}</span></div>
     <div className="studio-practice"><label>{t("Playback speed", "播放速度")} <select aria-label={t("Playback speed", "播放速度")} value={speed} onChange={(event) => setSpeed(Number(event.target.value))}><option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option></select></label><div><button type="button" onClick={() => { setLoopStart(position); setLoopEnd(null); }}>{t("Set loop start", "设为循环起点")}</button><button type="button" disabled={loopStart === null || position <= loopStart + 0.25} onClick={() => setLoopEnd(position)}>{t("Set loop end", "设为循环终点")}</button><button type="button" disabled={loopStart === null} onClick={() => { setLoopStart(null); setLoopEnd(null); }}>{t("Clear loop", "清除循环")}</button></div><span>{loopStart === null ? t("No loop", "未设置循环") : `${formatDuration(loopStart)} → ${loopEnd === null ? "…" : formatDuration(loopEnd)}`}</span></div>
     <div className="studio-stems">{stems.map((stem) => {
       const data = waveform?.stems[stem];
@@ -298,6 +301,15 @@ function StemMixer({ job }: { job: StudioJob }) {
     })}</div>
     <footer><label>{t("Master volume", "主音量")} <input aria-label={t("Master volume", "主音量")} type="range" min={0} max={1} step={0.01} value={master} onChange={(event) => setMaster(Number(event.target.value))} /><output>{Math.round(master * 100)}%</output></label><span>{t("Maximum drift before correction", "最大校正前漂移")} {Math.round(drift * 1000)} ms</span><Link className="text-link" href="/studio">{t("New job →", "新建任务 →")}</Link></footer>
   </section>;
+}
+
+function BeatTicks({ grid, durationMs }: { grid?: BeatGrid | null; durationMs: number }) {
+  const t = useStudioText();
+  const path = useMemo(() => grid && durationMs > 0
+    ? grid.beats_ms.filter((value) => Number.isFinite(value) && value >= 0 && value <= durationMs)
+      .map((value) => `M${((value / durationMs) * 1000).toFixed(2)} 0V10`).join("")
+    : "", [grid, durationMs]);
+  return path ? <svg className="studio-beat-ticks" viewBox="0 0 1000 10" preserveAspectRatio="none" aria-label={t("Estimated beat positions", "估算节拍位置")}><path d={path} /></svg> : null;
 }
 
 function WaveformPath({ data }: { data?: WaveformStem }) {
