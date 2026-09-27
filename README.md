@@ -4,21 +4,35 @@
 
 A local-first six-stem studio for the music already in your library.
 
-![MusicScope Studio 的六轨试听界面：人声、鼓组、贝斯、吉他、钢琴和其他声音各有独立波形、音量、静音、独奏与下载控制](docs/screenshots/studio-mixer.jpg)
+**先看实际界面：** [六轨混音与导出](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-mixer.jpg) · [网易云账号选歌](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-account.jpg) · [本地文件导入](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-local.jpg)
 
-*真实运行截图：六条音轨可分别试听、调节和导出；截图避开了私人曲名。*
+![六轨试听与导出界面，展示人声、鼓组、贝斯、吉他、钢琴和其他声音的独立波形](docs/screenshots/studio-mixer.jpg)
+
+上图是完成分轨后的真实界面：每条音轨都能单独调音量、静音、独奏和下载。截图已避开私人曲名。
 
 MusicScope 专注于一件事：从自己的音频文件，或网易云账号“我喜欢的音乐”中的**可播放歌曲**，直接生成同步的 **人声、鼓、贝斯、吉他、钢琴、其他** 六条音轨。界面围绕选曲、分离、试听和导出设计，不需要先经过推荐或数据洞察页面。
 
-## 界面预览
+## 两种分轨入口
 
-进入项目就是分轨页面，按音源选择一种入口：
+进入项目就是分轨页面，按音源选择一种入口。图片下方也提供了文字链接，方便图片未加载时查看。
 
-| 从已连接账号选歌 | 导入自己的音频文件 |
-| --- | --- |
-| [![账号歌曲直接分轨：从资料库选取可播放歌曲](docs/screenshots/studio-account.jpg)](docs/screenshots/studio-account.jpg) | [![独立导入文件：选择本地音频开始六轨分离](docs/screenshots/studio-local.jpg)](docs/screenshots/studio-local.jpg) |
+### 1. 网易云账号选歌
 
-点击图片可查看大图。账号入口只处理当前账号能取得可播放音源的曲目；本地文件入口不需要登录。截图中的最近任务已为隐私而裁去。
+扫码连接后，从资料库挑选当前账号可取得可播放音源的歌曲，直接在本机分轨。
+
+![账号歌曲直接分轨：从资料库选取可播放歌曲](docs/screenshots/studio-account.jpg)
+
+[在 GitHub 打开账号选歌截图](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-account.jpg)
+
+### 2. 独立导入本地文件
+
+导入自己的 MP3、WAV、FLAC 或 M4A/AAC 音频，不需要登录账号。
+
+![独立导入文件：选择本地音频开始六轨分离](docs/screenshots/studio-local.jpg)
+
+[在 GitHub 打开本地导入截图](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-local.jpg)
+
+两张入口截图均裁去了最近任务，避免公开私人歌名。
 
 ## 为什么用它
 
