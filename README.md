@@ -4,13 +4,23 @@
 
 A local-first six-stem studio for the music already in your library.
 
-**先看实际界面：** [六轨混音与导出](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-mixer.jpg) · [网易云账号选歌](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-account.jpg) · [本地文件导入](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-local.jpg)
+**先看实际界面：** [六轨混音与导出](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-mixer.jpg) · [网易云扫码连接](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/netease-login.jpg) · [账号选歌](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-account.jpg) · [本地文件导入](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-local.jpg)
 
 ![六轨试听与导出界面，展示人声、鼓组、贝斯、吉他、钢琴和其他声音的独立波形](docs/screenshots/studio-mixer.jpg)
 
 上图是完成分轨后的真实界面：每条音轨都能单独调音量、静音、独奏和下载。截图已避开私人曲名。
 
 MusicScope 专注于一件事：从自己的音频文件，或网易云账号“我喜欢的音乐”中的**可播放歌曲**，直接生成同步的 **人声、鼓、贝斯、吉他、钢琴、其他** 六条音轨。界面围绕选曲、分离、试听和导出设计，不需要先经过推荐或数据洞察页面。
+
+## 网易云扫码连接
+
+在连接页点击“生成二维码”，用网易云音乐官方手机应用扫码并确认，然后只读同步资料库。MusicScope 不要求输入网易云密码。
+
+![网易云账号扫码连接入口，展示生成二维码按钮和手机确认流程](docs/screenshots/netease-login.jpg)
+
+[在 GitHub 打开扫码连接截图](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/netease-login.jpg)
+
+这是登录前界面的演示截图；出于账号安全，文档不包含有效登录二维码或个人账号信息。
 
 ## 两种分轨入口
 
@@ -32,7 +42,7 @@ MusicScope 专注于一件事：从自己的音频文件，或网易云账号“
 
 [在 GitHub 打开本地导入截图](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-local.jpg)
 
-两张入口截图均裁去了最近任务，避免公开私人歌名。
+选歌与本地导入截图均裁去了最近任务，避免公开私人歌名。
 
 ## 为什么用它
 
