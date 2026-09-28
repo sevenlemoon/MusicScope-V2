@@ -68,7 +68,7 @@ MusicScope 专注于一件事：从自己的音频文件，或网易云账号“
 
 无需预先安装 Node、Python、uv、FFmpeg，也无需手动修改 PATH。项目工具放在忽略的 `.tools/` 中并校验 SHA-256；FFmpeg 使用 [Gyan Windows essentials 构建](https://www.gyan.dev/ffmpeg/builds/)。网络中断会自动重试，失败后再次双击即可利用下载缓存继续依赖安装。安装细节记录在 `.logs/setup-windows.log`。
 
-**首次系统条件：** Windows x64、网络连接和足够的磁盘空间（建议至少 10 GB）。默认启动不安装 Docker、不要求 WSL2、虚拟化或管理员权限。数据库使用 [PostgreSQL 官方页面推荐的 EDB Windows 二进制包](https://www.postgresql.org/download/windows/)，下载后校验固定 SHA-256，并以当前用户身份运行，只监听本机。首次下载需要能访问 Node.js、GitHub、PyPI、npm、EDB 和 FFmpeg 下载服务。
+**首次系统条件：** Windows x64、网络连接和足够的磁盘空间（建议至少 10 GB）。默认启动不安装 Docker、不要求 WSL2、虚拟化或管理员权限。数据库使用 [Zonky 精简 PostgreSQL 运行包](https://github.com/zonkyio/embedded-postgres-binaries)（约 23 MB，基于 EDB Windows 二进制），并自动准备项目内的 Microsoft C++ 运行库。下载校验固定 SHA-256，以当前用户身份运行，只监听本机。首次下载需要能访问 Node.js、GitHub、PyPI、npm、Maven Central、Microsoft 和 FFmpeg 下载服务。下载中断后保留进度，再次双击可续传。
 
 **已有 Docker 资料库：** 新的原生数据库保存在 `storage/postgres/data`。旧 Docker 卷不会删除，也不会自动迁移；旧数据库已经运行时会通过原配置认证并复用。若要继续启动旧 Docker 数据库，请使用 `MusicScope.cmd -LegacyDocker`。首次使用原生模式会建立独立资料库，不代表旧资料丢失。
 

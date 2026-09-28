@@ -149,3 +149,4 @@ jobs:
         with:
           name: windows-startup-logs
           path: .logs/*.log
+          include-hidden-files: true

@@ -4,7 +4,9 @@ from __future__ import annotations
 import argparse
 import os
 import socket
+import shutil
 import subprocess
+import tarfile
 import tempfile
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -13,6 +15,24 @@ import psycopg
 from psycopg import sql
 
 from configure_local_env import bootstrap_environment, env_values
+
+
+def install(root: Path, archive: Path, runtime: Path) -> Path:
+    destination = root / '.tools' / 'postgresql-native-16.15'
+    if not (destination / 'bin' / 'pg_ctl.exe').is_file():
+        stage = Path(tempfile.mkdtemp(prefix='postgres-extract-', dir=root / '.tools'))
+        with tarfile.open(archive) as bundle:
+            bundle.extractall(stage, filter='data')
+        for executable in ('postgres.exe', 'initdb.exe', 'pg_ctl.exe'):
+            if not (stage / 'bin' / executable).is_file():
+                raise RuntimeError('PostgreSQL archive is incomplete.')
+        stage.rename(destination)
+    # App-local Microsoft CRT avoids a separate admin-level redistributable install.
+    for library in runtime.glob('*.dll'):
+        target = destination / 'bin' / library.name
+        if not target.exists():
+            shutil.copy2(library, target)
+    return destination / 'bin'
 
 
 def prepare(root: Path, binaries: Path) -> None:
@@ -86,10 +106,11 @@ def prepare(root: Path, binaries: Path) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, required=True)
-    parser.add_argument("--bin", type=Path, required=True)
+    parser.add_argument("--archive", type=Path, required=True)
+    parser.add_argument("--runtime", type=Path, required=True)
     args = parser.parse_args()
     try:
-        prepare(args.root, args.bin)
+        prepare(args.root, install(args.root, args.archive, args.runtime))
     except Exception as exc:
         # Never include the database URL or password in diagnostics.
         raise SystemExit(f"Database setup failed ({type(exc).__name__}): {exc}") from None

@@ -1,12 +1,16 @@
 # Native PostgreSQL: no Windows service, Docker, WSL, or administrator required.
 function Ensure-NativePostgres([string]$ProjectRoot, [string]$Python, [string]$LogPath) {
     Write-Host '[MusicScope] Preparing project-local PostgreSQL (no Docker / WSL)...'
-    # Vendor checksum: EnterpriseDB/edb-installers issue 696.
-    $directory = Install-StartupArchive `
-        'https://get.enterprisedb.com/postgresql/postgresql-16.15-1-windows-x64-binaries.zip' `
-        '25e6fcdfb8caec38691bf461125e7564508760666f7b8e5dc6a5f0818f58f81e' `
-        (Join-Path $ProjectRoot '.tools\postgresql-16.15') 'pgsql' `
-        @('bin\postgres.exe', 'bin\initdb.exe', 'bin\pg_ctl.exe')
+    # Zonky's reduced EDB distribution: same PostgreSQL, without pgAdmin/docs.
+    $package = Install-StartupArchive `
+        'https://repo.maven.apache.org/maven2/io/zonky/test/postgres/embedded-postgres-binaries-windows-amd64/16.15.0/embedded-postgres-binaries-windows-amd64-16.15.0.jar' `
+        '51c7812dc1af47c9a2ccb64fe74efb88c515cff2da347ce72aab92b4cc8e1191' `
+        (Join-Path $ProjectRoot '.tools\postgresql-package-16.15') '' `
+        @('postgres-windows-x86_64.txz')
+    $runtime = Install-StartupArchive `
+        'https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx' `
+        'b56a9101f706f9d95f815f5b7fa6efbac972e86573d378b96a07cff5540c5961' `
+        (Join-Path $ProjectRoot '.tools\vclibs-14-desktop') '' @('vcruntime140.dll', 'msvcp140.dll')
     $storage = Join-Path $ProjectRoot 'storage\postgres'
     New-Item -ItemType Directory -Force -Path $storage | Out-Null
     $acl = Get-Acl $storage
@@ -17,7 +21,7 @@ function Ensure-NativePostgres([string]$ProjectRoot, [string]$Python, [string]$L
     $acl.AddAccessRule($rule)
     Set-Acl -Path $storage -AclObject $acl
     $arguments = @((Join-Path $ProjectRoot 'scripts\native_postgres.py'), '--root', $ProjectRoot,
-        '--bin', (Join-Path $directory 'bin'))
+        '--archive', (Join-Path $package 'postgres-windows-x86_64.txz'), '--runtime', $runtime)
     if ((Invoke-StartupProcess $Python $arguments $LogPath) -ne 0) {
         throw "Local database startup failed; details: $LogPath. Your database files were preserved."
     }
