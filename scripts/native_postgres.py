@@ -1,0 +1,89 @@
+"""Start a private Windows PostgreSQL cluster, preserving existing databases."""
+from __future__ import annotations
+
+import argparse
+import os
+import socket
+import subprocess
+import tempfile
+from pathlib import Path
+from urllib.parse import unquote, urlsplit
+
+import psycopg
+from psycopg import sql
+
+from configure_local_env import bootstrap_environment, env_values
+
+
+def prepare(root: Path, binaries: Path) -> None:
+    environment = root / ".env"
+    values = env_values(environment.read_text(encoding="utf-8"))
+    url = values["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://", 1)
+    parts = urlsplit(url)
+    port = parts.port or 5432
+    user = unquote(parts.username or "")
+    database = unquote(parts.path.lstrip("/"))
+    password = unquote(parts.password or "")
+    if parts.scheme != "postgresql" or parts.hostname not in {"127.0.0.1", "localhost"}:
+        raise RuntimeError("Native launcher requires a loopback PostgreSQL URL.")
+    if not user or not password or "v2" not in database.lower():
+        raise RuntimeError("Invalid MusicScope V2 database configuration.")
+    parent = root / "storage" / "postgres"
+    data = parent / "data"
+    log = root / ".logs" / "postgres.log"
+    parent.mkdir(parents=True, exist_ok=True)
+    log.parent.mkdir(parents=True, exist_ok=True)
+
+    def run(name: str, *args: str) -> None:
+        subprocess.run([str(binaries / f"{name}.exe"), *args], check=True)
+
+    # An existing server is reused only after authentication with the configured URL.
+    with socket.socket() as probe:
+        occupied = probe.connect_ex(("127.0.0.1", port)) == 0
+    if not occupied:
+        if not (data / "PG_VERSION").exists():
+            if data.exists() and any(data.iterdir()):
+                raise RuntimeError("Incomplete database directory preserved; refusing to overwrite it.")
+            print("Initializing native library database; any previous Docker volume remains untouched.", flush=True)
+            fd, name = tempfile.mkstemp(prefix="init-password-", dir=parent)
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                    stream.write(password + "\n")
+                run("initdb", "-D", str(data), "-U", user, "--pwfile", name,
+                    "--auth=scram-sha-256", "--encoding=UTF8", "--locale=C")
+            finally:
+                Path(name).unlink(missing_ok=True)
+        elif (data / "PG_VERSION").read_text().strip() != "16":
+            raise RuntimeError("Unexpected PostgreSQL major version; data was not modified.")
+        run("pg_ctl", "-D", str(data), "-l", str(log), "-w", "-t", "60",
+            "-o", f"-h 127.0.0.1 -p {port}", "start")
+    with psycopg.connect(host="127.0.0.1", port=port, user=user, password=password,
+                         dbname="postgres", autocommit=True, connect_timeout=5) as connection:
+        if not connection.execute("SELECT 1 FROM pg_database WHERE datname=%s", (database,)).fetchone():
+            actual_data = Path(connection.execute("SHOW data_directory").fetchone()[0])
+            if actual_data.resolve() != data.resolve():
+                raise RuntimeError("Another server occupies the configured port; no database was created.")
+            else:
+                connection.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database)))
+    with psycopg.connect(url, connect_timeout=5) as connection:
+        if not values.get("SECRET_ENCRYPTION_KEY"):
+            count = connection.execute(
+                "SELECT count(*) FROM information_schema.tables "
+                "WHERE table_schema='public' AND table_name <> 'alembic_version'"
+            ).fetchone()[0]
+            if count:
+                raise RuntimeError("Existing library has no encryption key. Restore its original .env.")
+            bootstrap_environment(environment, allow_existing=True)
+    print("Native database authenticated and ready.", flush=True)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--root", type=Path, required=True)
+    parser.add_argument("--bin", type=Path, required=True)
+    args = parser.parse_args()
+    try:
+        prepare(args.root, args.bin)
+    except Exception as exc:
+        # Never include the database URL or password in diagnostics.
+        raise SystemExit(f"Database setup failed ({type(exc).__name__}): {exc}") from None

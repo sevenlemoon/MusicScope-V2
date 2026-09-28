@@ -58,21 +58,23 @@ MusicScope 专注于一件事：从自己的音频文件，或网易云账号“
 | 平台 | 启动方式 | 必需软件 |
 | --- | --- | --- |
 | macOS（Apple silicon） | 双击 `MusicScope.command`，或运行 `./scripts/dev.sh` | Docker Desktop、[uv](https://docs.astral.sh/uv/)、Node.js 24.21.0+（24.x）；首次在仓库中运行 `nvm install` |
-| Windows 10/11 x64 | 解压项目后双击 `MusicScope.cmd` | 可联网、满足 Docker Desktop 的系统与虚拟化要求；工具由脚本准备 |
+| Windows 10/11 x64 | 解压项目后双击 `MusicScope.cmd` | 可联网；无需 Docker、WSL2 或开启虚拟化，工具由脚本准备 |
 
 ### Windows：双击启动
 
 1. 下载并完整解压项目，双击 `MusicScope.cmd`。
-2. 首次启动自动准备 Node.js、uv、Python 3.12、FFmpeg/ffprobe、前后端依赖和音频引擎；缺少 Docker Desktop 时会调用安装程序，安装后自动尝试启动它。
-3. 按 Windows 或 Docker 弹窗完成首次系统授权，等待终端显示 `APPLICATION READY`；浏览器会自动打开。以后仍然双击同一个文件，已安装的工具和前端依赖会复用。
+2. 首次启动自动准备 Node.js、uv、Python 3.12、FFmpeg/ffprobe、Windows 原生 PostgreSQL、前后端依赖和音频引擎。
+3. 等待终端显示 `APPLICATION READY`；浏览器会自动打开。以后仍然双击同一个文件，已安装的工具和前端依赖会复用。
 
 无需预先安装 Node、Python、uv、FFmpeg，也无需手动修改 PATH。项目工具放在忽略的 `.tools/` 中并校验 SHA-256；FFmpeg 使用 [Gyan Windows essentials 构建](https://www.gyan.dev/ffmpeg/builds/)。网络中断会自动重试，失败后再次双击即可利用下载缓存继续依赖安装。安装细节记录在 `.logs/setup-windows.log`。
 
-**首次系统条件：** Windows 必须满足 [Docker Desktop 官方要求](https://docs.docker.com/desktop/setup/install/windows-install/)，包括支持的系统版本、足够内存和硬件虚拟化。Docker/WSL 首次配置可能需要系统确认或重启；重启后再双击即可继续。脚本优先通过 WinGet 安装 Docker，无 WinGet 时下载并校验官方签名安装程序。首次下载需要能访问 Node.js、GitHub、PyPI、npm、Docker 和 FFmpeg 下载服务，并预留数 GB 磁盘空间。
+**首次系统条件：** Windows x64、网络连接和足够的磁盘空间（建议至少 10 GB）。默认启动不安装 Docker、不要求 WSL2、虚拟化或管理员权限。数据库使用 [PostgreSQL 官方页面推荐的 EDB Windows 二进制包](https://www.postgresql.org/download/windows/)，下载后校验固定 SHA-256，并以当前用户身份运行，只监听本机。首次下载需要能访问 Node.js、GitHub、PyPI、npm、EDB 和 FFmpeg 下载服务。
+
+**已有 Docker 资料库：** 新的原生数据库保存在 `storage/postgres/data`。旧 Docker 卷不会删除，也不会自动迁移；旧数据库已经运行时会通过原配置认证并复用。若要继续启动旧 Docker 数据库，请使用 `MusicScope.cmd -LegacyDocker`。首次使用原生模式会建立独立资料库，不代表旧资料丢失。
 
 Windows 和 macOS 的启动器都会准备隔离的 Python 环境、启动本机 PostgreSQL 并执行前向数据库迁移。Demucs 模型在首次分轨时自动下载。长音频的 CPU 分离可能很慢；macOS 优先使用 MPS，Windows 在检测到可用 CUDA 时使用 CUDA，否则使用 CPU。可在本地 `.env` 中设置 `AUDIO_WORKER_DEVICE=cpu` 重试。
 
-可选启动参数：macOS 为 `./scripts/dev.sh --status|--setup|--no-open`；Windows 为 `./scripts/dev.ps1 -Status|-Setup|-NoOpen`。状态模式只读取状态。关闭启动窗口会停止由该窗口启动的应用进程，PostgreSQL 数据卷保留。启动器不会自动同步网易云、删除资料库或清除 Docker 卷。
+可选启动参数：macOS 为 `./scripts/dev.sh --status|--setup|--no-open`；Windows 为 `./scripts/dev.ps1 -Status|-Setup|-NoOpen`。状态模式只读取状态。关闭启动窗口会停止由该窗口启动的应用进程，PostgreSQL 保持运行，资料保留。启动器不会自动同步网易云或删除资料库。
 
 若双击被 Windows 安全提示拦截，可在 PowerShell 中从已检查的仓库目录启动 `./MusicScope.cmd`；不需要修改全局执行策略。更新已有安装时保留 `.env`、`.tools`、`storage` 和数据库卷，它们包含本地配置、工具缓存和工作资料。
 

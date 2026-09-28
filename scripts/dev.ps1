@@ -1,7 +1,8 @@
 param(
     [switch]$Setup,
     [switch]$Status,
-    [switch]$NoOpen
+    [switch]$NoOpen,
+    [switch]$LegacyDocker
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,6 +14,7 @@ $apiPython = Join-Path $root 'apps\api\.venv\Scripts\python.exe'
 $workerPython = Join-Path $root 'apps\audio-worker\.venv\Scripts\python.exe'
 $started = [System.Collections.Generic.List[System.Diagnostics.Process]]::new()
 . (Join-Path $PSScriptRoot 'windows-tools.ps1')
+. (Join-Path $PSScriptRoot 'windows-postgres.ps1')
 
 function Say([string]$message) { Write-Host "[MusicScope] $message" }
 function Fail([string]$message) { throw $message }
@@ -75,16 +77,13 @@ function Check-Prerequisites {
     Require-Command 'uv' 'Install uv from https://docs.astral.sh/uv/getting-started/installation/.'
     Require-Command 'node' 'Install the Node.js version in .node-version (24.21.0 or later 24.x).'
     Require-Command 'npm' 'Install npm with Node.js.'
-    Require-Command 'docker' 'Install and start Docker Desktop.'
     $nodeVersion = (& node --version).Trim()
     if ($nodeVersion -notmatch '^v24\.(\d+)\.(\d+)$' -or
         [int]$matches[1] -lt 21 -or
         ([int]$matches[1] -eq 21 -and [int]$matches[2] -lt 0)) {
         Fail "Node.js 24.21.0+ (24.x) is required; found $nodeVersion."
     }
-    & docker info *> $null
-    if ($LASTEXITCODE -ne 0) { Fail 'Docker Desktop is installed but its engine is not running.' }
-    Say "READY system prerequisites (Node $nodeVersion, uv, Docker)"
+    Say "READY system prerequisites (Node $nodeVersion, uv)"
 }
 function Ensure-FFmpeg {
     if ((Get-Command ffmpeg -ErrorAction SilentlyContinue) -and
@@ -105,10 +104,10 @@ function Ensure-Environment {
     $values = Env-Values
     if ($values.ContainsKey('POSTGRES_PASSWORD') -and $values['POSTGRES_PASSWORD']) { return }
     $volumeExists = $false
-    try {
+    if ($LegacyDocker) { try {
         & docker volume inspect musicscope_v2_postgres_data *> $null
         $volumeExists = $LASTEXITCODE -eq 0
-    } catch { }
+    } catch { } }
     if ($volumeExists) {
         Fail 'The PostgreSQL volume exists but .env has no password. Restore the original ignored .env; no credential was changed.'
     }
@@ -245,7 +244,8 @@ function Show-Status {
     $webPort = [int](Env-Value $values 'MUSICSCOPE_WEB_PORT' '3100')
     $neteasePort = [int](Env-Value $values 'MUSICSCOPE_NETEASE_PORT' '36531')
     Say "Environment: $(if (Test-Path (Join-Path $root '.env')) { 'PRESENT' } else { 'ABSENT' })"
-    Say "Docker: $(if (Docker-Ready) { 'READY' } else { 'UNAVAILABLE' })"
+    Say "Database port: $(if (Port-Open ([int](Env-Value $values 'POSTGRES_PORT' '55432'))) { 'OPEN' } else { 'CLOSED' })"
+    if ($LegacyDocker) { Say "Docker: $(if (Docker-Ready) { 'READY' } else { 'UNAVAILABLE' })" }
     Say "NetEase sidecar: $(if (Http-Ready "http://127.0.0.1:$neteasePort/health") { 'READY' } else { 'NOT_READY' })"
     Say "FastAPI: $(if (Http-Ready "http://127.0.0.1:$apiPort/health") { 'READY' } else { 'NOT_READY' })"
     Say "Audio worker: $(if (Worker-Ready) { 'READY' } else { 'NOT_READY' })"
@@ -261,15 +261,19 @@ try {
         Fail 'This launcher supports Windows x64. Use a 64-bit Windows x64 machine.'
     }
     Ensure-WindowsRuntimes $root
-    Ensure-WindowsDocker $root
+    if ($LegacyDocker) { Ensure-WindowsDocker $root }
     Check-Prerequisites
     Ensure-FFmpeg
     Ensure-Environment
     Protect-Environment
     $values = Env-Values
-    Ensure-Postgres $values
     Ensure-Dependencies
-    Ensure-Encryption-Key $values
+    if ($LegacyDocker) {
+        Ensure-Postgres $values
+        Ensure-Encryption-Key $values
+    } else {
+        Ensure-NativePostgres $root $apiPython $setupLog
+    }
     $values = Env-Values
     $env:MUSICSCOPE_NETEASE_PORT = Env-Value $values 'MUSICSCOPE_NETEASE_PORT' '36531'
     $env:NEXT_PUBLIC_API_URL = Env-Value $values 'NEXT_PUBLIC_API_URL' 'http://localhost:8100'

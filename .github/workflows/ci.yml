@@ -139,3 +139,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm --prefix services/netease-api test
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Start complete Windows application without Docker or WSL
+        shell: powershell
+        timeout-minutes: 20
+        run: ./scripts/test_windows_startup.ps1
+      - name: Upload Windows startup diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-startup-logs
+          path: .logs/*.log
