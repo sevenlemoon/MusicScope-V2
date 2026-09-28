@@ -5,7 +5,7 @@ import sys
 from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import numpy as np
 import pytest
@@ -59,11 +59,18 @@ def make_job(db: Session, user: User, asset: AudioAsset, **values: object) -> St
     return job
 
 
-def test_claim_is_ordered_and_records_attempt_identity() -> None:
+@pytest.mark.parametrize("same_timestamp", [False, True])
+def test_claim_is_ordered_and_records_attempt_identity(same_timestamp: bool) -> None:
     engine, db, user, asset = make_database()
     try:
-        first = make_job(db, user, asset)
-        second = make_job(db, user, asset)
+        timestamp = utc_now()
+        # Explicit times avoid depending on Windows clock resolution; reverse
+        # insertion also verifies the ID tie-break when creation times match.
+        second = make_job(db, user, asset, id=UUID(int=2), created_at=timestamp)
+        first = make_job(
+            db, user, asset, id=UUID(int=1),
+            created_at=timestamp if same_timestamp else timestamp - timedelta(seconds=1),
+        )
         run_id = uuid4()
         claimed = worker.claim_next_job(db, run_id)
         assert claimed is not None and claimed.id == first.id
