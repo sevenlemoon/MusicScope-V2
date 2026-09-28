@@ -12,6 +12,21 @@ function Invoke-StartupProcess([string]$Executable, [string[]]$Arguments, [strin
 }
 
 function Get-StartupDownload([string]$Uri, [string]$Destination) {
+    # Windows ships curl.exe. Keep partial downloads so a second launch resumes
+    # large runtimes instead of repeatedly starting them from zero.
+    if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
+        for ($attempt = 1; $attempt -le 3; $attempt++) {
+            & curl.exe --fail --location --continue-at - --connect-timeout 30 `
+                --speed-time 120 --speed-limit 1024 --output $Destination $Uri
+            if ($LASTEXITCODE -eq 0) { return }
+            # A server without range support must restart this download.
+            if ($LASTEXITCODE -eq 33 -and (Test-Path -LiteralPath $Destination)) {
+                Remove-Item -LiteralPath $Destination -Force
+            }
+            Write-Host "[MusicScope] Download interrupted; retrying ($attempt/3)..."
+        }
+        throw "Download interrupted: $Uri. Run MusicScope.cmd again to resume."
+    }
     $savedProgress = $ProgressPreference
     $ProgressPreference = 'SilentlyContinue'
     try {
@@ -46,9 +61,14 @@ function Install-StartupArchive([string]$Uri, [string]$Sha256, [string]$Destinat
     $stage = Join-Path $parent ('.download-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $stage | Out-Null
     try {
-        $zip = Join-Path $stage 'download.zip'
-        Get-StartupDownload $Uri $zip
+        $cache = Join-Path $parent '.downloads'
+        New-Item -ItemType Directory -Force -Path $cache | Out-Null
+        $zip = Join-Path $cache ($Sha256 + '.zip')
+        $verified = (Test-Path -LiteralPath $zip) -and
+            ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -eq $Sha256)
+        if (-not $verified) { Get-StartupDownload $Uri $zip }
         if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -ne $Sha256) {
+            Remove-Item -LiteralPath $zip -Force
             throw "Download checksum failed: $Uri. The file was not installed."
         }
         $expanded = Join-Path $stage 'expanded'

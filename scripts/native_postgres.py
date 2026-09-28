@@ -45,12 +45,18 @@ def prepare(root: Path, binaries: Path) -> None:
             if data.exists() and any(data.iterdir()):
                 raise RuntimeError("Incomplete database directory preserved; refusing to overwrite it.")
             print("Initializing native library database; any previous Docker volume remains untouched.", flush=True)
+            # Publish only a complete cluster. Interrupted initialization remains
+            # recoverable and does not prevent the next launch from trying again.
+            staging = Path(tempfile.mkdtemp(prefix="initializing-", dir=parent))
             fd, name = tempfile.mkstemp(prefix="init-password-", dir=parent)
             try:
                 with os.fdopen(fd, "w", encoding="utf-8") as stream:
                     stream.write(password + "\n")
-                run("initdb", "-D", str(data), "-U", user, "--pwfile", name,
+                run("initdb", "-D", str(staging), "-U", user, "--pwfile", name,
                     "--auth=scram-sha-256", "--encoding=UTF8", "--locale=C")
+                if data.exists():
+                    data.rmdir()  # Only the empty directory accepted above.
+                staging.rename(data)
             finally:
                 Path(name).unlink(missing_ok=True)
         elif (data / "PG_VERSION").read_text().strip() != "16":
