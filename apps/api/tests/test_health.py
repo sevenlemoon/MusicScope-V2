@@ -24,12 +24,7 @@ def test_product_status_marks_real_integration_implemented() -> None:
     assert capabilities["provider_playback"] == "implemented"
     assert capabilities["canonical_detail_pages"] == "implemented"
     assert capabilities["artist_artwork_enrichment"] == "implemented"
-    assert capabilities["recommendation_profile"] == "implemented"
-    assert capabilities["recommendations"] == "implemented"
-    assert capabilities["external_discovery"] == "designed"
-    assert capabilities["concert_provider"] == "verification_pending"
-    assert capabilities["concert_search"] == "verification_pending"
-    assert capabilities["live_materialization"] == "implemented"
+    assert not {"recommendations", "concert_search", "live_materialization"} & capabilities.keys()
     assert capabilities["stem_entry"] == "implemented"
     assert capabilities["stem_separation"] == "implemented"
 
@@ -39,3 +34,8 @@ def test_library_summary_is_empty_without_connection() -> None:
     assert response.status_code == 200
     assert response.json()["connection_state"] == "not_connected"
     assert response.json()["counts"]["tracks"] == 0
+
+
+def test_retired_features_are_not_published_in_the_api() -> None:
+    paths = app.openapi()["paths"]
+    assert not any("/recommendations" in path or "/live" in path or "/insights" in path for path in paths)

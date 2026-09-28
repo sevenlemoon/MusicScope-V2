@@ -51,20 +51,30 @@ MusicScope 专注于一件事：从自己的音频文件，或网易云账号“
 - **边听边练**：逐轨调音量、静音或独奏，调速、循环、拖动波形；新任务还会在鼓轨节奏足够稳定时显示**估算 BPM 和节拍标记**。
 - **本机优先**：音频处理、资料库和账号连接在本机运行；登录会话留在服务端，不交给浏览器。提供中英文界面。
 
-资料库中的曲目来自“我喜欢的音乐”；歌单显示账号自己创建的，专辑显示账号明确收藏的，不会把所有喜欢歌曲涉及的专辑误算成收藏。资料库页可单独更新收藏专辑，无需重扫所有歌单。艺人仅作为曲目和专辑的署名信息显示，不提供独立分类；资料库也不推断播放次数。早期推荐、演唱会和 Insights 代码仍在仓库中，但不属于当前核心流程。
+资料库中的曲目来自“我喜欢的音乐”；歌单显示账号自己创建的，专辑显示账号明确收藏的，不会把所有喜欢歌曲涉及的专辑误算成收藏。资料库页可单独更新收藏专辑，无需重扫所有歌单。艺人仅作为曲目和专辑的署名信息显示，不提供独立分类；资料库也不推断播放次数。推荐、演唱会、Insights 和空白个人资料页已移除，项目围绕分轨与资料库维护。
 
 ## 在本机运行
 
 | 平台 | 启动方式 | 必需软件 |
 | --- | --- | --- |
 | macOS（Apple silicon） | 双击 `MusicScope.command`，或运行 `./scripts/dev.sh` | Docker Desktop、[uv](https://docs.astral.sh/uv/)、Node.js 24.21.0+（24.x）；首次在仓库中运行 `nvm install` |
-| Windows 10/11 x64 | 双击 `MusicScope.cmd`，或在 PowerShell 运行 `./scripts/dev.ps1` | Docker Desktop、[uv](https://docs.astral.sh/uv/)、Node.js 24.21.0+（24.x）、[FFmpeg](https://ffmpeg.org/download.html)（`ffmpeg` 和 `ffprobe` 在 PATH） |
+| Windows 10/11 x64 | 解压项目后双击 `MusicScope.cmd` | 可联网、满足 Docker Desktop 的系统与虚拟化要求；工具由脚本准备 |
 
-Windows 和 macOS 的启动器都会自动准备隔离的 Python 3.12 环境、安装锁定依赖、启动本机 PostgreSQL 并执行前向数据库迁移。首次安装 Demucs/PyTorch 和模型时需要下载，且会占用较多磁盘空间；长音频的 CPU 分离可能很慢。macOS 默认优先使用 MPS，Windows 在检测到可用 CUDA 时使用 CUDA，否则使用 CPU；可在本地 `.env` 中将 `AUDIO_WORKER_DEVICE=cpu` 作为明确的 CPU 重试。Windows 用户无需在 WSL 终端中启动本项目；Docker Desktop 的后端要求仍取决于其安装方式。
+### Windows：双击启动
+
+1. 下载并完整解压项目，双击 `MusicScope.cmd`。
+2. 首次启动自动准备 Node.js、uv、Python 3.12、FFmpeg/ffprobe、前后端依赖和音频引擎；缺少 Docker Desktop 时会调用安装程序，安装后自动尝试启动它。
+3. 按 Windows 或 Docker 弹窗完成首次系统授权，等待终端显示 `APPLICATION READY`；浏览器会自动打开。以后仍然双击同一个文件，已安装的工具和前端依赖会复用。
+
+无需预先安装 Node、Python、uv、FFmpeg，也无需手动修改 PATH。项目工具放在忽略的 `.tools/` 中并校验 SHA-256；FFmpeg 使用 [Gyan Windows essentials 构建](https://www.gyan.dev/ffmpeg/builds/)。网络中断会自动重试，失败后再次双击即可利用下载缓存继续依赖安装。安装细节记录在 `.logs/setup-windows.log`。
+
+**首次系统条件：** Windows 必须满足 [Docker Desktop 官方要求](https://docs.docker.com/desktop/setup/install/windows-install/)，包括支持的系统版本、足够内存和硬件虚拟化。Docker/WSL 首次配置可能需要系统确认或重启；重启后再双击即可继续。脚本优先通过 WinGet 安装 Docker，无 WinGet 时下载并校验官方签名安装程序。首次下载需要能访问 Node.js、GitHub、PyPI、npm、Docker 和 FFmpeg 下载服务，并预留数 GB 磁盘空间。
+
+Windows 和 macOS 的启动器都会准备隔离的 Python 环境、启动本机 PostgreSQL 并执行前向数据库迁移。Demucs 模型在首次分轨时自动下载。长音频的 CPU 分离可能很慢；macOS 优先使用 MPS，Windows 在检测到可用 CUDA 时使用 CUDA，否则使用 CPU。可在本地 `.env` 中设置 `AUDIO_WORKER_DEVICE=cpu` 重试。
 
 可选启动参数：macOS 为 `./scripts/dev.sh --status|--setup|--no-open`；Windows 为 `./scripts/dev.ps1 -Status|-Setup|-NoOpen`。状态模式只读取状态。关闭启动窗口会停止由该窗口启动的应用进程，PostgreSQL 数据卷保留。启动器不会自动同步网易云、删除资料库或清除 Docker 卷。
 
-Windows 安装 FFmpeg 后请新开一个 PowerShell 窗口，用 `ffmpeg -version` 和 `ffprobe -version` 确认 PATH 已生效。若双击被 Windows 安全提示拦截，可在 PowerShell 中从已检查的仓库目录启动 `./MusicScope.cmd`；不需要修改全局执行策略。
+若双击被 Windows 安全提示拦截，可在 PowerShell 中从已检查的仓库目录启动 `./MusicScope.cmd`；不需要修改全局执行策略。更新已有安装时保留 `.env`、`.tools`、`storage` 和数据库卷，它们包含本地配置、工具缓存和工作资料。
 
 ## 技术结构
 

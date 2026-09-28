@@ -16,11 +16,9 @@ export const primaryRoutes: NavigationItem[] = [
 
 export const secondaryRoutePatterns = [
   "/connect",
-  "/artist/[id]",
   "/album/[id]",
   "/playlist/[id]",
   "/track/[id]",
-  "/profile",
   "/settings",
   "/studio",
   "/studio/jobs/[id]",

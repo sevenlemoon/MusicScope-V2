@@ -7,6 +7,6 @@ describe("route manifest", () => {
   });
 
   it("prepares every secondary route", () => {
-    expect(secondaryRoutePatterns).toEqual(expect.arrayContaining(["/connect", "/artist/[id]", "/album/[id]", "/playlist/[id]", "/track/[id]", "/settings"]));
+    expect(secondaryRoutePatterns).toEqual(expect.arrayContaining(["/connect", "/album/[id]", "/playlist/[id]", "/track/[id]", "/settings"]));
   });
 });

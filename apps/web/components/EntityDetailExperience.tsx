@@ -12,33 +12,14 @@ import { apiRequest } from "@/lib/api-client";
 import type { components } from "@/lib/api-schema.generated";
 import { useText } from "./LocaleProvider";
 
-type EntityType = "artist" | "album" | "playlist" | "track";
+type EntityType = "album" | "playlist" | "track";
 type TrackItem = components["schemas"]["TrackItem"];
 type TrackPage = components["schemas"]["TrackPage"];
-type AlbumPage = components["schemas"]["AlbumPage"];
 
 export function EntityDetailExperience({ type, id }: { type: EntityType; id: string }) {
-  if (type === "artist") return <ArtistExperience id={id} />;
   if (type === "album") return <AlbumExperience id={id} />;
   if (type === "playlist") return <PlaylistExperience id={id} />;
   return <TrackExperience id={id} />;
-}
-
-function ArtistExperience({ id }: { id: string }) {
-  const t = useText();
-  const [detail, setDetail] = useState<components["schemas"]["ArtistDetail"] | null>(null);
-  const [tracks, setTracks] = useState<TrackPage | null>(null);
-  const [albums, setAlbums] = useState<AlbumPage | null>(null);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => { apiRequest<components["schemas"]["ArtistDetail"]>(`/api/v1/artists/${id}`).then(setDetail).catch(() => setFailed(true)); }, [id]);
-  useEffect(() => { const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""; Promise.all([apiRequest<TrackPage>(`/api/v1/artists/${id}/tracks${query}`), apiRequest<AlbumPage>(`/api/v1/artists/${id}/albums`)]).then(([nextTracks, nextAlbums]) => { setTracks(nextTracks); setAlbums(nextAlbums); }).catch(() => setFailed(true)); }, [cursor, id]);
-  if (failed) return <MissingEntity type="artist" />;
-  if (!detail || !tracks || !albums) return <DetailLoading />;
-  return <div className="detail-view"><DetailHero eyebrow={t("ARTIST / LIKED SONGS", "艺人 / 我喜欢的音乐")} name={detail.name} artwork={detail.artwork_url} meta={t(`${detail.library_track_count} lead-credited liked tracks · ${detail.represented_album_count} related albums`, `首位署名的喜欢曲目 ${detail.library_track_count} 首 · 涉及专辑 ${detail.represented_album_count} 张`)} />
-    <section className="detail-section"><div className="detail-section-heading"><h2>{t("Albums in your library", "资料库中的专辑")}</h2><span>{albums.total}</span></div><div className="detail-card-row">{albums.items.map((album) => <Link className="library-card" href={`/album/${album.id}`} key={album.id}><Artwork src={album.artwork_url} alt="" /><strong>{album.title}</strong><small>{(album.artists ?? []).map((artist) => artist.name).join(", ")}</small></Link>)}</div></section>
-    <PagedTracks title={t("Lead-credited liked tracks", "首位署名的喜欢曲目")} page={tracks} setCursor={setCursor} />
-  </div>;
 }
 
 function AlbumExperience({ id }: { id: string }) {
@@ -100,5 +81,5 @@ function PagedTracks({ title, page, setCursor }: { title: string; page: TrackPag
 }
 
 function DetailLoading() { const t = useText(); return <div className="library-loading">{t("Loading canonical details…", "正在读取曲目资料…")}</div>; }
-function MissingEntity({ type }: { type: EntityType }) { const t = useText(); const label = ({ artist: "艺人", album: "专辑", playlist: "歌单", track: "曲目" } as Record<EntityType, string>)[type]; return <EmptyState eyebrow={t(`${type.toUpperCase()} / UNAVAILABLE`, `${label} / 暂不可用`)} title={t(`${type[0].toUpperCase()}${type.slice(1)} could not be loaded.`, `无法读取此${label}。`)} body={t("The canonical entity may no longer be present in the synchronized library.", "此项目可能已不在已同步的资料库中。")} action={{ href: "/library", label: t("Back to library", "返回资料库") }} marker="!" />; }
+function MissingEntity({ type }: { type: EntityType }) { const t = useText(); const label = ({ album: "专辑", playlist: "歌单", track: "曲目" } as Record<EntityType, string>)[type]; return <EmptyState eyebrow={t(`${type.toUpperCase()} / UNAVAILABLE`, `${label} / 暂不可用`)} title={t(`${type[0].toUpperCase()}${type.slice(1)} could not be loaded.`, `无法读取此${label}。`)} body={t("The canonical entity may no longer be present in the synchronized library.", "此项目可能已不在已同步的资料库中。")} action={{ href: "/library", label: t("Back to library", "返回资料库") }} marker="!" />; }
 function durationText(milliseconds?: number | null, locale = "en") { if (!milliseconds) return locale === "zh" ? "时长未知" : "Duration unavailable"; const seconds = Math.round(milliseconds / 1000); return locale === "zh" ? `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒` : `${Math.floor(seconds / 60)} min ${seconds % 60} sec`; }

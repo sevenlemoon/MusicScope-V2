@@ -197,13 +197,8 @@ ensure_python_dependencies() {
     say "SKIPPED Python dependencies (lockfiles unchanged)"
     return
   fi
-  if python_env_valid; then
-    printf '%s\n' "$expected" >"$marker"
-    say "SKIPPED Python installation (existing environment validated)"
-    return
-  fi
   say "INSTALLING Python dependencies (details in .logs/setup.log)"
-  if ! (cd "$ROOT_DIR" && uv sync --project apps/api --extra dev --python 3.12) >>"$SETUP_LOG" 2>&1; then
+  if ! (cd "$ROOT_DIR" && uv sync --project apps/api --extra dev --python 3.12 --locked) >>"$SETUP_LOG" 2>&1; then
     fail "Python dependency setup failed. See $SETUP_LOG."
   fi
   python_env_valid || fail "The API virtual environment is not Python 3.12/3.13 after setup. See $SETUP_LOG."
@@ -218,13 +213,8 @@ ensure_audio_worker_dependencies() {
     say "SKIPPED audio worker dependencies (lockfiles unchanged)"
     return
   fi
-  if audio_worker_env_valid; then
-    printf '%s\n' "$expected" >"$marker"
-    say "SKIPPED audio worker installation (existing isolated environment validated)"
-    return
-  fi
   say "INSTALLING isolated audio worker dependencies (first setup includes Torch; details in .logs/setup.log)"
-  if ! (cd "$ROOT_DIR" && UV_HTTP_TIMEOUT=300 uv sync --project apps/audio-worker --extra dev --python 3.12) >>"$SETUP_LOG" 2>&1; then
+  if ! (cd "$ROOT_DIR" && UV_HTTP_TIMEOUT=300 uv sync --project apps/audio-worker --extra dev --python 3.12 --locked) >>"$SETUP_LOG" 2>&1; then
     fail "Audio worker dependency setup failed. See $SETUP_LOG."
   fi
   audio_worker_env_valid || fail "The isolated audio worker environment failed validation. See $SETUP_LOG."

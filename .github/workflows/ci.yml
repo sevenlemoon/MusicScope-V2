@@ -74,25 +74,41 @@ jobs:
         run: |
           $tokens = $null
           $parseErrors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path scripts/dev.ps1), [ref]$tokens, [ref]$parseErrors) | Out-Null
-          if ($parseErrors.Count -ne 0) { throw ($parseErrors | Out-String) }
+          foreach ($script in Get-ChildItem scripts/*.ps1) {
+            [System.Management.Automation.Language.Parser]::ParseFile($script.FullName, [ref]$tokens, [ref]$parseErrors) | Out-Null
+            if ($parseErrors.Count -ne 0) { throw ($parseErrors | Out-String) }
+          }
+          ./scripts/test_windows_bootstrap.ps1
           .\scripts\dev.ps1 -Status
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify automatic Node and uv installation
+        shell: powershell
+        run: |
+          . ./scripts/windows-tools.ps1
+          Ensure-WindowsRuntimes -ProjectRoot (Join-Path $env:RUNNER_TEMP 'MusicScope runtime test') -ForceLocal
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path (Get-Command node).Source)
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path (Get-Command uv).Source)
       - name: Install Python dependencies from Windows lock
         run: |
           uv sync --project apps/api --extra dev --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           uv sync --project apps/audio-worker --extra dev --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Install Windows audio tools
+      - name: Verify Windows one-click FFmpeg setup
         shell: powershell
         run: |
-          choco install ffmpeg --yes --no-progress
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path scripts/ensure_ffmpeg.ps1), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count -ne 0) { throw ($parseErrors | Out-String) }
+          $bin = & ./scripts/ensure_ffmpeg.ps1
+          if (-not $bin -or -not (Test-Path (Join-Path $bin 'ffmpeg.exe'))) { throw 'FFmpeg setup failed' }
+          if ((& ./scripts/ensure_ffmpeg.ps1) -ne $bin) { throw 'FFmpeg setup is not reusable' }
+          & (Join-Path $bin 'ffmpeg.exe') -version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          ffmpeg -version
+          & (Join-Path $bin 'ffprobe.exe') -version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          ffprobe -version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
       - name: Run native Python checks
         shell: powershell
         run: |

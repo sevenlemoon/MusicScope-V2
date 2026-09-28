@@ -12,6 +12,7 @@ $workerHealth = Join-Path $logs 'audio-worker-health-windows.json'
 $apiPython = Join-Path $root 'apps\api\.venv\Scripts\python.exe'
 $workerPython = Join-Path $root 'apps\audio-worker\.venv\Scripts\python.exe'
 $started = [System.Collections.Generic.List[System.Diagnostics.Process]]::new()
+. (Join-Path $PSScriptRoot 'windows-tools.ps1')
 
 function Say([string]$message) { Write-Host "[MusicScope] $message" }
 function Fail([string]$message) { throw $message }
@@ -75,8 +76,6 @@ function Check-Prerequisites {
     Require-Command 'node' 'Install the Node.js version in .node-version (24.21.0 or later 24.x).'
     Require-Command 'npm' 'Install npm with Node.js.'
     Require-Command 'docker' 'Install and start Docker Desktop.'
-    Require-Command 'ffmpeg' 'Install FFmpeg and add ffmpeg.exe to PATH.'
-    Require-Command 'ffprobe' 'Install FFmpeg and add ffprobe.exe to PATH.'
     $nodeVersion = (& node --version).Trim()
     if ($nodeVersion -notmatch '^v24\.(\d+)\.(\d+)$' -or
         [int]$matches[1] -lt 21 -or
@@ -85,7 +84,21 @@ function Check-Prerequisites {
     }
     & docker info *> $null
     if ($LASTEXITCODE -ne 0) { Fail 'Docker Desktop is installed but its engine is not running.' }
-    Say "READY prerequisites (Node $nodeVersion, uv, Docker, FFmpeg)"
+    Say "READY system prerequisites (Node $nodeVersion, uv, Docker)"
+}
+function Ensure-FFmpeg {
+    if ((Get-Command ffmpeg -ErrorAction SilentlyContinue) -and
+        (Get-Command ffprobe -ErrorAction SilentlyContinue)) {
+        Say 'READY FFmpeg and ffprobe from PATH'
+        return
+    }
+    $bin = (& (Join-Path $PSScriptRoot 'ensure_ffmpeg.ps1') | Select-Object -Last 1)
+    if (-not $bin -or -not (Test-Path (Join-Path $bin 'ffmpeg.exe') -PathType Leaf) -or
+        -not (Test-Path (Join-Path $bin 'ffprobe.exe') -PathType Leaf)) {
+        Fail 'Local FFmpeg setup did not produce ffmpeg.exe and ffprobe.exe.'
+    }
+    $env:PATH = "$bin$([IO.Path]::PathSeparator)$env:PATH"
+    Say 'READY project-local FFmpeg and ffprobe'
 }
 function Ensure-Environment {
     $envPath = Join-Path $root '.env'
@@ -99,14 +112,12 @@ function Ensure-Environment {
     if ($volumeExists) {
         Fail 'The PostgreSQL volume exists but .env has no password. Restore the original ignored .env; no credential was changed.'
     }
-    & uv python install 3.12 *> $setupLog
-    if ($LASTEXITCODE -ne 0) { Fail "Python 3.12 setup failed; see $setupLog." }
+    Invoke-SetupCommand 'uv' @('python', 'install', '3.12')
     $python = (& uv python find 3.12).Trim()
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path $python)) { Fail 'Python 3.12 is unavailable.' }
     $arguments = @((Join-Path $root 'scripts\configure_local_env.py'))
     if (Test-Path $envPath) { $arguments += '--allow-existing-empty' }
-    & $python @arguments *>> $setupLog
-    if ($LASTEXITCODE -ne 0) { Fail "Local environment initialization failed; see $setupLog." }
+    if ((Invoke-StartupProcess $python $arguments $setupLog) -ne 0) { Fail "Local environment initialization failed; see $setupLog." }
     Protect-Environment
     Say 'READY unique local database password and encryption key in ignored .env'
 }
@@ -128,19 +139,34 @@ function Ensure-Postgres($values) {
     Fail 'PostgreSQL did not become ready; inspect Docker Desktop.'
 }
 function Ensure-Dependencies {
-    & uv sync --project (Join-Path $root 'apps\api') --extra dev --python 3.12 --locked *>> $setupLog
-    if ($LASTEXITCODE -ne 0) { Fail "API dependency setup failed; see $setupLog." }
+    Say 'Preparing Python 3.12 and API dependencies (first launch takes longer)...'
+    Invoke-SetupCommand 'uv' @('sync', '--project', (Join-Path $root 'apps\api'), '--extra', 'dev', '--python', '3.12', '--locked')
     $env:UV_HTTP_TIMEOUT = '300'
-    & uv sync --project (Join-Path $root 'apps\audio-worker') --extra dev --python 3.12 --locked *>> $setupLog
-    if ($LASTEXITCODE -ne 0) { Fail "Audio worker dependency setup failed; see $setupLog." }
+    Say 'Preparing audio engine (PyTorch download can take several minutes)...'
+    Invoke-SetupCommand 'uv' @('sync', '--project', (Join-Path $root 'apps\audio-worker'), '--extra', 'dev', '--python', '3.12', '--locked')
     foreach ($project in @('apps\web', 'services\netease-api')) {
         Push-Location (Join-Path $root $project)
         try {
-            & npm ci --no-audit --no-fund *>> $setupLog
-            if ($LASTEXITCODE -ne 0) { Fail "$project dependency setup failed; see $setupLog." }
+            $marker = Join-Path $logs (($project -replace '[\\/]', '-') + '-dependencies.txt')
+            $fingerprint = (Get-FileHash 'package-lock.json').Hash + (Get-FileHash 'package.json').Hash + (& node --version)
+            if ((Test-Path 'node_modules/.package-lock.json') -and (Test-Path $marker) -and
+                (Get-Content $marker -Raw).Trim() -eq $fingerprint) {
+                Say "READY $project (installed dependencies reused)"
+                continue
+            }
+            Say "Installing $project dependencies..."
+            Invoke-SetupCommand 'npm.cmd' @('ci', '--no-audit', '--no-fund', '--fetch-retries=3')
+            Set-Content -Path $marker -Value $fingerprint
         } finally { Pop-Location }
     }
     Say 'READY API, worker, web, and NetEase dependencies'
+}
+function Invoke-SetupCommand([string]$executable, [string[]]$arguments) {
+    for ($attempt = 1; $attempt -le 2; $attempt++) {
+        if ((Invoke-StartupProcess $executable $arguments $setupLog) -eq 0) { return }
+        if ($attempt -lt 2) { Say 'Dependency installation interrupted; retrying with cached downloads...' }
+    }
+    Fail "Dependency setup failed. Run MusicScope.cmd again to resume; details: $setupLog"
 }
 function Ensure-Encryption-Key($values) {
     if ($values.ContainsKey('SECRET_ENCRYPTION_KEY') -and $values['SECRET_ENCRYPTION_KEY']) { return }
@@ -153,17 +179,14 @@ function Ensure-Encryption-Key($values) {
         Fail 'Could not verify the existing database before key generation.'
     }
     if ($count -ne 0) { Fail 'Database contains MusicScope tables but the encryption key is missing. Restore the original .env.' }
-    & $apiPython (Join-Path $root 'scripts\configure_local_env.py') --allow-existing-empty *>> $setupLog
-    if ($LASTEXITCODE -ne 0) { Fail "Encryption key setup failed; see $setupLog." }
+    if ((Invoke-StartupProcess $apiPython @((Join-Path $root 'scripts\configure_local_env.py'), '--allow-existing-empty') $setupLog) -ne 0) { Fail "Encryption key setup failed; see $setupLog." }
     Protect-Environment
 }
 function Ensure-Migrations {
     Push-Location (Join-Path $root 'apps\api')
     try {
-        & $apiPython -m alembic current *>> $setupLog
-        if ($LASTEXITCODE -ne 0) { Fail "Could not inspect migration state; see $setupLog." }
-        & $apiPython -m alembic upgrade head *>> $setupLog
-        if ($LASTEXITCODE -ne 0) { Fail "Migration failed; no database was reset. See $setupLog." }
+        if ((Invoke-StartupProcess $apiPython @('-m', 'alembic', 'current') $setupLog) -ne 0) { Fail "Could not inspect migration state; see $setupLog." }
+        if ((Invoke-StartupProcess $apiPython @('-m', 'alembic', 'upgrade', 'head') $setupLog) -ne 0) { Fail "Migration failed; no database was reset. See $setupLog." }
     } finally { Pop-Location }
     Say 'READY database migrations'
 }
@@ -176,7 +199,7 @@ function Start-AppService([string]$name, [int]$port, [string]$url, [string]$exec
     $process = Start-Process -FilePath $executable -ArgumentList $arguments -WorkingDirectory $directory `
         -RedirectStandardOutput $outLog -RedirectStandardError $errLog -PassThru -WindowStyle Hidden
     $started.Add($process)
-    for ($attempt = 0; $attempt -lt 30; $attempt++) {
+    for ($attempt = 0; $attempt -lt 90; $attempt++) {
         if (Http-Ready $url) { Say "READY $name"; return }
         $process.Refresh()
         if ($process.HasExited) { Fail "$name exited during startup; see $errLog." }
@@ -234,7 +257,13 @@ try {
     New-Item -ItemType Directory -Force -Path $logs | Out-Null
     New-Item -ItemType File -Force -Path $setupLog | Out-Null
     Say 'Starting native Windows MusicScope'
+    if (-not [Environment]::Is64BitOperatingSystem -or $env:PROCESSOR_ARCHITECTURE -eq 'ARM64') {
+        Fail 'This launcher supports Windows x64. Use a 64-bit Windows x64 machine.'
+    }
+    Ensure-WindowsRuntimes $root
+    Ensure-WindowsDocker $root
     Check-Prerequisites
+    Ensure-FFmpeg
     Ensure-Environment
     Protect-Environment
     $values = Env-Values
@@ -272,7 +301,8 @@ try {
         Start-Sleep -Seconds 2
     }
 } catch {
-    Write-Error "STARTUP STOPPED: $($_.Exception.Message)"
+    Write-Host "`n[MusicScope] Startup could not finish: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "[MusicScope] Setup log: $setupLog"
     exit 1
 } finally {
     foreach ($process in $started) {

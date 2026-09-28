@@ -14,14 +14,11 @@ def test_first_read_creates_one_empty_local_user_without_personal_data() -> None
             "/api/v1/studio/jobs", headers={"X-MusicScope-User-ID": str(uuid4())}
         )
         studio = client.get("/api/v1/studio/jobs")
-        live = client.get("/api/v1/live")
         connections = client.get("/api/v1/music-connections")
 
     assert unknown.status_code == 404
     assert studio.status_code == 200
     assert studio.json()["items"] == []
-    assert live.status_code == 200
-    assert live.json()["events"] == []
     assert connections.status_code == 200
     assert connections.json()["items"] == []
 

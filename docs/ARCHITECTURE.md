@@ -9,7 +9,6 @@ Next.js / React / TypeScript
         -> PostgreSQL canonical domain
         -> provider ports and adapters
              -> NetEase sidecar
-             -> concert providers / official sources
         -> durable StemJob queue
              -> audio worker / Demucs / FFmpeg
              -> private storage and Web Audio mixer
@@ -17,9 +16,9 @@ Next.js / React / TypeScript
 
 ## Boundaries
 
-- `apps/web`: App Router pages, shared shell, global locale, player, library/detail views, Discover, Live, Studio, and Insights.
+- `apps/web`: App Router pages, compact navigation, locale, player, library/detail views and six-stem Studio.
 - `apps/api/app/api`: HTTP routing and public response schemas.
-- `apps/api/app/services`: synchronization, identity resolution, recommendations, concert aggregation, Insights, playback, and Studio lifecycle.
+- `apps/api/app/services`: synchronization, identity resolution, playback and Studio lifecycle.
 - `apps/api/app/domain`: SQLAlchemy entities and enums.
 - `apps/api/app/providers`: provider contracts and adapters. Private provider protocols remain outside the browser.
 - `apps/audio-worker`: isolated Python runtime, durable job claiming, Demucs execution, FLAC validation, waveform generation, and atomic publication.
@@ -33,18 +32,10 @@ On an empty installation, the first local API request creates one MusicScope use
 
 The supported deployment is localhost-only. Compose publishes PostgreSQL, FastAPI, and the optional containerized web UI on `127.0.0.1`; the normal launcher also binds web, API, and the NetEase sidecar to loopback. Fresh setup generates a unique PostgreSQL password and server encryption key in ignored, owner-only `.env`, while an existing valid credential is reused. The `X-MusicScope-User-ID` request header is a local user-selection mechanism, **not remote authentication**. Remote or shared multi-user hosting is unsupported without real authentication, TLS/reverse-proxy policy, and a revised threat model.
 
-## Recommendation and Insights boundaries
+## Studio and compatibility
 
-The recommendation path is deterministic and explainable:
+Studio accepts a local upload or a playable source resolved through the connected account, creates a durable `StemJob`, and runs six-stem Demucs in the worker. It validates FLAC artifacts, generates waveform peaks and estimated beats, and serves user-scoped HTTP Range streams to the synchronized mixer. Temporary provider URLs are not stored with jobs.
 
-```text
-canonical library -> affinity -> co-occurrence/collaboration
-                  -> rediscovery -> external candidates
-                  -> bounded diversification
-```
+Recommendation, concert and Insights routes, services, providers and UI were retired. Historical SQLAlchemy tables and Alembic migrations remain for existing-database compatibility; cleanup does not drop user data. Earlier milestone documents describe historical work, not current product capabilities.
 
-Music Universe uses the same canonical artists, library affinity, playlist co-occurrence, and collaboration evidence. It does not invent play counts, listening history, genre certainty, or psychological analysis.
-
-## Live and Studio
-
-Live aggregation isolates provider failures and preserves source provenance. A provider returning zero does not prove that an artist has no concerts. Studio accepts an explicit local upload, creates a durable `StemJob`, runs Demucs in the worker, validates four FLAC artifacts, generates waveform peaks, and serves user-scoped HTTP Range streams to a synchronized Web Audio mixer. NetEase playback streams are never processing inputs.
+The Windows launcher prepares verified portable Node/uv/FFmpeg under ignored `.tools/`, installs or starts Docker Desktop, synchronizes locked dependencies, applies migrations, then starts the loopback services. Node dependencies are reinstalled only when their manifest/runtime fingerprint changes. System-level Docker/WSL permissions and reboot requirements are surfaced by their installers.

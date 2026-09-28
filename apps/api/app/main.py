@@ -15,7 +15,7 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title=settings.app_name,
         version="0.1.0",
-        description="MusicScope API for music intelligence, verified live discovery, and local audio Studio.",
+        description="MusicScope API for account libraries and local six-stem audio separation.",
     )
     application.add_middleware(
         CORSMiddleware,
