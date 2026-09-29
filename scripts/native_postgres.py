@@ -65,7 +65,10 @@ def prepare(root: Path, binaries: Path) -> None:
     log.parent.mkdir(parents=True, exist_ok=True)
 
     def run(name: str, *args: str) -> None:
-        subprocess.run([str(binaries / f"{name}.exe"), *args], cwd=binaries, check=True)
+        subprocess.run(
+            [str(binaries / f"{name}.exe"), *args], cwd=binaries, check=True,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+        )
 
     run('initdb', '--version')
 
