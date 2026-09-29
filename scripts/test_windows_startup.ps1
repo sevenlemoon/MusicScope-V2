@@ -1,5 +1,6 @@
 # Integration test against the actual launcher, PostgreSQL, API, worker and web.
 $ErrorActionPreference = 'Stop'
+if ($env:CI -ne 'true') { throw 'Run this integration test only in an isolated CI checkout.' }
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $launcher = Join-Path $PSScriptRoot 'dev.ps1'
 & $launcher -Setup
@@ -36,4 +37,5 @@ try {
     Write-Host 'PASS: Windows setup, repeated setup, API, worker, NetEase and Studio without Docker.'
 } finally {
     & taskkill /PID $process.Id /T /F *> $null
+    & (Join-Path $root '.tools\postgresql-native-16.15\bin\pg_ctl.exe') -D $data -m fast -w stop
 }

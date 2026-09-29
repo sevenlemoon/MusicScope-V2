@@ -4,6 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
+app.setName('MusicScope');
+app.setPath('userData', path.join(app.getPath('appData'), 'MusicScope'));
+
 let window, backend, workspace, stopFile;
 let closing = false;
 let ready = false;
