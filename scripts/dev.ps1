@@ -102,6 +102,10 @@ function Ensure-FFmpeg {
 function Ensure-Environment {
     $envPath = Join-Path $root '.env'
     $values = Env-Values
+    if (-not $LegacyDocker -and (Test-Path (Join-Path $root 'storage\library.sqlite3')) -and
+        -not $values['SECRET_ENCRYPTION_KEY']) {
+        Fail 'An existing library needs its original .env encryption key. Restore that file; no key was replaced.'
+    }
     if ($values.ContainsKey('POSTGRES_PASSWORD') -and $values['POSTGRES_PASSWORD']) { return }
     $volumeExists = $false
     if ($LegacyDocker) { try {
