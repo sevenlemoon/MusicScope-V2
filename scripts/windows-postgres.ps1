@@ -1,6 +1,15 @@
 # Native PostgreSQL: no Windows service, Docker, WSL, or administrator required.
 function Ensure-NativePostgres([string]$ProjectRoot, [string]$Python, [string]$LogPath) {
     Write-Host '[MusicScope] Preparing project-local PostgreSQL (no Docker / WSL)...'
+    # PostgreSQL drops the Administrators group when launching its children.
+    # Grant the actual user access, even in admin-owned CI/extracted directories.
+    $toolsDirectory = Join-Path $ProjectRoot '.tools'
+    New-Item -ItemType Directory -Force -Path $toolsDirectory | Out-Null
+    $toolsAcl = Get-Acl $toolsDirectory
+    $userSid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+    $toolsAcl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new(
+        $userSid, 'FullControl', 'ContainerInherit, ObjectInherit', 'None', 'Allow'))
+    Set-Acl -Path $toolsDirectory -AclObject $toolsAcl
     # Zonky's reduced EDB distribution: same PostgreSQL, without pgAdmin/docs.
     $package = Install-StartupArchive `
         'https://repo.maven.apache.org/maven2/io/zonky/test/postgres/embedded-postgres-binaries-windows-amd64/16.15.0/embedded-postgres-binaries-windows-amd64-16.15.0.jar' `

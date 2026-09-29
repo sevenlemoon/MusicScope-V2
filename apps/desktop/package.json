@@ -1,0 +1,9 @@
+{
+  "name": "musicscope-desktop",
+  "productName": "MusicScope",
+  "version": "0.1.0-beta.1",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": { "start": "electron .", "check": "node --check main.cjs && node --check preload.cjs" },
+  "devDependencies": { "electron": "44.4.5" }
+}

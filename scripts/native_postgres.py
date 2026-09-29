@@ -65,7 +65,9 @@ def prepare(root: Path, binaries: Path) -> None:
     log.parent.mkdir(parents=True, exist_ok=True)
 
     def run(name: str, *args: str) -> None:
-        subprocess.run([str(binaries / f"{name}.exe"), *args], check=True)
+        subprocess.run([str(binaries / f"{name}.exe"), *args], cwd=binaries, check=True)
+
+    run('initdb', '--version')
 
     # An existing server is reused only after authentication with the configured URL.
     with socket.socket() as probe:

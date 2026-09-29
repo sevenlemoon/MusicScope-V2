@@ -143,10 +143,34 @@ jobs:
         shell: powershell
         timeout-minutes: 20
         run: ./scripts/test_windows_startup.ps1
+      - name: Build and smoke-test Windows desktop application
+        shell: powershell
+        timeout-minutes: 15
+        run: |
+          npm ci --prefix apps/desktop
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix apps/desktop run check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./scripts/build_desktop.ps1
+          $app = Get-ChildItem dist/desktop-*/MusicScope/MusicScope.exe | Select-Object -First 1
+          $process = Start-Process $app.FullName -ArgumentList '--smoke-test' -PassThru
+          if (-not $process.WaitForExit(600000)) { Stop-Process $process.Id; throw 'Desktop test timed out' }
+          if ($process.ExitCode -ne 0) { throw 'Desktop failed to start' }
+          $proof = Join-Path $app.DirectoryName 'resources/project/.logs/desktop-smoke-passed'
+          if (-not (Test-Path $proof)) { throw 'Desktop did not load Studio' }
+      - name: Upload Windows desktop package
+        uses: actions/upload-artifact@v4
+        with:
+          name: musicscope-windows-desktop
+          path: |
+            dist/MusicScope-*-windows-x64.zip
+            dist/MusicScope-*-windows-x64.zip.sha256
       - name: Upload Windows startup diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: windows-startup-logs
-          path: .logs/*.log
+          path: |
+            .logs/*.log
+            dist/desktop-*/MusicScope/resources/project/.logs/*.log
           include-hidden-files: true

@@ -2,7 +2,8 @@ param(
     [switch]$Setup,
     [switch]$Status,
     [switch]$NoOpen,
-    [switch]$LegacyDocker
+    [switch]$LegacyDocker,
+    [string]$StopFile
 )
 
 $ErrorActionPreference = 'Stop'
@@ -298,6 +299,7 @@ try {
     if ($started.Count -eq 0) { Say 'All services were already running.'; exit 0 }
     Say 'Press Ctrl+C to stop services started by this launcher. PostgreSQL remains running.'
     while ($true) {
+        if ($StopFile -and (Test-Path -LiteralPath $StopFile)) { break }
         foreach ($process in $started) {
             $process.Refresh()
             if ($process.HasExited) { Fail 'A launched service stopped unexpectedly. Inspect .logs.' }
