@@ -56,8 +56,14 @@ async function launch() {
         });
         window.loadURL(origin + '/studio').catch(fail);
         if (smoke) window.webContents.once('did-finish-load', () => {
-          fs.writeFileSync(path.join(workspace, '.logs', 'desktop-smoke-passed'), 'studio loaded');
-          app.quit();
+          setTimeout(async () => {
+            try {
+              const screenshot = await window.webContents.capturePage();
+              fs.writeFileSync(path.join(workspace, '.logs', 'desktop-preview.png'), screenshot.toPNG());
+              fs.writeFileSync(path.join(workspace, '.logs', 'desktop-smoke-passed'), 'studio loaded');
+              app.quit();
+            } catch (error) { fail(error); }
+          }, 3000);
         });
       }
     }

@@ -4,6 +4,14 @@
 
 A local-first six-stem studio for the music already in your library.
 
+## Windows 桌面预览版
+
+[下载桌面预览版](https://github.com/sevenlemoon/MusicScope-V2/releases/tag/v0.1.0-beta.1)：选择 `MusicScope-0.1.0-beta.1-windows-x64.zip`，完整解压到可写目录，再打开 `MusicScope.exe`。分轨界面直接显示在应用窗口中，无需命令行、Docker 或 WSL2。
+
+首次打开会联网下载 Node、Python、FFmpeg、数据库和音频引擎，并在窗口显示准备进度；模型在首次分轨时下载。因此这是**联网初始化的桌面预览版，不是全离线安装包**。关闭后重新打开会复用组件，网络下载中断可续传。资料保存在 `%APPDATA%/MusicScope/workspace`，更新时保留该目录。原仓库或 Docker 资料库不会自动迁入桌面版。
+
+当前提供 Windows x64 预览包，尚未购买代码签名证书，Windows 可能显示未知发布者提示；macOS 继续使用下面的源码启动方式。关闭应用会停止它启动的分轨服务，请等待当前任务完成后退出。
+
 **先看实际界面：** [六轨混音与导出](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-mixer.jpg) · [网易云扫码连接](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/netease-login.jpg) · [账号选歌](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-account.jpg) · [本地文件导入](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-local.jpg)
 
 ![六轨试听与导出界面，展示人声、鼓组、贝斯、吉他、钢琴和其他声音的独立波形](docs/screenshots/studio-mixer.jpg)
