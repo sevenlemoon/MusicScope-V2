@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
 import os
 import socket
 import shutil
@@ -36,6 +37,15 @@ def install(root: Path, archive: Path, runtime: Path) -> Path:
 
 
 def prepare(root: Path, binaries: Path) -> None:
+    os.environ['PATH'] = str(binaries) + os.pathsep + os.environ.get('PATH', '')
+    if os.name == 'nt':
+        with os.add_dll_directory(str(binaries)):
+            for name in ('vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll',
+                         'libintl-9.dll', 'icuuc67.dll', 'libpq.dll'):
+                try:
+                    ctypes.WinDLL(str(binaries / name))
+                except OSError as exc:
+                    raise RuntimeError(f'Cannot load PostgreSQL dependency {name}: {exc}') from None
     environment = root / ".env"
     values = env_values(environment.read_text(encoding="utf-8"))
     url = values["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://", 1)
