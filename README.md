@@ -8,7 +8,7 @@ A local-first six-stem studio for the music already in your library.
 
 [下载桌面预览版](https://github.com/sevenlemoon/MusicScope-V2/releases/tag/v0.1.0-beta.1)：选择 `MusicScope-0.1.0-beta.1-windows-x64.zip`，完整解压到可写目录，再打开 `MusicScope.exe`。分轨界面直接显示在应用窗口中，无需命令行、Docker 或 WSL2。
 
-首次打开会联网下载 Node、Python、FFmpeg、数据库和音频引擎，并在窗口显示准备进度；模型在首次分轨时下载。因此这是**联网初始化的桌面预览版，不是全离线安装包**。关闭后重新打开会复用组件，网络下载中断可续传。资料保存在 `%APPDATA%/MusicScope/workspace`，更新时保留该目录。原仓库或 Docker 资料库不会自动迁入桌面版。
+首次打开会联网下载 Node、Python、FFmpeg 和音频引擎，并在窗口显示准备进度；模型在首次分轨时下载。资料库使用内置 SQLite，无需安装数据库。因此这是**联网初始化的桌面预览版，不是全离线安装包**。关闭后重新打开会复用组件，网络下载中断可续传。资料保存在 `%APPDATA%/MusicScope/workspace`，更新时保留该目录。原仓库或 Docker 资料库不会自动迁入桌面版。
 
 当前提供 Windows x64 预览包，尚未购买代码签名证书，Windows 可能显示未知发布者提示；macOS 继续使用下面的源码启动方式。关闭应用会停止它启动的分轨服务，请等待当前任务完成后退出。
 
@@ -71,18 +71,18 @@ MusicScope 专注于一件事：从自己的音频文件，或网易云账号“
 ### Windows：双击启动
 
 1. 下载并完整解压项目，双击 `MusicScope.cmd`。
-2. 首次启动自动准备 Node.js、uv、Python 3.12、FFmpeg/ffprobe、Windows 原生 PostgreSQL、前后端依赖和音频引擎。
+2. 首次启动自动准备 Node.js、uv、Python 3.12、FFmpeg/ffprobe、前后端依赖和音频引擎；资料库直接使用本地 SQLite 文件。
 3. 等待终端显示 `APPLICATION READY`；浏览器会自动打开。以后仍然双击同一个文件，已安装的工具和前端依赖会复用。
 
 无需预先安装 Node、Python、uv、FFmpeg，也无需手动修改 PATH。项目工具放在忽略的 `.tools/` 中并校验 SHA-256；FFmpeg 使用 [Gyan Windows essentials 构建](https://www.gyan.dev/ffmpeg/builds/)。网络中断会自动重试，失败后再次双击即可利用下载缓存继续依赖安装。安装细节记录在 `.logs/setup-windows.log`。
 
-**首次系统条件：** Windows x64、网络连接和足够的磁盘空间（建议至少 10 GB）。默认启动不安装 Docker、不要求 WSL2、虚拟化或管理员权限。数据库使用 [Zonky 精简 PostgreSQL 运行包](https://github.com/zonkyio/embedded-postgres-binaries)（约 23 MB，基于 EDB Windows 二进制），并自动准备项目内的 Microsoft C++ 运行库。下载校验固定 SHA-256，以当前用户身份运行，只监听本机。首次下载需要能访问 Node.js、GitHub、PyPI、npm、Maven Central、Microsoft 和 FFmpeg 下载服务。下载中断后保留进度，再次双击可续传。
+**首次系统条件：** Windows x64、网络连接和足够的磁盘空间（建议至少 10 GB）。默认启动不安装 Docker、不要求 WSL2、虚拟化、独立数据库或管理员权限。首次下载需要能访问 Node.js、GitHub、PyPI、npm 和 FFmpeg 下载服务。下载中断后保留进度，再次双击可续传。
 
-**已有 Docker 资料库：** 新的原生数据库保存在 `storage/postgres/data`。旧 Docker 卷不会删除，也不会自动迁移；旧数据库已经运行时会通过原配置认证并复用。若要继续启动旧 Docker 数据库，请使用 `MusicScope.cmd -LegacyDocker`。首次使用原生模式会建立独立资料库，不代表旧资料丢失。
+**已有 Docker 资料库：** Windows 默认资料库保存在 `storage/library.sqlite3`，与旧 PostgreSQL 数据独立。旧 Docker 卷不会删除，也不会自动迁移；若要继续使用旧 Docker 数据库，请运行 `MusicScope.cmd -LegacyDocker`。默认模式会建立独立资料库，不代表旧资料丢失。
 
-Windows 和 macOS 的启动器都会准备隔离的 Python 环境、启动本机 PostgreSQL 并执行前向数据库迁移。Demucs 模型在首次分轨时自动下载。长音频的 CPU 分离可能很慢；macOS 优先使用 MPS，Windows 在检测到可用 CUDA 时使用 CUDA，否则使用 CPU。可在本地 `.env` 中设置 `AUDIO_WORKER_DEVICE=cpu` 重试。
+Windows 和 macOS 的启动器都会准备隔离的 Python 环境。Windows 默认初始化本地 SQLite，macOS 保留 PostgreSQL；旧 PostgreSQL 模式仍执行前向迁移。Demucs 模型在首次分轨时自动下载。长音频的 CPU 分离可能很慢；macOS 优先使用 MPS，Windows 在检测到可用 CUDA 时使用 CUDA，否则使用 CPU。可在本地 `.env` 中设置 `AUDIO_WORKER_DEVICE=cpu` 重试。
 
-可选启动参数：macOS 为 `./scripts/dev.sh --status|--setup|--no-open`；Windows 为 `./scripts/dev.ps1 -Status|-Setup|-NoOpen`。状态模式只读取状态。关闭启动窗口会停止由该窗口启动的应用进程，PostgreSQL 保持运行，资料保留。启动器不会自动同步网易云或删除资料库。
+可选启动参数：macOS 为 `./scripts/dev.sh --status|--setup|--no-open`；Windows 为 `./scripts/dev.ps1 -Status|-Setup|-NoOpen`。状态模式只读取状态。关闭启动窗口会停止由该窗口启动的应用进程，资料保留。启动器不会自动同步网易云或删除资料库。
 
 若双击被 Windows 安全提示拦截，可在 PowerShell 中从已检查的仓库目录启动 `./MusicScope.cmd`；不需要修改全局执行策略。更新已有安装时保留 `.env`、`.tools`、`storage` 和数据库卷，它们包含本地配置、工具缓存和工作资料。
 

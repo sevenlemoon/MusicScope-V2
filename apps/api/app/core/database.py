@@ -2,7 +2,7 @@ from collections.abc import Generator
 from functools import lru_cache
 from urllib.parse import urlsplit
 
-from sqlalchemy import MetaData, create_engine, text
+from sqlalchemy import MetaData, create_engine, event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -36,6 +36,17 @@ def assert_safe_database_url(database_url: str) -> None:
 def get_engine() -> Engine:
     database_url = get_settings().database_url
     assert_safe_database_url(database_url)
+    if database_url.startswith('sqlite'):
+        engine = create_engine(database_url, pool_pre_ping=True,
+                               connect_args={'timeout': 30, 'check_same_thread': False})
+
+        @event.listens_for(engine, 'connect')
+        def configure_sqlite(connection, _record):  # type: ignore[no-untyped-def]
+            connection.execute('PRAGMA journal_mode=WAL')
+            connection.execute('PRAGMA foreign_keys=ON')
+            connection.execute('PRAGMA busy_timeout=30000')
+
+        return engine
     return create_engine(database_url, pool_pre_ping=True)
 
 
@@ -48,4 +59,3 @@ def get_db() -> Generator[Session, None, None]:
 def check_database() -> None:
     with get_engine().connect() as connection:
         connection.execute(text("SELECT 1"))
-

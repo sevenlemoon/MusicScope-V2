@@ -593,7 +593,28 @@ def fail_job(db: Session, job: StemJob, failure: WorkerFailure) -> None:
 
 
 def _acquire_worker_lock() -> Any:
-    connection = get_engine().connect()
+    engine = get_engine()
+    if engine.dialect.name == 'sqlite' and engine.url.database != ':memory:':
+        # SQLite lacks PostgreSQL advisory locks. The OS releases this exclusive
+        # file lock even if the worker crashes, allowing safe restart/recovery.
+        path = Path(str(engine.url.database) + '.worker-lock')
+        lock = path.open('a+b')
+        try:
+            if path.stat().st_size == 0:
+                lock.write(b'0')
+                lock.flush()
+            lock.seek(0)
+            if os.name == 'nt':
+                import msvcrt
+                msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return lock
+        except OSError:
+            lock.close()
+            return None
+    connection = engine.connect()
     if connection.dialect.name == "postgresql":
         acquired = connection.scalar(
             text("SELECT pg_try_advisory_lock(:lock_id)"), {"lock_id": ADVISORY_LOCK_ID}

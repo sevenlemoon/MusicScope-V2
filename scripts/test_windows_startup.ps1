@@ -6,11 +6,11 @@ $launcher = Join-Path $PSScriptRoot 'dev.ps1'
 & $launcher -Setup
 if ($LASTEXITCODE -ne 0) { throw 'Native setup failed' }
 # Repeated setup must preserve the same cluster and complete migrations safely.
-$data = Join-Path $root 'storage\postgres\data'
-$version = Get-Content (Join-Path $data 'PG_VERSION') -Raw
+$data = Join-Path $root 'storage\library.sqlite3'
+$created = (Get-Item $data).CreationTimeUtc
 & $launcher -Setup
 if ($LASTEXITCODE -ne 0) { throw 'Repeated native setup failed' }
-if ((Get-Content (Join-Path $data 'PG_VERSION') -Raw) -ne $version) { throw 'Cluster changed' }
+if ((Get-Item $data).CreationTimeUtc -ne $created) { throw 'Library was replaced' }
 $process = Start-Process powershell.exe -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass',
     '-File', "`"$launcher`"", '-NoOpen') -PassThru `
     -RedirectStandardOutput (Join-Path $root '.logs\startup-test.out.log') `
@@ -37,5 +37,4 @@ try {
     Write-Host 'PASS: Windows setup, repeated setup, API, worker, NetEase and Studio without Docker.'
 } finally {
     & taskkill /PID $process.Id /T /F *> $null
-    & (Join-Path $root '.tools\postgresql-native-16.15\bin\pg_ctl.exe') -D $data -m fast -w stop
 }

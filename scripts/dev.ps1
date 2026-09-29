@@ -15,7 +15,6 @@ $apiPython = Join-Path $root 'apps\api\.venv\Scripts\python.exe'
 $workerPython = Join-Path $root 'apps\audio-worker\.venv\Scripts\python.exe'
 $started = [System.Collections.Generic.List[System.Diagnostics.Process]]::new()
 . (Join-Path $PSScriptRoot 'windows-tools.ps1')
-. (Join-Path $PSScriptRoot 'windows-postgres.ps1')
 
 function Say([string]$message) { Write-Host "[MusicScope] $message" }
 function Fail([string]$message) { throw $message }
@@ -119,7 +118,7 @@ function Ensure-Environment {
     if (Test-Path $envPath) { $arguments += '--allow-existing-empty' }
     if ((Invoke-StartupProcess $python $arguments $setupLog) -ne 0) { Fail "Local environment initialization failed; see $setupLog." }
     Protect-Environment
-    Say 'READY unique local database password and encryption key in ignored .env'
+    Say 'READY local configuration and encryption key in ignored .env'
 }
 function Ensure-Postgres($values) {
     $port = [int](Env-Value $values 'POSTGRES_PORT' '55432')
@@ -245,7 +244,7 @@ function Show-Status {
     $webPort = [int](Env-Value $values 'MUSICSCOPE_WEB_PORT' '3100')
     $neteasePort = [int](Env-Value $values 'MUSICSCOPE_NETEASE_PORT' '36531')
     Say "Environment: $(if (Test-Path (Join-Path $root '.env')) { 'PRESENT' } else { 'ABSENT' })"
-    Say "Database port: $(if (Port-Open ([int](Env-Value $values 'POSTGRES_PORT' '55432'))) { 'OPEN' } else { 'CLOSED' })"
+    Say "Local library: $(if (Test-Path (Join-Path $root 'storage\library.sqlite3')) { 'PRESENT' } else { 'NOT_CREATED' })"
     if ($LegacyDocker) { Say "Docker: $(if (Docker-Ready) { 'READY' } else { 'UNAVAILABLE' })" }
     Say "NetEase sidecar: $(if (Http-Ready "http://127.0.0.1:$neteasePort/health") { 'READY' } else { 'NOT_READY' })"
     Say "FastAPI: $(if (Http-Ready "http://127.0.0.1:$apiPort/health") { 'READY' } else { 'NOT_READY' })"
@@ -273,7 +272,12 @@ try {
         Ensure-Postgres $values
         Ensure-Encryption-Key $values
     } else {
-        Ensure-NativePostgres $root $apiPython $setupLog
+        $databaseFile = (Join-Path $root 'storage\library.sqlite3').Replace('\', '/')
+        $env:DATABASE_URL = "sqlite+pysqlite:///$databaseFile"
+        Say 'Preparing local library file (no database server required)...'
+        if ((Invoke-StartupProcess $apiPython @((Join-Path $root 'scripts\prepare_local_database.py')) $setupLog) -ne 0) {
+            Fail "Local library preparation failed; see $setupLog."
+        }
     }
     $values = Env-Values
     $env:MUSICSCOPE_NETEASE_PORT = Env-Value $values 'MUSICSCOPE_NETEASE_PORT' '36531'
@@ -297,7 +301,7 @@ try {
     Say "APPLICATION READY: http://127.0.0.1:$webPort"
     if (-not $NoOpen) { Start-Process "http://127.0.0.1:$webPort" }
     if ($started.Count -eq 0) { Say 'All services were already running.'; exit 0 }
-    Say 'Press Ctrl+C to stop services started by this launcher. PostgreSQL remains running.'
+    Say 'Press Ctrl+C to stop services started by this launcher. Library files are preserved.'
     while ($true) {
         if ($StopFile -and (Test-Path -LiteralPath $StopFile)) { break }
         foreach ($process in $started) {
