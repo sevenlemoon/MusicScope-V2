@@ -1,5 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+& node (Join-Path $root 'apps\desktop\node_modules\electron\install.js')
+if ($LASTEXITCODE -ne 0) { throw 'Electron runtime download failed' }
 $version = (Get-Content (Join-Path $root 'apps\desktop\package.json') -Raw | ConvertFrom-Json).version
 $stage = Join-Path $root ('dist\desktop-' + [guid]::NewGuid().ToString('N'))
 $application = Join-Path $stage 'MusicScope'
