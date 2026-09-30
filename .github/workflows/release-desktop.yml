@@ -1,0 +1,45 @@
+name: publish-desktop-preview
+on:
+  workflow_dispatch:
+    inputs:
+      validation_run:
+        description: Successful validation run containing the tested desktop package
+        required: true
+        type: string
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      VALIDATION_RUN: ${{ inputs.validation_run }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify the validation run
+        shell: bash
+        run: |
+          [[ "$VALIDATION_RUN" =~ ^[0-9]+$ ]]
+          result=$(gh api "repos/$GH_REPO/actions/runs/$VALIDATION_RUN")
+          test "$(jq -r .conclusion <<< "$result")" = success
+          test "$(jq -r .head_branch <<< "$result")" = master
+          test "$(jq -r .path <<< "$result")" = .github/workflows/ci.yml
+          echo "RELEASE_SHA=$(jq -r .head_sha <<< "$result")" >> "$GITHUB_ENV"
+      - name: Download tested package and verify checksum
+        run: |
+          gh run download "$VALIDATION_RUN" --name musicscope-windows-desktop --dir assets
+          cd assets
+          sha256sum -c MusicScope-0.1.0-beta.1-windows-x64.zip.sha256
+          preview=$(find . -name desktop-preview.png -type f -print -quit)
+          test -n "$preview"
+          cp "$preview" desktop-preview.png
+      - name: Publish the tested Windows preview
+        run: |
+          gh release create v0.1.0-beta.1 --target "$RELEASE_SHA" --prerelease \
+            --title "MusicScope Desktop 0.1.0-beta.1 — Windows 桌面预览版" \
+            --notes-file docs/releases/desktop-0.1.0-beta.1.md \
+            assets/MusicScope-0.1.0-beta.1-windows-x64.zip \
+            assets/MusicScope-0.1.0-beta.1-windows-x64.zip.sha256 \
+            assets/desktop-preview.png

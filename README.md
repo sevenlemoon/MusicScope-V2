@@ -90,7 +90,7 @@ Windows 和 macOS 的启动器都会准备隔离的 Python 环境。Windows 默�
 
 ```text
 Next.js / React / TypeScript
-          → FastAPI / SQLAlchemy → 本机 PostgreSQL
+          → FastAPI / SQLAlchemy → SQLite（Windows 默认）/ PostgreSQL
           → 网易云连接服务（仅本机）
           → 独立 Python 音频 worker → Demucs → 六条 FLAC 音轨
 ```

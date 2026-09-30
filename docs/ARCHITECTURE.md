@@ -1,12 +1,12 @@
 # MusicScope V2 architecture
 
-MusicScope is a local-first modular monolith: one Next.js client, one FastAPI service, one PostgreSQL database, provider adapters, a loopback NetEase sidecar, and an isolated local audio worker.
+MusicScope is a local-first modular monolith: one Next.js client, one FastAPI service, a SQLite database (Windows default) or PostgreSQL, provider adapters, a loopback NetEase sidecar, and an isolated local audio worker.
 
 ```text
 Next.js / React / TypeScript
         -> FastAPI REST API
         -> application services
-        -> PostgreSQL canonical domain
+        -> SQLite / PostgreSQL canonical domain
         -> provider ports and adapters
              -> NetEase sidecar
         -> durable StemJob queue
