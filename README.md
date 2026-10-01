@@ -6,6 +6,8 @@ A local-first six-stem studio for the music already in your library.
 
 ## Windows 桌面预览版
 
+> 正在开发“内置运行组件”的新版交付方式，详见 [桌面交付与验收](docs/DESKTOP_DELIVERY.md)。下方已发布的 beta.1 仍是首次联网准备依赖的版本；新版完成 Windows 验收前不会替换下载包。
+
 [下载桌面预览版](https://github.com/sevenlemoon/MusicScope-V2/releases/tag/v0.1.0-beta.1)：选择 `MusicScope-0.1.0-beta.1-windows-x64.zip`，完整解压到可写目录，再打开 `MusicScope.exe`。分轨界面直接显示在应用窗口中，无需命令行、Docker 或 WSL2。
 
 首次打开会联网下载 Node、Python、FFmpeg 和音频引擎，并在窗口显示准备进度；模型在首次分轨时下载。资料库使用内置 SQLite，无需安装数据库。因此这是**联网初始化的桌面预览版，不是全离线安装包**。关闭后重新打开会复用组件，网络下载中断可续传。资料保存在 `%APPDATA%/MusicScope/workspace`，更新时保留该目录。原仓库或 Docker 资料库不会自动迁入桌面版。

@@ -182,6 +182,19 @@ def _worker_cache() -> Path:
     return cache.resolve()
 
 
+def separator_environment(cache: Path) -> dict[str, str]:
+    # Windows subprocesses need native runtime/temp paths too. Deliberately do
+    # not inherit account keys, database credentials or arbitrary PYTHONPATH.
+    allowed = ("PATH", "SystemRoot", "WINDIR", "TEMP", "TMP", "USERPROFILE", "LOCALAPPDATA", "APPDATA")
+    environment = {key: os.environ[key] for key in allowed if key in os.environ}
+    environment.update({
+        "HOME": str(Path.home()), "LANG": os.environ.get("LANG", "en_US.UTF-8"),
+        "PYTHONUTF8": "1", "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1",
+        "HF_HOME": str(cache / "huggingface"), "TORCH_HOME": str(cache / "torch"),
+    })
+    return environment
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -503,13 +516,7 @@ def process_job(db: Session, job: StemJob) -> None:
         log_path = run_dir / "demucs.log"
         set_stage(db, job, StemJobStatus.RUNNING, "LOADING_MODEL")
         model_cache = _worker_cache()
-        environment = {
-            "PATH": os.environ.get("PATH", ""),
-            "HOME": str(Path.home()),
-            "LANG": os.environ.get("LANG", "en_US.UTF-8"),
-            "HF_HOME": str(model_cache / "huggingface"),
-            "TORCH_HOME": str(model_cache / "torch"),
-        }
+        environment = separator_environment(model_cache)
         command = [
             sys.executable,
             "-m",
