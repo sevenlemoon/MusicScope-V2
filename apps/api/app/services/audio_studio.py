@@ -196,11 +196,11 @@ async def create_audio_asset(db: Session, user: User, upload: UploadFile) -> tup
     root = storage_root()
     asset_id = uuid4()
     original_dir = root / "assets" / str(asset_id) / "original"
-    original_dir.mkdir(parents=True, exist_ok=False)
     temporary = original_dir / f".{uuid4()}.upload"
     digest = hashlib.sha256()
     total = 0
     try:
+        original_dir.mkdir(parents=True, exist_ok=False)
         with temporary.open("xb") as handle:
             while chunk := await upload.read(1024 * 1024):
                 total += len(chunk)
@@ -257,10 +257,14 @@ async def create_audio_asset(db: Session, user: User, upload: UploadFile) -> tup
             return existing, True
         db.refresh(asset)
         return asset, False
-    except Exception:
+    except Exception as error:
         db.rollback()
         if original_dir.parent.exists():
             shutil.rmtree(original_dir.parent)
+        if isinstance(error, OSError) and error.errno == 28:
+            raise StudioError(
+                507, "STORAGE_QUOTA_EXCEEDED", "There is not enough free disk space.",
+            ) from error
         raise
     finally:
         await upload.close()

@@ -6,7 +6,7 @@ A local-first six-stem studio for the music already in your library.
 
 ## Windows 桌面预览版
 
-> 正在开发“内置运行组件”的新版交付方式，详见 [桌面交付与验收](docs/DESKTOP_DELIVERY.md)。下方已发布的 beta.1 仍是首次联网准备依赖的版本；新版完成 Windows 验收前不会替换下载包。
+> “内置运行组件”的新版已通过 Windows 打包、中文路径重启及真实 CPU 六轨自动验收，详见 [验收证据与待办](docs/DESKTOP_DELIVERY.md)。纯净 Windows、实际播放与离线等验收仍待完成。下方已发布的 beta.1 仍是首次联网准备依赖的旧版；新版尚未发布。
 
 [下载桌面预览版](https://github.com/sevenlemoon/MusicScope-V2/releases/tag/v0.1.0-beta.1)：选择 `MusicScope-0.1.0-beta.1-windows-x64.zip`，完整解压到可写目录，再打开 `MusicScope.exe`。分轨界面直接显示在应用窗口中，无需命令行、Docker 或 WSL2。
 
@@ -67,7 +67,7 @@ MusicScope 专注于一件事：从自己的音频文件，或网易云账号“
 
 | 平台 | 启动方式 | 必需软件 |
 | --- | --- | --- |
-| macOS（Apple silicon） | 双击 `MusicScope.command`，或运行 `./scripts/dev.sh` | Docker Desktop、[uv](https://docs.astral.sh/uv/)、Node.js 24.21.0+（24.x）；首次在仓库中运行 `nvm install` |
+| macOS（Apple silicon） | 双击 `MusicScope.command` | [uv](https://docs.astral.sh/uv/)、Node.js 24.21.0+（24.x）、FFmpeg；无需 Docker |
 | Windows 10/11 x64 | 解压项目后双击 `MusicScope.cmd` | 可联网；无需 Docker、WSL2 或开启虚拟化，工具由脚本准备 |
 
 ### Windows：双击启动
@@ -82,9 +82,15 @@ MusicScope 专注于一件事：从自己的音频文件，或网易云账号“
 
 **已有 Docker 资料库：** Windows 默认资料库保存在 `storage/library.sqlite3`，与旧 PostgreSQL 数据独立。旧 Docker 卷不会删除，也不会自动迁移；若要继续使用旧 Docker 数据库，请运行 `MusicScope.cmd -LegacyDocker`。默认模式会建立独立资料库，不代表旧资料丢失。
 
-Windows 和 macOS 的启动器都会准备隔离的 Python 环境。Windows 默认初始化本地 SQLite，macOS 保留 PostgreSQL；旧 PostgreSQL 模式仍执行前向迁移。Demucs 模型在首次分轨时自动下载。长音频的 CPU 分离可能很慢；macOS 优先使用 MPS，Windows 在检测到可用 CUDA 时使用 CUDA，否则使用 CPU。可在本地 `.env` 中设置 `AUDIO_WORKER_DEVICE=cpu` 重试。
+### macOS：双击启动
 
-可选启动参数：macOS 为 `./scripts/dev.sh --status|--setup|--no-open`；Windows 为 `./scripts/dev.ps1 -Status|-Setup|-NoOpen`。状态模式只读取状态。关闭启动窗口会停止由该窗口启动的应用进程，资料保留。启动器不会自动同步网易云或删除资料库。
+双击 `MusicScope.command`。首次准备 Python 依赖并构建生产界面；源码和依赖版本未变时直接复用，不再启动 `next dev`。默认资料位于 `~/Library/Application Support/MusicScope/workspace`，使用 SQLite，无需启动 Docker。网易云组件暂时不可用时，本地分轨仍可使用。更多信息见 [macOS 启动说明](docs/MAC_STARTUP.md)。
+
+**已有 macOS Docker 资料：** 保留在原 PostgreSQL 卷和仓库配置中，不会自动迁入新本地资料库。继续打开旧资料请运行 `./MusicScope.command --legacy-docker`；源码开发仍可使用 `./scripts/dev.sh`。
+
+各启动器都会准备隔离的 Python 环境。旧 PostgreSQL 模式仍执行前向迁移。Demucs 模型首次分轨时独立下载、校验，准备完成后使用本地模型。长音频 CPU 分离可能很慢；macOS 优先使用 MPS，Windows 检测到可用 CUDA 时使用 CUDA，否则使用 CPU。需要 CPU 重试时，可用环境变量 `AUDIO_WORKER_DEVICE=cpu` 启动。
+
+可选启动参数：macOS 为 `./MusicScope.command --status|--setup|--no-open`；Windows 为 `./scripts/dev.ps1 -Status|-Setup|-NoOpen`。状态模式只读取状态。关闭启动终端会停止由该窗口启动的应用进程，资料保留；关闭 macOS 浏览器窗口不会停止后台分轨。启动器不会自动同步网易云或删除资料库。
 
 若双击被 Windows 安全提示拦截，可在 PowerShell 中从已检查的仓库目录启动 `./MusicScope.cmd`；不需要修改全局执行策略。更新已有安装时保留 `.env`、`.tools`、`storage` 和数据库卷，它们包含本地配置、工具缓存和工作资料。
 

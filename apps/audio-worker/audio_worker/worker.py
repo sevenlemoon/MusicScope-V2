@@ -279,6 +279,8 @@ def _run_owned_process(
     diagnostic = log_path.read_text(encoding="utf-8", errors="replace")[-8000:]
     if return_code != 0:
         lowered = diagnostic.casefold()
+        if "no space left" in lowered or "not enough disk space" in lowered or "errno 28" in lowered:
+            raise WorkerFailure("STORAGE_QUOTA_EXCEEDED", "There is not enough free disk space.", diagnostic)
         if "out of memory" in lowered or "mps backend out of memory" in lowered:
             raise WorkerFailure("OUT_OF_MEMORY", "Audio separation ran out of memory.", diagnostic)
         if "download" in lowered or "model" in lowered and "not found" in lowered:
@@ -517,12 +519,23 @@ def process_job(db: Session, job: StemJob) -> None:
         set_stage(db, job, StemJobStatus.RUNNING, "LOADING_MODEL")
         model_cache = _worker_cache()
         environment = separator_environment(model_cache)
+        phase_started = time.monotonic()
+        # Model connectivity and retries get their own deadline, not the CPU
+        # inference budget. The compute subprocess only loads verified local files.
+        _run_owned_process(
+            db, job,
+            [sys.executable, "-m", "audio_worker.prepare_model", job.model_name, str(model_cache)],
+            run_dir / "model-prepare.log", timeout_seconds=900, environment=environment,
+        )
+        timings["model_preparation_seconds"] = round(time.monotonic() - phase_started, 3)
         command = [
             sys.executable,
             "-m",
             "demucs",
             "-n",
             job.model_name,
+            "--repo",
+            str(model_cache / "demucs-local"),
             "-d",
             device,
             "--segment",

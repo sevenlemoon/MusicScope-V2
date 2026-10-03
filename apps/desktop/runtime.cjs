@@ -23,7 +23,7 @@ function runtimePaths(project) {
   return paths;
 }
 
-function runtimeEnvironment(project, data, parent = process.env) {
+function runtimeEnvironment(project, data, parent = process.env, paths = null) {
   // Do not let developer/host configuration select another database or interpreter.
   const env = { ...parent };
   for (const key of Object.keys(env)) {
@@ -33,7 +33,8 @@ function runtimeEnvironment(project, data, parent = process.env) {
   const inheritedPath = pathKey ? env[pathKey] : '';
   if (pathKey) delete env[pathKey];
   return { ...env,
-    PATH: [path.join(project, 'runtime', 'ffmpeg', 'bin'), path.join(project, 'runtime', 'node'), inheritedPath].join(path.delimiter),
+    PATH: [paths ? path.dirname(paths.ffmpeg) : path.join(project, 'runtime', 'ffmpeg', 'bin'),
+      paths ? path.dirname(paths.node) : path.join(project, 'runtime', 'node'), inheritedPath].join(path.delimiter),
     PYTHONUTF8: '1', PYTHONNOUSERSITE: '1', PYTHONDONTWRITEBYTECODE: '1',
     MUSICSCOPE_DATA_DIR: data,
     DATABASE_URL: 'sqlite+pysqlite:///' + path.join(data, 'storage', 'library.sqlite3').replaceAll('\\', '/'),
@@ -64,9 +65,9 @@ async function choosePort() {
   });
 }
 
-async function supervise(project, data) {
-  const paths = runtimePaths(project);
-  const env = runtimeEnvironment(project, data);
+async function supervise(project, data, options = {}) {
+  const paths = options.paths || runtimePaths(project);
+  const env = runtimeEnvironment(project, data, process.env, paths);
   const sidecarPort = await choosePort();
   env.MUSICSCOPE_NETEASE_PORT = String(sidecarPort);
   env.NETEASE_API_BASE_URL = `http://127.0.0.1:${sidecarPort}`;
@@ -80,7 +81,8 @@ async function supervise(project, data) {
   const start = (name, executable, args, cwd) => {
     const fd = fs.openSync(path.join(logs, `${name}.log`), 'a');
     let child;
-    try { child = spawn(executable, args, { cwd, env, windowsHide: true, stdio: ['ignore', fd, fd] }); }
+    try { child = spawn(executable, args, { cwd, env, windowsHide: true,
+      detached: process.platform !== 'win32', stdio: ['ignore', fd, fd] }); }
     finally { fs.closeSync(fd); }
     child.on('error', (error) => { child.launchError = error; });
     children.push(child);
@@ -118,11 +120,22 @@ async function supervise(project, data) {
             ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true });
           killer.once('error', resolve); killer.once('exit', resolve);
         });
-      } else child.kill('SIGTERM');
+      } else {
+        // Give the worker time to terminate its own Demucs process group and
+        // persist an interrupted job before escalating an unresponsive service.
+        const exited = new Promise((resolve) => child.once('exit', resolve));
+        try { process.kill(-child.pid, 'SIGTERM'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
+        const timer = new AbortController();
+        await Promise.race([exited, delay(8000, undefined, { signal: timer.signal }).catch(() => {})]);
+        timer.abort();
+        try { process.kill(-child.pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
+      }
     }));
   };
-  process.once('SIGTERM', () => { stopping = true; });
-  process.once('SIGINT', () => { stopping = true; });
+  const onSignal = () => { stopping = true; };
+  process.once('SIGTERM', onSignal);
+  process.once('SIGINT', onSignal);
+  process.once('SIGHUP', onSignal);
   try {
     await assertFreePort(8100);
     await assertFreePort(3100);
@@ -150,6 +163,7 @@ async function supervise(project, data) {
     const web = start('desktop-web', paths.node, [paths.web], path.dirname(paths.web));
     await ready(web, 'desktop-web', async () => (await fetch('http://127.0.0.1:3100/studio', { signal: AbortSignal.timeout(1000) })).ok);
     say('APPLICATION READY: http://127.0.0.1:3100');
+    if (options.onReady) await options.onReady();
     while (!stopping && !fs.existsSync(stopFile)) {
       check(api, 'desktop-api'); check(worker, 'desktop-worker'); check(web, 'desktop-web');
       if (sidecar && (sidecar.launchError || sidecar.exitCode !== null)) {
@@ -157,7 +171,10 @@ async function supervise(project, data) {
       }
       await delay(500);
     }
-  } finally { await stop(); }
+  } finally {
+    await stop();
+    for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.removeListener(signal, onSignal);
+  }
 }
 
 module.exports = { runtimePaths, runtimeEnvironment, assertFreePort, supervise };

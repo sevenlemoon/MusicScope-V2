@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "model": "htdemucs_6s",
+  "device": "cpu",
+  "stems": [
+    "BASS",
+    "DRUMS",
+    "GUITAR",
+    "OTHER",
+    "PIANO",
+    "VOCALS"
+  ],
+  "input_duration_ms": 4000,
+  "download_integrity": true,
+  "flac_decode": true,
+  "waveforms": true,
+  "elapsed_seconds": 20.92,
+  "quality_benchmark": false,
+  "speaker_playback_test": false
+}

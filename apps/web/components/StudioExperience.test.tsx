@@ -165,6 +165,39 @@ describe("StudioExperience", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "暂停四个声部" })).toBeInTheDocument());
     expect(AudioContextMock.nodes[0].gain.value).toBe(0.5);
     expect(AudioContextMock.nodes).toHaveLength(5);
+    expect(AudioContextMock.nodes.slice(1).map((node) => node.gain.value)).toEqual([0, 1, 0, 0]);
+  });
+
+  test("playback end resets the transport and a new play starts from zero", async () => {
+    const media: HTMLAudioElement[] = [];
+    const originalAudio = global.Audio;
+    jest.spyOn(global, "Audio").mockImplementation(() => {
+      const audio = new originalAudio();
+      media.push(audio);
+      return audio;
+    });
+    global.fetch = jest.fn(() => response(job("SUCCEEDED", {
+      artifacts: [{ id: "v", stem_type: "VOCALS", stream_url: "/stream/v", duration_ms: 180000 }],
+    })) as never);
+    render(<StudioExperience initialJobId="job-1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "播放四个声部" }));
+    await screen.findByRole("button", { name: "暂停四个声部" });
+    act(() => { media[0].dispatchEvent(new Event("ended")); });
+    expect(screen.getByLabelText("播放位置")).toHaveValue("180");
+    fireEvent.click(screen.getByRole("button", { name: "播放四个声部" }));
+    await screen.findByRole("button", { name: "暂停四个声部" });
+    expect(media[0].currentTime).toBe(0);
+  });
+
+  test("a rejected audio play promise shows a recoverable error", async () => {
+    jest.spyOn(global.Audio.prototype, "play").mockRejectedValueOnce(new Error("device unavailable"));
+    global.fetch = jest.fn(() => response(job("SUCCEEDED", {
+      artifacts: [{ id: "v", stem_type: "VOCALS", stream_url: "/stream/v", duration_ms: 180000 }],
+    })) as never);
+    render(<StudioExperience initialJobId="job-1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "播放四个声部" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("播放未能启动");
+    expect(screen.getByRole("button", { name: "播放四个声部" })).toBeEnabled();
   });
 
   test("six-stem results expose guitar and piano mixer rows", async () => {

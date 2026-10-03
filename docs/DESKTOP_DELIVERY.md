@@ -1,6 +1,6 @@
-# Desktop delivery: production runtime (in development)
+# Desktop delivery: production runtime (validated candidate, unreleased)
 
-This describes the **unreleased** production delivery path. The published
+This describes the **unreleased beta.2** production delivery path. The published
 `v0.1.0-beta.1` still bootstraps dependencies on first launch; do not describe that
 existing download as an offline-ready package.
 
@@ -14,8 +14,10 @@ existing download as an offline-ready package.
   in the package. This increases download and disk size; measure before publishing.
 - Launch runs those bundled executables directly. No PowerShell development
   launcher, npm, uv, Docker, WSL, or dependency installation is invoked.
-- Demucs weights are **not yet bundled**. First separation still needs model
-  download connectivity. This is not a fully offline separation release.
+- Demucs weights are **not bundled**. First separation still needs model
+  download connectivity. Preparation now has a separate deadline, bounded network
+  timeouts, range retry and checksum verification; inference uses the verified
+  local repository. This is not a fully offline installation.
 - No installer/signing/automatic updater is introduced in this change. The
   portable ZIP remains the delivery format until packaging acceptance succeeds.
 
@@ -44,18 +46,42 @@ the job API, worker readiness, and preservation of the key/database. It captures
 the actual packaged UI. With `-Separate` (enabled in CI), it then runs the bundled
 CPU worker against a generated four-second stereo signal in the isolated profile,
 checks six distinct stems, download hashes, durations, FLAC decoding and waveforms.
-The model cache is isolated and may need a first download. This is real model
+The model cache is isolated and needs a first download. The beta.2 harness then
+blocks non-loopback outbound traffic for the packaged executables on the disposable
+Windows runner, verifies a network control probe, reopens the first result through
+Electron's player and runs a second real job in a fresh profile using the prepared
+cache. Firewall rules/profile settings are restored afterwards. Reports are emitted
+only on success. This is real model
 execution, **not** a musical-quality or speaker-playback test, and does not
 simulate a completely clean Windows installation. Test audio is not published.
 
-Before publishing a new version, still require:
+Release acceptance status (reviewed 2026-10-04):
 
-1. Successful Windows package build and relocation acceptance.
-2. Clean Windows VM without installed runtimes; inspect missing native DLLs.
-3. Real CPU six-stem separation, playback and export on a licensed test clip.
-4. Offline restart after preparation, model-download failure, disk-space failure,
+1. **Passed:** Windows package build, relocation to a Unicode/space-containing
+   application path, two launches, Studio/API/worker readiness, key/database
+   preservation, and real CPU six-stem execution on a generated signal. See
+   [the verified Windows evidence](validation/windows-desktop-2026-10-01.md).
+   The isolated user profile contains spaces; a real Unicode Windows account
+   has not been tested.
+2. **Pending:** clean Windows VM without installed runtimes; inspect missing
+   native DLLs. Removing developer tools from PATH on a hosted runner is not
+   equivalent to removing installed software or running as a standard user.
+3. **Pending:** playback and export through the packaged UI on a licensed music
+   clip, including listening to the result. API downloads and FFmpeg decoding
+   passed; they do not prove speaker playback or musical quality.
+4. **Pending:** offline restart after preparation, model-download failure, disk-space failure,
    and upgrade from beta.1 with existing data.
-5. A new version/tag, measured package size, and verified redistribution notices.
+5. **In progress:** beta.2 has a distinct version and the release workflow derives
+   filenames and notes from the validated commit. It requires audio, offline and
+   playback reports. A successful new Windows run and redistribution review are
+   still required; the earlier beta.1 candidate is historical evidence only.
+
+## macOS startup
+
+`MusicScope.command` now opens the local SQLite production path described in
+[MAC_STARTUP.md](MAC_STARTUP.md). The old PostgreSQL launcher remains available
+with `--legacy-docker`; its database and account identity are not migrated or
+deleted. Source-based setup is still required on macOS; this is not a signed app.
 
 Developer source launchers remain supported separately. Do not remove legacy
 database migrations or user storage as part of package cleanup.
@@ -66,5 +92,6 @@ The generated four-second signal completed the real `htdemucs_6s` CPU path on
 macOS in 16.72 seconds, using an isolated SQLite database and the existing model
 cache. All six downloads passed SHA-256, duration, decoding and waveform checks.
 This does not establish first-download reliability, music quality, sound-device
-playback, or Windows package compatibility. Windows build/relocation acceptance
-remains pending; no updated release has been published.
+playback, or Windows package compatibility. Subsequent Windows build/relocation
+and generated-signal CPU acceptance passed on 2026-10-01 (verified on 2026-10-04);
+no updated release has been published.

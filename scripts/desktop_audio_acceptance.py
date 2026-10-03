@@ -108,7 +108,7 @@ def run_acceptance(base_url: str, output: Path, ffmpeg: Path, timeout: int = 120
         response.raise_for_status()
         if set(response.json()["stems"]) != STEMS:
             raise RuntimeError("Six-stem waveform is incomplete")
-        report = {"status": "passed", "model": job["model_name"], "device": job["device"],
+        report = {"status": "passed", "job_id": job_id, "model": job["model_name"], "device": job["device"],
                   "stems": sorted(STEMS), "input_duration_ms": DURATION_MS,
                   "download_integrity": True, "flac_decode": True, "waveforms": True,
                   "elapsed_seconds": round(time.monotonic() - started, 2),

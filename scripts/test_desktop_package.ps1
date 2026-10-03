@@ -9,7 +9,7 @@ $testRoot = Join-Path $env:RUNNER_TEMP ('MusicScope relocation ' + [guid]::NewGu
 $unicodeDirectory = ([string][char]0x7528) + ([string][char]0x6237) + ' with spaces'
 $package = Join-Path $testRoot $unicodeDirectory
 Expand-Archive -LiteralPath $zip -DestinationPath $package
-$profile = Join-Path $testRoot 'isolated profile'
+$profile = Join-Path $testRoot ($unicodeDirectory + ' profile')
 $env:MUSICSCOPE_SMOKE_DATA_DIR = $profile
 $logs = Join-Path $profile 'workspace\.logs'
 $proof = Join-Path $logs 'desktop-smoke-passed'
@@ -61,6 +61,9 @@ try {
                 & "$env:SystemRoot\System32\taskkill.exe" /PID $supervisor.Id /T /F
             }
         }
+        & (Join-Path $PSScriptRoot 'test_desktop_offline.ps1') -Package $package -TestRoot $testRoot `
+            -ModelCache (Join-Path $testRoot 'isolated-model-cache') -OnlineProfile $profile `
+            -OnlineReport (Join-Path $logs 'audio-acceptance.json')
     }
 } finally {
     $env:PATH = $originalPath
@@ -68,7 +71,7 @@ try {
     $diagnostics = Join-Path $root 'dist\desktop-acceptance'
     New-Item -ItemType Directory -Force -Path $diagnostics | Out-Null
     if (Test-Path $logs) {
-        Get-ChildItem $logs -File | Where-Object { $_.Extension -in @('.log', '.png') -or $_.Name -eq 'audio-acceptance.json' } |
+        Get-ChildItem $logs -File | Where-Object { $_.Extension -in @('.log', '.png') -or $_.Name -like '*-acceptance.json' } |
             Copy-Item -Destination $diagnostics
     }
 }

@@ -185,6 +185,8 @@ function StemMixer({ job }: { job: StudioJob }) {
   const stems = job.model_name === "htdemucs_6s" ? SIX_STEMS : STEMS;
   const [waveform, setWaveform] = useState<Waveform | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [playbackError, setPlaybackError] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [position, setPosition] = useState(0);
   const [master, setMaster] = useState(0.85);
   const [speed, setSpeed] = useState(1);
@@ -227,6 +229,7 @@ function StemMixer({ job }: { job: StudioJob }) {
       output.connect(audioContext.destination);
       media.current.forEach((audio, stem) => {
         const gain = audioContext.createGain();
+        gain.gain.value = !muted.has(stem) && (soloed.size === 0 || soloed.has(stem)) ? gains[stem] : 0;
         audioContext.createMediaElementSource(audio).connect(gain).connect(output);
         nodes.current.set(stem, gain);
       });
@@ -248,6 +251,28 @@ function StemMixer({ job }: { job: StudioJob }) {
   }, [gains, muted, soloed, stems]);
 
   useEffect(() => {
+    const primary = media.current.get("VOCALS") || media.current.values().next().value;
+    if (!primary) return;
+    const ended = () => {
+      if (loopStart !== null && loopEnd !== null) {
+        media.current.forEach((audio) => { audio.currentTime = loopStart; });
+        setPosition(loopStart);
+        void Promise.all(Array.from(media.current.values(), (audio) => audio.play())).catch(() => {
+          media.current.forEach((audio) => audio.pause());
+          setPlaying(false);
+          setPlaybackError(true);
+        });
+      } else {
+        media.current.forEach((audio) => audio.pause());
+        setPosition(duration);
+        setPlaying(false);
+      }
+    };
+    primary.addEventListener("ended", ended);
+    return () => primary.removeEventListener("ended", ended);
+  }, [job.artifacts, duration, loopStart, loopEnd]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => {
       const primary = media.current.get("VOCALS") || media.current.values().next().value;
       if (!primary || primary.paused) return;
@@ -265,15 +290,25 @@ function StemMixer({ job }: { job: StudioJob }) {
   }, [loopStart, loopEnd]);
 
   const togglePlay = async () => {
-    await ensureAudioGraph();
     if (playing) {
       media.current.forEach((audio) => audio.pause());
       setPlaying(false);
       return;
     }
-    media.current.forEach((audio) => { audio.currentTime = position; });
-    await Promise.all(Array.from(media.current.values(), (audio) => audio.play()));
-    setPlaying(true);
+    setStarting(true);
+    setPlaybackError(false);
+    try {
+      await ensureAudioGraph();
+      const start = position >= duration ? (loopStart ?? 0) : position;
+      media.current.forEach((audio) => { audio.currentTime = start; });
+      setPosition(start);
+      await Promise.all(Array.from(media.current.values(), (audio) => audio.play()));
+      setPlaying(true);
+    } catch {
+      media.current.forEach((audio) => audio.pause());
+      setPlaying(false);
+      setPlaybackError(true);
+    } finally { setStarting(false); }
   };
 
   const seek = (value: number) => {
@@ -285,7 +320,8 @@ function StemMixer({ job }: { job: StudioJob }) {
   return <section className="studio-mixer">
     <header><div><p className="eyebrow">{t("COMPLETE", "已完成")} · {stems.length} {t("STEMS", "音轨")}</p><h2>{job.asset.original_filename}</h2><p>{stems.length === 4 ? t("Four FLAC stems are saved locally. Reloading or returning later will not process the audio again.", "四条 FLAC 音轨已经保存在本机。刷新或稍后返回，不会重新处理。") : t("Six FLAC stems are saved locally. Guitar and piano isolation may contain bleed or artifacts.", "六条 FLAC 音轨已保存在本机。吉他和钢琴可能有串音或伪影。")}</p></div><span>{formatDuration(duration)}</span></header>
     <div className="studio-beat-summary" aria-live="polite"><span>{t("BEAT GRID", "节拍刻度")}</span>{beatGrid ? <><strong>{beatGrid.bpm} BPM</strong><small>{t("Estimated from drums · beat positions are approximate, not a time signature.", "根据鼓组估算 · 节拍位置仅供参考，不代表拍号。")}</small></> : <small>{waveform?.beat_grid === null ? t("No steady beat detected in the drums.", "鼓组中未检测到稳定节拍。") : t("Beat analysis is unavailable for this project.", "此任务暂无节拍分析数据。")}</small>}</div>
-    <div className="studio-transport"><button type="button" className="studio-play" aria-label={playing ? t(`Pause ${stems.length} stems`, `暂停${stems.length === 4 ? "四" : "六"}个声部`) : t(`Play ${stems.length} stems`, `播放${stems.length === 4 ? "四" : "六"}个声部`)} onClick={() => void togglePlay()}>{playing ? "Ⅱ" : "▶"}</button><span>{formatDuration(position)}</span><div className="studio-transport-timeline"><BeatTicks grid={beatGrid} durationMs={job.asset.duration_ms} /><input aria-label={t("Playback position", "播放位置")} type="range" min={0} max={duration || 1} step={0.01} value={position} onChange={(event) => seek(Number(event.target.value))} /></div><span>{formatDuration(duration)}</span></div>
+    {playbackError && <p className="studio-error" role="alert">{t("Playback could not start. Check your audio output and try again.", "播放未能启动，请检查音频输出后重试。")}</p>}
+    <div className="studio-transport"><button type="button" className="studio-play" disabled={starting} aria-label={playing ? t(`Pause ${stems.length} stems`, `暂停${stems.length === 4 ? "四" : "六"}个声部`) : t(`Play ${stems.length} stems`, `播放${stems.length === 4 ? "四" : "六"}个声部`)} onClick={() => void togglePlay()}>{playing ? "Ⅱ" : "▶"}</button><span>{formatDuration(position)}</span><div className="studio-transport-timeline"><BeatTicks grid={beatGrid} durationMs={job.asset.duration_ms} /><input aria-label={t("Playback position", "播放位置")} type="range" min={0} max={duration || 1} step={0.01} value={position} onChange={(event) => seek(Number(event.target.value))} /></div><span>{formatDuration(duration)}</span></div>
     <div className="studio-practice"><label>{t("Playback speed", "播放速度")} <select aria-label={t("Playback speed", "播放速度")} value={speed} onChange={(event) => setSpeed(Number(event.target.value))}><option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option></select></label><div><button type="button" onClick={() => { setLoopStart(position); setLoopEnd(null); }}>{t("Set loop start", "设为循环起点")}</button><button type="button" disabled={loopStart === null || position <= loopStart + 0.25} onClick={() => setLoopEnd(position)}>{t("Set loop end", "设为循环终点")}</button><button type="button" disabled={loopStart === null} onClick={() => { setLoopStart(null); setLoopEnd(null); }}>{t("Clear loop", "清除循环")}</button></div><span>{loopStart === null ? t("No loop", "未设置循环") : `${formatDuration(loopStart)} → ${loopEnd === null ? "…" : formatDuration(loopEnd)}`}</span></div>
     <div className="studio-stems">{stems.map((stem) => {
       const data = waveform?.stems[stem];
