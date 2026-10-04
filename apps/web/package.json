@@ -15,7 +15,7 @@
     "contract:generate": "openapi-typescript ../../contracts/openapi.json -o lib/api-schema.generated.ts"
   },
   "dependencies": {
-    "next": "16.3.4",
+    "next": "16.3.8",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
@@ -27,7 +27,7 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.5",
-    "eslint-config-next": "16.3.4",
+    "eslint-config-next": "16.3.8",
     "jest": "30.5.1",
     "jest-environment-jsdom": "30.5.1",
     "openapi-typescript": "7.13.0",

@@ -69,12 +69,19 @@ Release acceptance status (reviewed 2026-10-04):
 3. **Pending:** playback and export through the packaged UI on a licensed music
    clip, including listening to the result. API downloads and FFmpeg decoding
    passed; they do not prove speaker playback or musical quality.
-4. **Pending:** offline restart after preparation, model-download failure, disk-space failure,
-   and upgrade from beta.1 with existing data.
+4. **Partially verified:** Mac offline restart and a new real CPU job passed;
+   model-download truncation/resume/checksum/disk-full tests passed, as did upload
+   disk-full recovery and database/key preservation fixtures. See
+   [Mac evidence](MAC_STARTUP.md). Windows offline packaged playback/inference is
+   being validated by the new CI harness. A real beta.1 binary upgrade with
+   existing user data remains pending; database fixtures do not establish it.
 5. **In progress:** beta.2 has a distinct version and the release workflow derives
    filenames and notes from the validated commit. It requires audio, offline and
    playback reports. A successful new Windows run and redistribution review are
    still required; the earlier beta.1 candidate is historical evidence only.
+6. **Blocked:** the dependency audit still reports unpatched upstream node-forge
+   and development-only braces advisories. Available patch versions were applied;
+   audit gates remain enabled. See [the audit record](validation/dependency-audit-2026-10-04.md).
 
 ## macOS startup
 

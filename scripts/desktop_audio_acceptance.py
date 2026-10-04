@@ -1,4 +1,4 @@
-"""Real CPU engine acceptance against an isolated local test instance, not a quality benchmark."""
+"""Real engine acceptance against an isolated local test instance, not a quality benchmark."""
 from __future__ import annotations
 
 import argparse
@@ -34,19 +34,20 @@ def generate_audio(path: Path) -> None:
         output.writeframes(frames)
 
 
-def check_artifacts(job: dict) -> None:
+def check_artifacts(job: dict, expected_device: str = "cpu") -> None:
     artifacts = job["artifacts"]
     if len(artifacts) != 6 or {item["stem_type"] for item in artifacts} != STEMS:
         raise RuntimeError("Expected exactly six distinct stems")
-    if job["device"] != "cpu" or job["model_name"] != "htdemucs_6s":
-        raise RuntimeError("Acceptance must use the real CPU six-stem engine")
+    if job["device"] != expected_device or job["model_name"] != "htdemucs_6s":
+        raise RuntimeError(f"Acceptance must use the real {expected_device} six-stem engine")
     for item in artifacts:
         if (abs(item["duration_ms"] - DURATION_MS) > 100
                 or item["sample_rate"] != 44100 or item["channels"] != 2):
             raise RuntimeError("Stem duration/rate/channels failed synchronization validation")
 
 
-def run_acceptance(base_url: str, output: Path, ffmpeg: Path, timeout: int = 1200) -> dict:
+def run_acceptance(base_url: str, output: Path, ffmpeg: Path, timeout: int = 1200,
+                   expected_device: str = "cpu") -> dict:
     url = urlsplit(base_url)
     if url.scheme != "http" or url.hostname != "127.0.0.1" or url.path not in {"", "/"}:
         raise ValueError("Acceptance only targets an explicitly isolated loopback API")
@@ -92,7 +93,7 @@ def run_acceptance(base_url: str, output: Path, ffmpeg: Path, timeout: int = 120
             time.sleep(1)
         else:
             raise RuntimeError("Real engine acceptance timed out")
-        check_artifacts(job)
+        check_artifacts(job, expected_device)
         for artifact in job["artifacts"]:
             response = client.get(artifact["stream_url"], params={"download": "true"})
             response.raise_for_status()
@@ -123,5 +124,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--ffmpeg", type=Path, required=True)
     parser.add_argument("--isolated-test-instance", action="store_true", required=True)
+    parser.add_argument("--expected-device", choices=["cpu", "mps", "cuda"], default="cpu")
     args = parser.parse_args()
-    print(json.dumps(run_acceptance(args.api_url, args.output, args.ffmpeg)))
+    print(json.dumps(run_acceptance(args.api_url, args.output, args.ffmpeg,
+                                    expected_device=args.expected_device)))

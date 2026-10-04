@@ -94,14 +94,20 @@ async function launch(args = process.argv.slice(2)) {
   const env = runtimeEnvironment(root, data, process.env, paths);
   const markers = path.join(root, '.tools/mac');
   let active;
-  const interrupt = () => { if (active) { try { process.kill(-active.pid, 'SIGTERM'); } catch {} } };
+  let interrupted = false;
+  const checkInterrupted = () => { if (interrupted) throw new Error('启动已取消。'); };
+  const interrupt = () => {
+    interrupted = true;
+    if (active) { try { process.kill(-active.pid, 'SIGTERM'); } catch {} }
+  };
   const run = (exe, argv, cwd = root) => new Promise((resolve, reject) => {
+    checkInterrupted();
     const fd = fs.openSync(setupLog, 'a', 0o600);
     const child = spawn(exe, argv, { cwd, env, detached: true, stdio: ['ignore', fd, fd] });
     fs.closeSync(fd);
     active = child;
     child.once('error', reject);
-    child.once('exit', (code) => { active = null; code === 0 ? resolve() : reject(new Error(`组件准备中断，请查看 ${setupLog}`)); });
+    child.once('exit', (code) => { active = null; code === 0 && !interrupted ? resolve() : reject(new Error(`组件准备中断，请查看 ${setupLog}`)); });
   });
   for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.once(signal, interrupt);
   try {
@@ -137,7 +143,7 @@ async function launch(args = process.argv.slice(2)) {
           await run(npm, ['ci', '--no-audit', '--no-fund', name === 'netease' ? '--omit=dev' : '--include=dev'], project);
           fs.writeFileSync(marker, digest);
         } catch (error) {
-          if (name !== 'netease') throw error;
+          if (interrupted || name !== 'netease') throw error;
           say('网易云组件准备失败，本地文件分轨仍可使用；下次启动会重试。');
         }
       } else say(`复用 ${name} 依赖`);
@@ -161,6 +167,7 @@ async function launch(args = process.argv.slice(2)) {
         fs.writeFileSync(webMarker, digest);
       } finally { fs.rmSync(staged, { recursive: true, force: true }); }
     } else say('复用已构建的生产界面');
+    checkInterrupted();
     if (args.includes('--setup')) { say('组件准备完成。'); return; }
     for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.removeListener(signal, interrupt);
     fs.rmSync(path.join(logs, 'desktop-stop'), { force: true });

@@ -1,0 +1,29 @@
+{
+  "status": "passed",
+  "platform": "macOS arm64",
+  "device": "cpu",
+  "model": "htdemucs_6s",
+  "job_id": "c4367d2b-0a19-40c7-b62a-df114ebc91e7",
+  "new_job_after_offline_restart": true,
+  "input_duration_ms": 5000,
+  "stems": [
+    "BASS",
+    "DRUMS",
+    "GUITAR",
+    "OTHER",
+    "PIANO",
+    "VOCALS"
+  ],
+  "download_integrity": true,
+  "flac_decode": true,
+  "outbound_network_denied_for_launcher_process_tree": true,
+  "network_probe_online_reachable_offline_blocked": true,
+  "ui_import": true,
+  "speaker_listening_test": false,
+  "quality_benchmark": false,
+  "profile_key_and_database_preserved": true,
+  "ui_playback_advanced": true,
+  "ui_playback_ended_at_duration": true,
+  "ui_seek_and_loop": true,
+  "ui_download_matches_api": true
+}
