@@ -72,8 +72,9 @@ Release acceptance status (reviewed 2026-10-04):
 4. **Partially verified:** Mac offline restart and a new real CPU job passed;
    model-download truncation/resume/checksum/disk-full tests passed, as did upload
    disk-full recovery and database/key preservation fixtures. See
-   [Mac evidence](MAC_STARTUP.md). Windows offline packaged playback/inference is
-   being validated by the new CI harness. A real beta.1 binary upgrade with
+   [Mac evidence](MAC_STARTUP.md). Windows offline packaged playback/inference
+   passed at `550a423`; see [Windows evidence](validation/windows-desktop-2026-10-04.md).
+   The later dependency patch revision needs its own validation. A real beta.1 binary upgrade with
    existing user data remains pending; database fixtures do not establish it.
 5. **In progress:** beta.2 has a distinct version and the release workflow derives
    filenames and notes from the validated commit. It requires audio, offline and
