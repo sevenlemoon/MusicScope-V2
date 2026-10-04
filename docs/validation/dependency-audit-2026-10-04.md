@@ -16,10 +16,13 @@ NetEase service, desktop shell) now report **zero known vulnerabilities**.
   `@musicscope/netease-rsa`; it is not a renamed copy of the vulnerable library.
 - **Brace recursion advisory:** Next's ESLint plugin only uses
   `fast-glob.globSync(pattern, {onlyDirectories:true})` for root directories.
-  A scoped override substitutes `tinyglobby@0.2.17`, removing fast-glob's
-  micromatch/braces dependency chain while retaining Next's existing lint rules.
-  Directory results can be relative with trailing slashes; integration tests
-  verify that Next resolves the same directories and still reports invalid links.
+  A [small directory-glob adapter](../../apps/web/compat/next-root-glob/README.md)
+  uses `tinyglobby@0.2.17`, removing fast-glob's micromatch/braces dependency chain
+  while retaining Next's existing lint rules. Absolute patterns are evaluated
+  from their own filesystem root to preserve Windows cross-drive paths;
+  integration tests verify that Next still resolves directories and reports
+  invalid links. A direct tinyglobby alias initially failed this Windows test;
+  the adapter corrects the path handling rather than dropping the test.
 
 Verification includes the original deterministic weapi encryption fixture,
 1024/2048-bit private-key round trips, unsupported-scheme/input rejection,

@@ -1,0 +1,9 @@
+{
+  "name": "@musicscope/next-root-glob",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Directory glob adapter for Next ESLint, including cross-drive Windows roots",
+  "main": "index.mjs",
+  "engines": { "node": ">=24.21.0 <25" },
+  "dependencies": { "tinyglobby": "0.2.17" }
+}

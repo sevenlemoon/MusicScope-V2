@@ -18,3 +18,5 @@ compatibility with the provider's existing protocol. Unsupported schemes fail
 explicitly. Tests cover the original upstream weapi output, private-key round
 trips, invalid inputs, and upstream usage. Review those tests before updating
 the upstream client. Packagers must copy this directory before `npm ci`.
+When changing this adapter, bump its package version and refresh the lockfile
+so source launchers invalidate their dependency caches.

@@ -10,17 +10,16 @@ const pluginPath = webRequire.resolve('@next/eslint-plugin-next');
 const pluginRequire = createRequire(pluginPath);
 const { getRootDirs } = pluginRequire('./utils/get-root-dirs.js');
 
-test('Next lint resolves directory globs through tinyglobby without braces', () => {
-  assert.equal(pluginRequire('fast-glob/package.json').name, 'tinyglobby');
+test('Next lint resolves directory globs through the adapter without braces', () => {
+  assert.equal(pluginRequire('fast-glob/package.json').name, '@musicscope/next-root-glob');
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'MusicScope glob '));
   try {
     for (const name of ['web', 'admin', '中文 app']) fs.mkdirSync(path.join(root, name));
     fs.writeFileSync(path.join(root, 'not-a-directory'), 'test');
     const portable = (value) => value.replaceAll('\\', '/');
     const context = (rootDir) => ({ cwd: root, settings: { next: { rootDir } } });
-    // tinyglobby returns cwd-relative directory names with a trailing slash.
-    // Next joins these with pages/app and uses fs; both representations must
-    // resolve to the same directories, including absolute rootDir patterns.
+    // Next joins results with pages/app and uses fs; normalize trailing slashes
+    // for comparison. On Windows the runner's cwd is D: and the temp root C:.
     const resolved = (values) => values.map((value) => path.resolve(value)).sort();
     assert.deepEqual(getRootDirs(context(undefined)), [root]);
     assert.deepEqual(resolved(getRootDirs(context(portable(path.join(root, '{web,admin}'))))),
@@ -28,6 +27,11 @@ test('Next lint resolves directory globs through tinyglobby without braces', () 
     assert.deepEqual(resolved(getRootDirs(context([portable(path.join(root, '中文 app')), portable(path.join(root, 'missing*'))]))),
       [path.join(root, '中文 app')]);
     assert.equal(getRootDirs(context(portable(path.join(root, '*')))).length, 3);
+    const local = fs.mkdtempSync(path.join(process.cwd(), 'glob-relative-'));
+    try {
+      fs.mkdirSync(path.join(local, 'web'));
+      assert.deepEqual(resolved(getRootDirs(context(`${path.basename(local)}/*`))), [path.join(local, 'web')]);
+    } finally { fs.rmSync(local, { recursive: true, force: true }); }
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
