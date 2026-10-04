@@ -144,6 +144,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm --prefix services/netease-api test
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix apps/web run test:dependencies
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix apps/web audit --audit-level=moderate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix services/netease-api audit --audit-level=moderate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Start complete Windows application without Docker or WSL
         shell: powershell
         timeout-minutes: 20

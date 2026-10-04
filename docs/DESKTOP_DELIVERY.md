@@ -80,9 +80,11 @@ Release acceptance status (reviewed 2026-10-04):
    filenames and notes from the validated commit. It requires audio, offline and
    playback reports. A successful new Windows run and redistribution review are
    still required; the earlier beta.1 candidate is historical evidence only.
-6. **Blocked:** the dependency audit still reports unpatched upstream node-forge
-   and development-only braces advisories. Available patch versions were applied;
-   audit gates remain enabled. See [the audit record](validation/dependency-audit-2026-10-04.md).
+6. **Locally resolved:** the affected node-forge and braces dependency chains
+   have been replaced; full web, sidecar and desktop npm audits report zero known
+   vulnerabilities. Regression and audit gates remain enabled. The new Windows
+   build must validate the physical RSA adapter after relocation. See
+   [the audit record](validation/dependency-audit-2026-10-04.md).
 
 ## macOS startup
 

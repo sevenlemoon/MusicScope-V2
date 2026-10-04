@@ -1,5 +1,41 @@
 # Dependency audit — 2026-10-04
 
+## Resolution in MusicScope
+
+Both affected dependency chains have now been removed from the project. This is
+not an upstream patched-release claim: upstream node-forge 1.4.0 and braces 3.0.3
+remain affected. All three local npm audits (web including development packages,
+NetEase service, desktop shell) now report **zero known vulnerabilities**.
+
+- **RSA verification advisory:** the pinned NetEase client only uses forge to
+  encrypt a short protocol secret. A small, original
+  [encryption-only adapter](../../services/netease-api/compat/netease-rsa/README.md)
+  delegates this operation to Node's native crypto implementation. No forge code,
+  vulnerable signature parser, or signature verification API is included. The
+  upstream import name resolves through an explicit npm override to
+  `@musicscope/netease-rsa`; it is not a renamed copy of the vulnerable library.
+- **Brace recursion advisory:** Next's ESLint plugin only uses
+  `fast-glob.globSync(pattern, {onlyDirectories:true})` for root directories.
+  A scoped override substitutes `tinyglobby@0.2.17`, removing fast-glob's
+  micromatch/braces dependency chain while retaining Next's existing lint rules.
+  Directory results can be relative with trailing slashes; integration tests
+  verify that Next resolves the same directories and still reports invalid links.
+
+Verification includes the original deterministic weapi encryption fixture,
+1024/2048-bit private-key round trips, unsupported-scheme/input rejection,
+an upstream usage-contract check, Unicode/space directory globs, 10,000 nested
+brace pairs, and actual Next rule enforcement. The source provider remains
+pinned at 4.40.1; changes to its crypto usage require another adapter review.
+
+`install-links=true` makes the RSA adapter a physical dependency directory.
+Windows packaging copies the adapter source and npm configuration before its
+production install. Both Linux and Windows CI now run the dependency regression
+tests and full web/service audits; no advisory allowlist or relaxed severity
+threshold is used. Windows packaging/relocation and offline acceptance remain
+required for the new build.
+
+## Initial finding (before the changes above)
+
 The Mac startup verification exposed newly reported advisories in the existing
 dependency locks. Patched dependencies were updated without disabling audit gates:
 
@@ -13,7 +49,7 @@ vulnerabilities. Frontend lint, TypeScript, 25 tests, production build, and the
 four sidecar tests passed locally. This does not mean the complete dependency
 tree is free of advisories.
 
-Two root advisories remain without published fixes at the time of this check:
+Two root advisories had no published fixes at the time of this check:
 
 - [node-forge GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv):
   affects versions through 1.4.0. The sidecar's pinned upstream API imports
@@ -25,6 +61,5 @@ Two root advisories remain without published fixes at the time of this check:
   eslint-config-next through fast-glob/micromatch (five affected entries).
 
 No advisory was suppressed, no audit threshold was raised, and no forced major
-downgrade was applied. Release readiness remains blocked until the remaining
-dependency risks are resolved or explicitly reviewed. The earlier Linux CI run
+downgrade was applied. These findings initially blocked release readiness. The earlier Linux CI run
 37171901408 failed at its sidecar audit; its code tests passed.

@@ -60,9 +60,10 @@ Get-ChildItem $web -Recurse -Force -File -Filter '.env*' | ForEach-Object {
 
 $sidecar = Join-Path $project 'services\netease-api'
 New-Item -ItemType Directory -Force -Path $sidecar | Out-Null
-foreach ($file in @('package.json', 'package-lock.json', 'server.cjs', 'provider.cjs')) {
+foreach ($file in @('package.json', 'package-lock.json', '.npmrc', 'server.cjs', 'provider.cjs')) {
     Copy-Item (Join-Path $root "services\netease-api\$file") $sidecar
 }
+Copy-Item (Join-Path $root 'services\netease-api\compat') (Join-Path $sidecar 'compat') -Recurse
 Checked 'npm.cmd' @('--prefix', $sidecar, 'ci', '--omit=dev', '--no-audit', '--no-fund')
 
 # Bundle private, relocatable runtimes. No system PATH or venv references at launch.

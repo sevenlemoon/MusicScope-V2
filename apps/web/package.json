@@ -12,6 +12,7 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "jest --runInBand",
+    "test:dependencies": "node --test ../../scripts/web_dependency_overrides.test.cjs",
     "contract:generate": "openapi-typescript ../../contracts/openapi.json -o lib/api-schema.generated.ts"
   },
   "dependencies": {
@@ -32,5 +33,10 @@
     "jest-environment-jsdom": "30.5.1",
     "openapi-typescript": "7.13.0",
     "typescript": "5.9.3"
+  },
+  "overrides": {
+    "@next/eslint-plugin-next": {
+      "fast-glob": "npm:tinyglobby@0.2.17"
+    }
   }
 }
