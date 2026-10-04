@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--expect-blocked", action="store_true")
 args = parser.parse_args()
 try:
-    with socket.create_connection(("1.1.1.1", 443), timeout=5):
+    with socket.create_connection(("dl.fbaipublicfiles.com", 443), timeout=5):
         reachable = True
 except OSError:
     reachable = False
