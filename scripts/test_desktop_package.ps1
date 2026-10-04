@@ -19,6 +19,10 @@ $originalPath = $env:PATH
 try {
     # No setup-python/setup-node/uv/npm/Git in PATH during the acceptance launch.
     $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+    & (Join-Path $package 'resources\project\runtime\node\node.exe') `
+        (Join-Path $PSScriptRoot 'check_packaged_provider.cjs') `
+        (Join-Path $package 'resources\project\services\netease-api')
+    if ($LASTEXITCODE -ne 0) { throw 'Relocated NetEase crypto adapter check failed' }
     for ($attempt = 1; $attempt -le 2; $attempt++) {
         if (Test-Path $proof) { Remove-Item -LiteralPath $proof }
         $process = Start-Process (Join-Path $package 'MusicScope.exe') -ArgumentList '--smoke-test' -PassThru
