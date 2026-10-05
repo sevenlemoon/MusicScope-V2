@@ -20,6 +20,11 @@ try {
     # No setup-python/setup-node/uv/npm/Git in PATH during the acceptance launch.
     $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
     & (Join-Path $package 'resources\project\runtime\node\node.exe') `
+        (Join-Path $PSScriptRoot 'desktop_web_notices.cjs') 'verify' `
+        (Join-Path $package 'resources\project\apps\web\node_modules') `
+        (Join-Path $package 'resources\project\dependency-inventory\web-notices.json')
+    if ($LASTEXITCODE -ne 0) { throw 'Relocated web license notice check failed' }
+    & (Join-Path $package 'resources\project\runtime\node\node.exe') `
         (Join-Path $PSScriptRoot 'check_packaged_provider.cjs') `
         (Join-Path $package 'resources\project\services\netease-api')
     if ($LASTEXITCODE -ne 0) { throw 'Relocated NetEase crypto adapter check failed' }

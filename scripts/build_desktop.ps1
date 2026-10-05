@@ -53,6 +53,10 @@ Copy-Item (Join-Path $root 'apps\web\.next\static') (Join-Path $web '.next\stati
 if (Test-Path (Join-Path $root 'apps\web\public')) {
     Copy-Item (Join-Path $root 'apps\web\public') (Join-Path $web 'public') -Recurse
 }
+# Runtime tracing omits license files; retain notices from the exact installed packages.
+Checked 'node' @((Join-Path $root 'scripts\desktop_web_notices.cjs'), 'collect', `
+    (Join-Path $root 'apps\web\node_modules'), (Join-Path $web 'node_modules'), `
+    (Join-Path $project 'dependency-inventory\web-notices.json'))
 # Next may trace local environment files. They must never enter a release.
 Get-ChildItem $web -Recurse -Force -File -Filter '.env*' | ForEach-Object {
     throw "Unexpected environment file in standalone build: $($_.Name). Build in a clean checkout."

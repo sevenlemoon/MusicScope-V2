@@ -34,6 +34,7 @@ sidecar-check:
 	cd services/netease-api && npm audit --audit-level=moderate
 
 web-dependency-check:
+	node --test scripts/desktop_web_notices.test.cjs
 	cd apps/web && npm run test:dependencies
 	cd apps/web && npm audit --audit-level=moderate
 

@@ -12,6 +12,12 @@ existing download as an offline-ready package.
   dependencies into private CPython 3.12.10, and bundles Node, FFmpeg/ffprobe and the
   NetEase sidecar. Dependency inventories and bundled dependency licenses remain
   in the package. This increases download and disk size; measure before publishing.
+- Next's standalone tracing omits some license notices. Packaging restores
+  LICENSE/COPYING/NOTICE/COPYRIGHT files (including vendored notices) from the same
+  installed web dependencies, records their hashes in
+  `resources/project/dependency-inventory/web-notices.json`, and verifies them
+  after ZIP relocation. This preserves available notices; it does not complete
+  the [redistribution review](validation/redistribution-2026-10-05.md).
 - Launch runs those bundled executables directly. No PowerShell development
   launcher, npm, uv, Docker, WSL, or dependency installation is invoked.
 - Demucs weights are **not bundled**. First separation still needs model
@@ -80,7 +86,8 @@ Release acceptance status (reviewed 2026-10-05):
 5. **In progress:** beta.2 has a distinct version and the release workflow derives
    filenames and notes from the validated commit. It requires audio, offline and
    playback reports. The new Windows run passed and produced all three reports;
-   redistribution review and the manual acceptance items above remain pending.
+   [redistribution review](validation/redistribution-2026-10-05.md) and the
+   [manual acceptance items](validation/windows-manual-acceptance.md) remain pending.
    No beta.2 release has been published.
 6. **Resolved and CI verified:** the affected node-forge and braces dependency
    chains have been replaced; full web, sidecar and desktop npm audits reported
