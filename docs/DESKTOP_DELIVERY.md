@@ -55,13 +55,13 @@ only on success. This is real model
 execution, **not** a musical-quality or speaker-playback test, and does not
 simulate a completely clean Windows installation. Test audio is not published.
 
-Release acceptance status (reviewed 2026-10-04):
+Release acceptance status (reviewed 2026-10-05):
 
 1. **Passed:** Windows package build, relocation to a Unicode/space-containing
    application path, two launches, Studio/API/worker readiness, key/database
    preservation, and real CPU six-stem execution on a generated signal. See
-   [the verified Windows evidence](validation/windows-desktop-2026-10-01.md).
-   The isolated user profile contains spaces; a real Unicode Windows account
+   [the verified Windows evidence](validation/windows-desktop-2026-10-05.md).
+   The isolated user profile contains Unicode and spaces; a real Unicode Windows account
    has not been tested.
 2. **Pending:** clean Windows VM without installed runtimes; inspect missing
    native DLLs. Removing developer tools from PATH on a hosted runner is not
@@ -73,17 +73,20 @@ Release acceptance status (reviewed 2026-10-04):
    model-download truncation/resume/checksum/disk-full tests passed, as did upload
    disk-full recovery and database/key preservation fixtures. See
    [Mac evidence](MAC_STARTUP.md). Windows offline packaged playback/inference
-   passed at `550a423`; see [Windows evidence](validation/windows-desktop-2026-10-04.md).
-   The later dependency patch revision needs its own validation. A real beta.1 binary upgrade with
+   passed again at dependency-fix commit `a4f04ea`; see
+   [Windows evidence](validation/windows-desktop-2026-10-05.md).
+   A real beta.1 binary upgrade with
    existing user data remains pending; database fixtures do not establish it.
 5. **In progress:** beta.2 has a distinct version and the release workflow derives
    filenames and notes from the validated commit. It requires audio, offline and
-   playback reports. A successful new Windows run and redistribution review are
-   still required; the earlier beta.1 candidate is historical evidence only.
-6. **Locally resolved:** the affected node-forge and braces dependency chains
-   have been replaced; full web, sidecar and desktop npm audits report zero known
-   vulnerabilities. Regression and audit gates remain enabled. The new Windows
-   build must validate the physical RSA adapter after relocation. See
+   playback reports. The new Windows run passed and produced all three reports;
+   redistribution review and the manual acceptance items above remain pending.
+   No beta.2 release has been published.
+6. **Resolved and CI verified:** the affected node-forge and braces dependency
+   chains have been replaced; full web, sidecar and desktop npm audits reported
+   zero known vulnerabilities in run `37207233930`. Regression and audit gates
+   remain enabled. The relocated Windows package passed the physical RSA adapter
+   loading and encryption check using bundled Node with developer tools off PATH. See
    [the audit record](validation/dependency-audit-2026-10-04.md).
 
 ## macOS startup

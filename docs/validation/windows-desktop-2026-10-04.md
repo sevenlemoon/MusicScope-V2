@@ -1,5 +1,8 @@
 # Windows beta.2 automated acceptance — 2026-10-04
 
+Historical result: the dependency-fixed candidate subsequently passed both CI
+jobs and packaged acceptance; see [the 2026-10-05 review](windows-desktop-2026-10-05.md).
+
 The Windows job in [run 37171901408](https://github.com/sevenlemoon/MusicScope-V2/actions/runs/37171901408)
 passed at source commit `550a423e842a803e1aebc4fcdb7ff31a1cf08cca`.
 The overall run failed because Linux's sidecar dependency audit failed; it is
@@ -35,5 +38,5 @@ validates that revision separately. Do not apply this result to a different buil
 
 These are generated-signal checks, not speaker listening, music quality, a clean
 Windows VM/standard-user test, a real Unicode Windows account, or a beta.1 binary
-upgrade test. No new release has been published. Remaining upstream dependency
-advisories are recorded in [the dependency audit](dependency-audit-2026-10-04.md).
+upgrade test. No new release was published by this run. Its dependency findings
+and subsequent resolution are recorded in [the dependency audit](dependency-audit-2026-10-04.md).

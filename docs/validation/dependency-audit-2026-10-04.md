@@ -3,8 +3,8 @@
 ## Resolution in MusicScope
 
 Both affected dependency chains have now been removed from the project. This is
-not an upstream patched-release claim: upstream node-forge 1.4.0 and braces 3.0.3
-remain affected. All three local npm audits (web including development packages,
+not an upstream patched-release claim: node-forge 1.4.0 and braces 3.0.3
+were affected at the initial check. All three local npm audits (web including development packages,
 NetEase service, desktop shell) now report **zero known vulnerabilities**.
 
 - **RSA verification advisory:** the pinned NetEase client only uses forge to
@@ -34,8 +34,28 @@ pinned at 4.40.1; changes to its crypto usage require another adapter review.
 Windows packaging copies the adapter source and npm configuration before its
 production install. Both Linux and Windows CI now run the dependency regression
 tests and full web/service audits; no advisory allowlist or relaxed severity
-threshold is used. Windows packaging/relocation and offline acceptance remain
-required for the new build.
+threshold is used.
+
+## Final CI verification (reviewed 2026-10-05)
+
+[Run 37207233930](https://github.com/sevenlemoon/MusicScope-V2/actions/runs/37207233930)
+passed both Linux and Windows at source commit
+`a4f04ea3d3db885181d92cd73704a33be1cc4f3b`. Windows completed on
+2026-10-04 at 14:19:29 UTC (22:19:29 Asia/Shanghai).
+
+- Full web and sidecar audit gates reported zero known vulnerabilities on both
+  platforms; the Windows desktop dependency install also reported zero.
+- Windows passed 77 API tests, 18 worker tests, 25 UI tests, seven sidecar tests,
+  and three dependency-adapter tests, plus lint, type checking and production build.
+- The relocated ZIP passed the native RSA adapter loading/encryption check using
+  its bundled Node with developer tools removed from PATH.
+- Packaged startup, key/database preservation, real CPU six-stem separation,
+  offline packaged playback and a new offline six-stem job all passed.
+
+The two dependency findings no longer block this candidate. The exact artifact,
+original reports and remaining manual release checks are recorded in
+[Windows acceptance](windows-desktop-2026-10-05.md). This CI success does not
+publish a release or replace those remaining checks.
 
 ## Initial finding (before the changes above)
 
