@@ -6,7 +6,7 @@ A local-first six-stem studio for the music already in your library.
 
 ## Windows 桌面预览版
 
-> “内置运行组件”的新版已通过 Windows 打包、中文路径重启及真实 CPU 六轨自动验收，详见 [验收证据与待办](docs/DESKTOP_DELIVERY.md)。纯净 Windows、实际播放与离线等验收仍待完成。下方已发布的 beta.1 仍是首次联网准备依赖的旧版；新版尚未发布。
+> “内置运行组件”的新版已通过 Windows 打包、中文路径重启、真实 CPU 六轨、离线新任务和播放器状态自动验收，详见 [验收证据与待办](docs/DESKTOP_DELIVERY.md)。纯净 Windows、真人听音、旧版实包升级及再分发审查仍待完成。下方已发布的 beta.1 仍是首次联网准备依赖的旧版；新版尚未发布。
 
 [下载桌面预览版](https://github.com/sevenlemoon/MusicScope-V2/releases/tag/v0.1.0-beta.1)：选择 `MusicScope-0.1.0-beta.1-windows-x64.zip`，完整解压到可写目录，再打开 `MusicScope.exe`。分轨界面直接显示在应用窗口中，无需命令行、Docker 或 WSL2。
 

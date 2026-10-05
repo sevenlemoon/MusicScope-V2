@@ -1,5 +1,9 @@
 # Windows dependency-fix acceptance — reviewed 2026-10-05
 
+The subsequent notice-restoration package also passed; see
+[the latest Windows acceptance](windows-notices-2026-10-05.md). The evidence below
+is retained for its original dependency-fix artifact.
+
 [Run 37207233930](https://github.com/sevenlemoon/MusicScope-V2/actions/runs/37207233930)
 passed both Linux `check` and `windows` jobs at source commit
 `a4f04ea3d3db885181d92cd73704a33be1cc4f3b`. The Windows job completed
@@ -53,10 +57,22 @@ firewall rules and blocked afterwards. The harness restores firewall settings.
 - [Included package checksum](windows-package-37207233930.zip.sha256):
   `c6761c0fa7043895fb5cec2a97a98470858a0ffcd4af2e82fffb89c434585353`.
 
-Only the ZIP directory and small report/checksum entries were retrieved using
-HTTP ranges. ZIP entry CRCs were checked by Python's ZIP reader; report content
-was preserved with line endings normalized to LF for the repository. Full
-archive/package SHA-256 values were **not independently recomputed**.
+The initial review retrieved only the ZIP directory and small report/checksum
+entries using HTTP ranges. Report content was preserved with line endings
+normalized to LF for the repository.
+
+A subsequent full download on 2026-10-05 independently verified the inner
+package SHA-256 above and all 34,103 ZIP entry CRCs. Uncompressed entry sizes total
+1,693,749,220 bytes. Required runtimes are present, desktop entry points match
+`a4f04ea`, and the selected private-state filename scan found no project `.env`,
+Git metadata, storage or logs. See the [package inspection report](windows-package-37207233930.json).
+The outer GitHub artifact digest was not independently recomputed.
+
+This inspection also found missing root license notices for Next, React, React
+DOM and the Windows Sharp package in the standalone web output. The subsequent
+packaging fix and remaining redistribution work are tracked in
+[redistribution preparation](redistribution-2026-10-05.md). Do not use this older
+artifact to claim that the new notice-restoration check passed.
 
 ## Remaining release acceptance
 

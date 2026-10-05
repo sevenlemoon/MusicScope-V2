@@ -57,6 +57,12 @@ original reports and remaining manual release checks are recorded in
 [Windows acceptance](windows-desktop-2026-10-05.md). This CI success does not
 publish a release or replace those remaining checks.
 
+The subsequent web-notice packaging fix at `582bc24` passed Linux and Windows
+[run 37276579470](https://github.com/sevenlemoon/MusicScope-V2/actions/runs/37276579470)
+on 2026-10-05. All three npm dependency trees again reported zero known
+vulnerabilities; relocated RSA loading and packaged offline acceptance passed.
+See [the latest Windows evidence](windows-notices-2026-10-05.md).
+
 ## Initial finding (before the changes above)
 
 The Mac startup verification exposed newly reported advisories in the existing

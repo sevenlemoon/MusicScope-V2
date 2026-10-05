@@ -66,7 +66,7 @@ Release acceptance status (reviewed 2026-10-05):
 1. **Passed:** Windows package build, relocation to a Unicode/space-containing
    application path, two launches, Studio/API/worker readiness, key/database
    preservation, and real CPU six-stem execution on a generated signal. See
-   [the verified Windows evidence](validation/windows-desktop-2026-10-05.md).
+   [the verified Windows evidence](validation/windows-notices-2026-10-05.md).
    The isolated user profile contains Unicode and spaces; a real Unicode Windows account
    has not been tested.
 2. **Pending:** clean Windows VM without installed runtimes; inspect missing
@@ -79,8 +79,8 @@ Release acceptance status (reviewed 2026-10-05):
    model-download truncation/resume/checksum/disk-full tests passed, as did upload
    disk-full recovery and database/key preservation fixtures. See
    [Mac evidence](MAC_STARTUP.md). Windows offline packaged playback/inference
-   passed again at dependency-fix commit `a4f04ea`; see
-   [Windows evidence](validation/windows-desktop-2026-10-05.md).
+   passed again at notice-fix commit `582bc24`; see
+   [Windows evidence](validation/windows-notices-2026-10-05.md).
    A real beta.1 binary upgrade with
    existing user data remains pending; database fixtures do not establish it.
 5. **In progress:** beta.2 has a distinct version and the release workflow derives
@@ -91,7 +91,7 @@ Release acceptance status (reviewed 2026-10-05):
    No beta.2 release has been published.
 6. **Resolved and CI verified:** the affected node-forge and braces dependency
    chains have been replaced; full web, sidecar and desktop npm audits reported
-   zero known vulnerabilities in run `37207233930`. Regression and audit gates
+   zero known vulnerabilities in run `37276579470`. Regression and audit gates
    remain enabled. The relocated Windows package passed the physical RSA adapter
    loading and encryption check using bundled Node with developer tools off PATH. See
    [the audit record](validation/dependency-audit-2026-10-04.md).

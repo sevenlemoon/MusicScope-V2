@@ -1,0 +1,24 @@
+{
+  "package": "MusicScope-0.1.0-beta.2-windows-x64.zip",
+  "sha256": "c6761c0fa7043895fb5cec2a97a98470858a0ffcd4af2e82fffb89c434585353",
+  "size_bytes": 581859183,
+  "uncompressed_bytes": 1693749220,
+  "entries": 34103,
+  "required_runtime_paths_present": true,
+  "zip_crc_verified": true,
+  "private_project_state_paths_found": [],
+  "desktop_sources_match_validated_commit": true,
+  "validated_commit": "a4f04ea3d3db885181d92cd73704a33be1cc4f3b",
+  "validation_run": 37207233930,
+  "verification_date": "2026-10-05",
+  "web_packages_missing_root_notices": [
+    "next",
+    "react",
+    "react-dom",
+    "@img/sharp-win32-x64"
+  ],
+  "scope": "Full inner ZIP checksum and CRCs; required runtime files, desktop source comparison and selected private-state filenames. Not a complete secret or redistribution audit.",
+  "python_metadata_entries_checked": 90,
+  "python_license_file_declarations_checked": 195,
+  "python_missing_declared_license_files": []
+}
