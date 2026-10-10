@@ -53,6 +53,11 @@ jobs:
         run: cd apps/api && .venv/bin/alembic upgrade head
       - name: Validate
         run: make check
+      - name: Check desktop supervisor
+        run: |
+          npm --prefix apps/desktop run check
+          node --test scripts/mac_launcher.test.cjs
+          bash -n scripts/start_mac.sh MusicScope.command
   windows:
     runs-on: windows-latest
     steps:
@@ -139,25 +144,28 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm --prefix services/netease-api test
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix apps/web run test:dependencies
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --test scripts/desktop_web_notices.test.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix apps/web audit --audit-level=moderate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix services/netease-api audit --audit-level=moderate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Start complete Windows application without Docker or WSL
         shell: powershell
         timeout-minutes: 20
         run: ./scripts/test_windows_startup.ps1
       - name: Build and smoke-test Windows desktop application
         shell: powershell
-        timeout-minutes: 15
+        timeout-minutes: 60
         run: |
           npm ci --prefix apps/desktop
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm --prefix apps/desktop run check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./scripts/build_desktop.ps1
-          $app = Get-ChildItem dist/desktop-*/MusicScope/MusicScope.exe | Select-Object -First 1
-          $process = Start-Process $app.FullName -ArgumentList '--smoke-test' -PassThru
-          if (-not $process.WaitForExit(600000)) { Stop-Process $process.Id; throw 'Desktop test timed out' }
-          if ($process.ExitCode -ne 0) { throw 'Desktop failed to start' }
-          $proof = Join-Path $app.DirectoryName 'resources/project/.logs/desktop-smoke-passed'
-          if (-not (Test-Path $proof)) { throw 'Desktop did not load Studio' }
+          ./scripts/test_desktop_package.ps1 -Separate
       - name: Upload Windows desktop package
         uses: actions/upload-artifact@v4
         with:
@@ -165,7 +173,11 @@ jobs:
           path: |
             dist/MusicScope-*-windows-x64.zip
             dist/MusicScope-*-windows-x64.zip.sha256
-            dist/desktop-*/MusicScope/resources/project/.logs/desktop-preview.png
+            dist/desktop-acceptance/desktop-preview.png
+            dist/desktop-acceptance/audio-acceptance.json
+            dist/desktop-acceptance/offline-acceptance.json
+            dist/desktop-acceptance/playback-acceptance.json
+          if-no-files-found: error
           include-hidden-files: true
       - name: Upload Windows startup diagnostics
         if: failure()
@@ -174,5 +186,5 @@ jobs:
           name: windows-startup-logs
           path: |
             .logs/*.log
-            dist/desktop-*/MusicScope/resources/project/.logs/*.log
+            dist/desktop-acceptance/*.log
           include-hidden-files: true

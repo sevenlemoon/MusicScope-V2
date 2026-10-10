@@ -1,4 +1,4 @@
-.PHONY: install dev api-dev web-dev netease-api-dev lint typecheck test sidecar-check build contract-generate contract-check schema-check database-check compose-check check
+.PHONY: install dev api-dev web-dev netease-api-dev lint typecheck test sidecar-check web-dependency-check build contract-generate contract-check schema-check database-check compose-check check
 
 install:
 	uv sync --project apps/api --extra dev
@@ -33,6 +33,11 @@ sidecar-check:
 	cd services/netease-api && npm test
 	cd services/netease-api && npm audit --audit-level=moderate
 
+web-dependency-check:
+	node --test scripts/desktop_web_notices.test.cjs
+	cd apps/web && npm run test:dependencies
+	cd apps/web && npm audit --audit-level=moderate
+
 build:
 	cd apps/web && npm run build
 
@@ -57,4 +62,4 @@ database-check:
 compose-check:
 	docker compose config --quiet
 
-check: contract-check lint typecheck test sidecar-check schema-check database-check build compose-check
+check: contract-check lint typecheck test sidecar-check web-dependency-check schema-check database-check build compose-check

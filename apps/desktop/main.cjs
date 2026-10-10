@@ -1,18 +1,23 @@
 const { app, BrowserWindow, dialog, ipcMain, shell, session } = require('electron');
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { runtimeEnvironment, runtimePaths } = require('./runtime.cjs');
 
 app.setName('MusicScope');
-app.setPath('userData', path.join(app.getPath('appData'), 'MusicScope'));
+const smoke = process.argv.includes('--smoke-test');
+const smokeJob = smoke ? process.env.MUSICSCOPE_SMOKE_JOB_ID : null;
+// CI uses an isolated profile, but the exact same launch and data path as users.
+if (smoke && process.env.MUSICSCOPE_SMOKE_DATA_DIR) app.setPath('userData', path.resolve(process.env.MUSICSCOPE_SMOKE_DATA_DIR));
+else app.setPath('userData', path.join(app.getPath('appData'), 'MusicScope'));
 
 let window, backend, workspace, stopFile;
 let closing = false;
 let ready = false;
-let status = { title: '正在准备 MusicScope', detail: '首次运行会自动下载所需组件，请保持联网。', failed: false };
+let smokeFailed = false;
+let status = { title: '正在启动 MusicScope', detail: '正在检查内置组件与本地资料，无需安装开发环境。', failed: false };
 const loadingPage = pathToFileURL(path.join(__dirname, 'loading.html')).href;
-const smoke = process.argv.includes('--smoke-test');
 
 function publish(title, detail, failed = false) {
   status = { title, detail, failed };
@@ -20,28 +25,32 @@ function publish(title, detail, failed = false) {
 }
 
 function fail(error) {
-  publish('准备未完成', '下载进度与资料已保留。可关闭后重新打开；详细原因：' + error.message, true);
-  if (smoke) app.exit(1);
+  publish('启动或运行中断', '本地资料已保留。详细原因：' + error.message, true);
+  if (ready && window && !window.isDestroyed()) {
+    ready = false;
+    window.loadFile(path.join(__dirname, 'loading.html')).catch(() => {});
+  }
+  if (smoke) { smokeFailed = true; app.quit(); }
 }
 
 async function launch() {
+  if (smoke && !process.env.MUSICSCOPE_SMOKE_DATA_DIR) throw new Error('冒烟测试必须指定独立资料目录。');
+  if (smokeJob && !/^[a-f0-9-]{36}$/.test(smokeJob)) throw new Error('Invalid isolated smoke job');
   const source = app.isPackaged ? path.join(process.resourcesPath, 'project') : path.resolve(__dirname, '../..');
-  workspace = smoke ? source : path.join(app.getPath('userData'), 'workspace');
-  if (!smoke) {
-    // Copy only the release's explicit source tree; never bundle personal state.
-    fs.mkdirSync(workspace, { recursive: true });
-    for (const name of ['apps', 'services', 'scripts', 'contracts', '.env.example', '.node-version', 'docker-compose.yml']) {
-      fs.cpSync(path.join(source, name), path.join(workspace, name), { recursive: true,
-        filter: (file) => !/(?:^|[\\/])(?:node_modules|\.venv|\.next|desktop)(?:[\\/]|$)/.test(path.relative(source, file)) });
-    }
-  }
+  runtimePaths(source);
+  workspace = path.join(app.getPath('userData'), 'workspace');
+  fs.mkdirSync(workspace, { recursive: true });
+  const identity = `${process.env.USERDOMAIN}\\${process.env.USERNAME}`;
+  const permissions = spawnSync(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'icacls.exe'),
+    [workspace, '/inheritance:r', '/grant:r', `${identity}:(OI)(CI)F`], { windowsHide: true });
+  if (permissions.status !== 0) throw new Error('无法保护本地资料目录权限，未创建账号密钥。');
   fs.mkdirSync(path.join(workspace, '.logs'), { recursive: true });
   stopFile = path.join(workspace, '.logs', 'desktop-stop');
   fs.rmSync(stopFile, { force: true });
   const output = fs.createWriteStream(path.join(workspace, '.logs', 'desktop.log'), { flags: 'a' });
-  backend = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
-    path.join(workspace, 'scripts', 'dev.ps1'), '-NoOpen', '-StopFile', stopFile],
-  { cwd: workspace, windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } });
+  backend = spawn(path.join(source, 'runtime', 'node', 'node.exe'), [
+    path.join(__dirname, 'runtime.cjs'), source, workspace],
+  { cwd: workspace, windowsHide: true, env: runtimeEnvironment(source, workspace) });
   let pending = '';
   backend.stdout.on('data', (chunk) => {
     output.write(chunk);
@@ -54,13 +63,31 @@ async function launch() {
       if (match && !ready) {
         ready = true;
         const origin = match[1];
-        window.webContents.on('will-navigate', (event, url) => {
-          if (new URL(url).origin !== origin) event.preventDefault();
-        });
-        window.loadURL(origin + '/studio').catch(fail);
         if (smoke) window.webContents.once('did-finish-load', () => {
           setTimeout(async () => {
             try {
+              const valid = await window.webContents.executeJavaScript(smokeJob
+                ? `Boolean(document.querySelector('.studio-mixer') && document.querySelectorAll('.studio-stem').length === 6)`
+                : `Boolean(document.querySelector('.studio-page') && document.querySelector('.studio-mode-switch'))`);
+              if (!valid) throw new Error('分轨界面未正常渲染。');
+              const response = await fetch(origin.replace(':3100', ':8100') + '/api/v1/studio/jobs');
+              if (!response.ok || !Array.isArray((await response.json()).items)) throw new Error('任务接口不可用。');
+              if (smokeJob) {
+                const playback = await window.webContents.executeJavaScript(`(async () => {
+                  const play = document.querySelector('.studio-play');
+                  const position = document.querySelector('.studio-transport input[type=range]');
+                  if (!play || !position || document.querySelectorAll('.studio-export').length !== 6) throw Error('Missing mixer controls');
+                  play.click();
+                  await new Promise(resolve => setTimeout(resolve, 1500));
+                  const advanced = Number(position.value) > 0.1;
+                  if (!advanced) throw Error('Playback did not advance');
+                  await new Promise(resolve => setTimeout(resolve, 4000));
+                  if (play.textContent !== '▶') throw Error('Playback did not finish');
+                  return {status: 'passed', six_stem_controls: true, playback_advanced: true,
+                    ended_state: true, export_links: 6, speaker_listening_test: false};
+                })()`, true);
+                fs.writeFileSync(path.join(workspace, '.logs', 'playback-acceptance.json'), JSON.stringify(playback, null, 2));
+              }
               const screenshot = await window.webContents.capturePage();
               fs.writeFileSync(path.join(workspace, '.logs', 'desktop-preview.png'), screenshot.toPNG());
               fs.writeFileSync(path.join(workspace, '.logs', 'desktop-smoke-passed'), 'studio loaded');
@@ -68,6 +95,7 @@ async function launch() {
             } catch (error) { fail(error); }
           }, 3000);
         });
+        window.loadURL(origin + (smokeJob ? '/studio/jobs/' + smokeJob : '/studio')).catch(fail);
       }
     }
   });
@@ -76,7 +104,7 @@ async function launch() {
   backend.once('exit', (code) => {
     output.end();
     if (closing) return;
-    if (code !== 0 || !ready) fail(new Error('启动进程已退出，请查看日志。'));
+    fail(new Error(`运行进程已退出（${code ?? 'interrupted'}），请查看日志。`));
   });
 }
 
@@ -94,6 +122,15 @@ else {
       webPreferences: { preload: path.join(__dirname, 'preload.cjs'), nodeIntegration: false,
         contextIsolation: true, sandbox: true } });
     window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    window.on('close', (event) => {
+      if (!closing && backend && backend.exitCode === null) {
+        event.preventDefault();
+        app.quit();
+      }
+    });
+    window.webContents.on('will-navigate', (event, url) => {
+      if (url !== loadingPage && new URL(url).origin !== 'http://127.0.0.1:3100') event.preventDefault();
+    });
     ipcMain.handle('startup-status', (event) => event.senderFrame.url === loadingPage ? status : null);
     ipcMain.handle('open-logs', (event) => {
       if (event.senderFrame.url === loadingPage && workspace) return shell.openPath(path.join(workspace, '.logs'));
@@ -104,8 +141,18 @@ else {
 }
 app.on('window-all-closed', () => app.quit());
 app.on('before-quit', (event) => {
-  if (closing || !backend || backend.exitCode !== null) return;
+  if (closing || !backend || backend.exitCode !== null) {
+    if (smokeFailed) app.exit(1);
+    return;
+  }
   event.preventDefault();
+  if (!smoke && ready) {
+    const choice = dialog.showMessageBoxSync(window, { type: 'question',
+      title: '退出 MusicScope？', message: '退出会停止当前分轨任务。',
+      detail: '已完成的结果会保留；未完成的任务下次打开后可重试，但不能从中间续算。',
+      buttons: ['继续使用', '停止并退出'], defaultId: 0, cancelId: 0 });
+    if (choice !== 1) return;
+  }
   closing = true;
   if (stopFile) fs.writeFileSync(stopFile, 'stop');
   backend.once('exit', () => app.quit());

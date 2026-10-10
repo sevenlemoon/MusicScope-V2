@@ -46,7 +46,8 @@ export function ConnectExperience() {
   useEffect(() => {
     if (!challenge || !["WAITING_SCAN", "WAITING_CONFIRM"].includes(status)) return;
     let cancelled = false;
-    const timer = window.setTimeout(async () => {
+    let timer: number | undefined;
+    const poll = async () => {
       try {
         const result = await apiRequest<ChallengeStatus>(
           `/api/v1/music-connections/netease/qr/${challenge.challenge_id}`,
@@ -55,13 +56,17 @@ export function ConnectExperience() {
         setStatus(result.status);
         if (result.connection) setConnection(result.connection);
         if (result.connection) window.dispatchEvent(new Event("musicscope:connection-changed"));
+        if (["WAITING_SCAN", "WAITING_CONFIRM"].includes(result.status)) {
+          timer = window.setTimeout(() => void poll(), 1800);
+        }
       } catch {
         if (!cancelled) setStatus("FAILED");
       }
-    }, 1800);
+    };
+    timer = window.setTimeout(() => void poll(), 1800);
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
+      if (timer !== undefined) window.clearTimeout(timer);
     };
   }, [challenge, status]);
 

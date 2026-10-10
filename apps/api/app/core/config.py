@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -5,6 +6,7 @@ from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 V2_ROOT = Path(__file__).resolve().parents[4]
+DATA_ROOT = Path(os.environ.get("MUSICSCOPE_DATA_DIR", str(V2_ROOT))).resolve()
 
 
 class Settings(BaseSettings):
@@ -33,7 +35,7 @@ class Settings(BaseSettings):
     separator_executable: str | None = None
     separator_model: str = "htdemucs"
 
-    model_config = SettingsConfigDict(env_file=V2_ROOT / ".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=DATA_ROOT / ".env", extra="ignore")
 
     @computed_field
     @property

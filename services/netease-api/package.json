@@ -10,9 +10,12 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@neteasecloudmusicapienhanced/api": "4.40.1"
+    "@neteasecloudmusicapienhanced/api": "4.40.1",
+    "node-forge": "file:./compat/netease-rsa"
   },
   "overrides": {
-    "qs": "6.16.0"
+    "qs": "6.16.0",
+    "basic-ftp": "6.2.1",
+    "node-forge": "$node-forge"
   }
 }

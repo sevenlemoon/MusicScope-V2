@@ -89,6 +89,28 @@ def test_upload_streams_hashes_and_uses_verified_media(studio_storage: Path) -> 
     assert not list(studio_storage.rglob("*.upload"))
 
 
+def test_disk_full_during_upload_returns_recoverable_error_and_cleans_partial(
+    studio_storage: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user = create_user()
+    original_open = Path.open
+
+    def disk_full(path, *args, **kwargs):
+        if path.suffix == ".upload":
+            raise OSError(28, "No space left on device")
+        return original_open(path, *args, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "open", disk_full)
+        with TestClient(app) as client:
+            response = upload(client, user, wav_bytes())
+        assert response.status_code == 507
+        assert response.json()["detail"]["code"] == "STORAGE_QUOTA_EXCEEDED"
+    assert not list((studio_storage / "assets").iterdir())
+    with TestClient(app) as client:
+        assert upload(client, user, wav_bytes()).status_code == 201
+
+
 def test_upload_rejects_invalid_and_oversized_content(
     studio_storage: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

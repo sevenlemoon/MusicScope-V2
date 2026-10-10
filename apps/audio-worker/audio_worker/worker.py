@@ -182,6 +182,19 @@ def _worker_cache() -> Path:
     return cache.resolve()
 
 
+def separator_environment(cache: Path) -> dict[str, str]:
+    # Windows subprocesses need native runtime/temp paths too. Deliberately do
+    # not inherit account keys, database credentials or arbitrary PYTHONPATH.
+    allowed = ("PATH", "SystemRoot", "WINDIR", "TEMP", "TMP", "USERPROFILE", "LOCALAPPDATA", "APPDATA")
+    environment = {key: os.environ[key] for key in allowed if key in os.environ}
+    environment.update({
+        "HOME": str(Path.home()), "LANG": os.environ.get("LANG", "en_US.UTF-8"),
+        "PYTHONUTF8": "1", "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1",
+        "HF_HOME": str(cache / "huggingface"), "TORCH_HOME": str(cache / "torch"),
+    })
+    return environment
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -266,6 +279,8 @@ def _run_owned_process(
     diagnostic = log_path.read_text(encoding="utf-8", errors="replace")[-8000:]
     if return_code != 0:
         lowered = diagnostic.casefold()
+        if "no space left" in lowered or "not enough disk space" in lowered or "errno 28" in lowered:
+            raise WorkerFailure("STORAGE_QUOTA_EXCEEDED", "There is not enough free disk space.", diagnostic)
         if "out of memory" in lowered or "mps backend out of memory" in lowered:
             raise WorkerFailure("OUT_OF_MEMORY", "Audio separation ran out of memory.", diagnostic)
         if "download" in lowered or "model" in lowered and "not found" in lowered:
@@ -503,19 +518,24 @@ def process_job(db: Session, job: StemJob) -> None:
         log_path = run_dir / "demucs.log"
         set_stage(db, job, StemJobStatus.RUNNING, "LOADING_MODEL")
         model_cache = _worker_cache()
-        environment = {
-            "PATH": os.environ.get("PATH", ""),
-            "HOME": str(Path.home()),
-            "LANG": os.environ.get("LANG", "en_US.UTF-8"),
-            "HF_HOME": str(model_cache / "huggingface"),
-            "TORCH_HOME": str(model_cache / "torch"),
-        }
+        environment = separator_environment(model_cache)
+        phase_started = time.monotonic()
+        # Model connectivity and retries get their own deadline, not the CPU
+        # inference budget. The compute subprocess only loads verified local files.
+        _run_owned_process(
+            db, job,
+            [sys.executable, "-m", "audio_worker.prepare_model", job.model_name, str(model_cache)],
+            run_dir / "model-prepare.log", timeout_seconds=900, environment=environment,
+        )
+        timings["model_preparation_seconds"] = round(time.monotonic() - phase_started, 3)
         command = [
             sys.executable,
             "-m",
             "demucs",
             "-n",
             job.model_name,
+            "--repo",
+            str(model_cache / "demucs-local"),
             "-d",
             device,
             "--segment",
