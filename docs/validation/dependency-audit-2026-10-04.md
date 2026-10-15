@@ -1,5 +1,21 @@
 # Dependency audit — 2026-10-04
 
+## Audit policy update — 2026-10-15
+
+New advisories were added after the zero-vulnerability checks recorded below.
+The NetEase lockfile now receives compatible updates for `music-metadata` and
+`proxy-addr`; the complete sidecar audit is clean. The web lockfile receives
+compatible updates for `sharp` and `source-map-js`. The web production tree is
+checked at moderate severity, and the complete tree is checked at high severity.
+
+The only remaining web finding is moderate `sprintf-js`, reachable only through
+the Jest development/test dependency chain. `npm audit fix` reports that
+clearing it requires `npm audit fix --force`, which would downgrade Jest from
+30 to 25. We keep the supported Jest 30 toolchain and avoid that breaking
+downgrade; the production-only audit must have no moderate-or-higher findings,
+and the full tree must have no high-or-critical findings. The full audit still
+prints the moderate advisory in CI logs for visibility.
+
 ## Resolution in MusicScope
 
 Both affected dependency chains have now been removed from the project. This is

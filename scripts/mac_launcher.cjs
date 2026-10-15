@@ -72,10 +72,38 @@ function processDetails(pid) {
   return { command, cwd };
 }
 
-function belongsToInstall(pid) {
-  const { command, cwd } = processDetails(pid);
-  return cwd === root || cwd.startsWith(`${root}${path.sep}`) || command.includes(path.join(root, '.tools/mac/web')) ||
-    command.includes(path.join(root, 'apps/api')) || command.includes(path.join(root, 'apps/audio-worker'));
+function serviceProcessBelongsToInstall(service, { command, cwd }) {
+  if (service === 'web') {
+    return cwd === path.join(root, '.tools/mac/web') && /(?:next-server|server\.js)/.test(command);
+  }
+  if (service === 'api') {
+    return cwd === path.join(root, 'apps/api') && /-m uvicorn app\.main:app(?:\s|$)/.test(command);
+  }
+  return false;
+}
+
+function serviceProcessBelongsToWorker({ command, cwd }) {
+  return cwd === path.join(root, 'apps/audio-worker') && command.includes('-m audio_worker');
+}
+
+function workerStatus(data) {
+  let health;
+  try { health = JSON.parse(fs.readFileSync(path.join(data, '.logs', 'desktop-worker-health.json'), 'utf8')); }
+  catch { return { pid: null, owned: false, healthy: false }; }
+  const pid = health?.pid;
+  if (!Number.isSafeInteger(pid) || pid < 2) return { pid: null, owned: false, healthy: false };
+  const details = processDetails(pid);
+  const owned = serviceProcessBelongsToWorker(details);
+  if (!owned || !alive(pid)) return { pid, owned: false, healthy: false };
+  const stateIsActive = ['idle', 'processing'].includes(health.state);
+  const updatedAt = Date.parse(health.updated_at || '');
+  const idleIsFresh = health.state !== 'idle' ||
+    (Number.isFinite(updatedAt) && Date.now() - updatedAt >= -30_000 && Date.now() - updatedAt <= 30_000);
+  return { pid, owned: true, healthy: stateIsActive && idleIsFresh };
+}
+
+function belongsToInstall(pid, service) {
+  return serviceProcessBelongsToInstall(service, processDetails(pid));
 }
 
 async function probe(url) {
@@ -88,7 +116,21 @@ async function probe(url) {
 
 async function handleExistingServices(data) {
   const apiPids = listenerPids(8100), webPids = listenerPids(3100);
-  if (!apiPids.length && !webPids.length) return false;
+  const worker = workerStatus(data);
+  if (!apiPids.length && !webPids.length && !worker.owned) return false;
+
+  const unknown = [
+    ...apiPids.filter((pid) => !belongsToInstall(pid, 'api')).map((pid) => [pid, 'API']),
+    ...webPids.filter((pid) => !belongsToInstall(pid, 'web')).map((pid) => [pid, 'Web']),
+  ];
+  if (unknown.length) {
+    const occupied = unknown.map(([pid]) => {
+      const { command, cwd } = processDetails(pid);
+      return `PID ${pid}: ${command || '命令不可读'}${cwd ? `（${cwd}）` : ''}`;
+    }).join('\n');
+    const ports = [...new Set(unknown.map(([pid, service]) => service === 'API' ? '8100' : '3100'))].join('、');
+    throw new Error(`端口 ${ports} 已被占用，但无法确认是 MusicScope 的生产服务；不会连接或结束未知服务。\n${occupied}`);
+  }
 
   const webResponse = webPids.length ? await probe('http://127.0.0.1:3100/studio') : null;
   const apiResponse = apiPids.length ? await probe('http://127.0.0.1:8100/health') : null;
@@ -96,33 +138,30 @@ async function handleExistingServices(data) {
   if (apiResponse) {
     try { apiHealthy = (await apiResponse.json()).service === 'musicscope-v2-api'; } catch { apiHealthy = false; }
   }
-  const own = [...apiPids, ...webPids].every(belongsToInstall);
-
-  if (own && webResponse && apiHealthy) {
+  if (apiPids.length && webPids.length && webResponse && apiHealthy && worker.healthy) {
     say('MusicScope 已在运行：http://127.0.0.1:3100/studio');
-    say('已复用健康的本地服务；请在浏览器中使用现有窗口。');
+    say('API、网页和音频引擎均健康；请在浏览器中使用现有窗口。');
     return true;
   }
 
-  if (own && webPids.length && !apiPids.length) {
-    const stopFile = path.join(data, '.logs', 'desktop-stop');
-    fs.mkdirSync(path.dirname(stopFile), { recursive: true, mode: 0o700 });
-    fs.writeFileSync(stopFile, 'stop\n', { mode: 0o600 });
-    for (const pid of webPids) {
-      try { process.kill(pid, 'SIGTERM'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
-    }
-    for (let attempt = 0; attempt < 30 && listenerPids(3100).length; attempt++) await new Promise((resolve) => setTimeout(resolve, 200));
-    if (listenerPids(3100).length) throw new Error('MusicScope 的旧网页服务未能退出。请在活动监视器中检查本项目的 next-server 后重试。');
-    fs.rmSync(stopFile, { force: true });
-    say('已清理确认属于本项目的孤立网页服务，继续启动其余服务。');
-    return false;
+  const ownedPids = [...new Set([...apiPids, ...webPids, ...(worker.owned ? [worker.pid] : [])])];
+  say('发现本项目残留或不健康的服务，正在安全停止并重新启动。');
+  for (const pid of ownedPids) {
+    try { process.kill(pid, 'SIGTERM'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
   }
-
-  const occupied = [...new Set([...apiPids, ...webPids])].map((pid) => {
-    const { command, cwd } = processDetails(pid);
-    return `PID ${pid}: ${command || '命令不可读'}${cwd ? `（${cwd}）` : ''}`;
-  }).join('\n');
-  throw new Error(`端口 ${apiPids.length ? '8100' : ''}${apiPids.length && webPids.length ? '、' : ''}${webPids.length ? '3100' : ''} 已被占用，但无法确认是健康的 MusicScope 服务；不会连接或结束未知服务。\n${occupied}`);
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const portsClear = listenerPids(8100).length === 0 && listenerPids(3100).length === 0;
+    const workerStopped = !worker.owned || !alive(worker.pid) ||
+      !serviceProcessBelongsToWorker(processDetails(worker.pid));
+    if (portsClear && workerStopped) break;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  if (listenerPids(8100).length || listenerPids(3100).length ||
+      (worker.owned && alive(worker.pid) && serviceProcessBelongsToWorker(processDetails(worker.pid)))) {
+    throw new Error('MusicScope 的残留服务未能退出。已确认身份的进程收到正常停止请求；请检查本项目日志后重试。');
+  }
+  say('已清理确认属于本项目的残留服务，继续启动完整服务组。');
+  return false;
 }
 
 async function launch(args = process.argv.slice(2)) {
@@ -248,5 +287,6 @@ async function launch(args = process.argv.slice(2)) {
   }
 }
 
-module.exports = { fingerprint, acquireLock, alive, listenerPids, belongsToInstall, handleExistingServices, launch };
+module.exports = { fingerprint, acquireLock, alive, listenerPids, belongsToInstall, serviceProcessBelongsToInstall,
+  serviceProcessBelongsToWorker, workerStatus, handleExistingServices, launch };
 if (require.main === module) launch().catch((error) => { process.stderr.write(`[MusicScope] ${error.message}\n`); process.exitCode = 1; });

@@ -46,6 +46,11 @@ function runtimeEnvironment(project, data, parent = process.env, paths = null) {
   };
 }
 
+function workerHealthMatchesLauncher(health, childPid, platform = process.platform) {
+  if (!Number.isSafeInteger(health?.pid) || health.pid < 2 || !['idle', 'processing'].includes(health.state)) return false;
+  return platform !== 'win32' || health.pid === childPid;
+}
+
 async function assertFreePort(port) {
   await new Promise((resolve, reject) => {
     const server = net.createServer();
@@ -152,9 +157,9 @@ async function supervise(project, data, options = {}) {
     const worker = start('desktop-worker', paths.workerPython, ['-m', 'audio_worker', '--health-file', healthFile], paths.worker);
     await ready(worker, 'desktop-worker', async () => {
       const health = JSON.parse(fs.readFileSync(healthFile, 'utf8'));
-      if (!Number.isSafeInteger(health.pid) || health.pid < 2 || !['idle', 'processing'].includes(health.state)) return false;
+      if (!workerHealthMatchesLauncher(health, worker.pid)) return false;
       try { process.kill(health.pid, 0); } catch { return false; }
-      if (process.platform === 'win32') return true;
+      if (process.platform === 'win32') return health.pid === worker.pid;
       const command = spawnSync('/bin/ps', ['-p', String(health.pid), '-o', 'command='], { encoding: 'utf8' }).stdout.trim();
       const cwd = spawnSync('/usr/sbin/lsof', ['-a', '-p', String(health.pid), '-d', 'cwd', '-Fn'], { encoding: 'utf8' }).stdout
         .split('\n').find((line) => line.startsWith('n'))?.slice(1) || '';
@@ -183,7 +188,7 @@ async function supervise(project, data, options = {}) {
   }
 }
 
-module.exports = { runtimePaths, runtimeEnvironment, assertFreePort, supervise };
+module.exports = { runtimePaths, runtimeEnvironment, assertFreePort, workerHealthMatchesLauncher, supervise };
 if (require.main === module) {
   supervise(path.resolve(process.argv[2]), path.resolve(process.argv[3])).catch((error) => {
     process.stderr.write(`${error.message}\n`); process.exitCode = 1;

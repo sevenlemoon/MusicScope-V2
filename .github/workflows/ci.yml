@@ -148,7 +148,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --test scripts/desktop_web_notices.test.cjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          npm --prefix apps/web audit --audit-level=moderate
+          npm --prefix apps/web audit --omit=dev --audit-level=moderate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix apps/web audit --audit-level=high
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm --prefix services/netease-api audit --audit-level=moderate
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

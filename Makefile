@@ -36,7 +36,8 @@ sidecar-check:
 web-dependency-check:
 	node --test scripts/desktop_web_notices.test.cjs
 	cd apps/web && npm run test:dependencies
-	cd apps/web && npm audit --audit-level=moderate
+	cd apps/web && npm audit --omit=dev --audit-level=moderate
+	cd apps/web && npm audit --audit-level=high
 
 build:
 	cd apps/web && npm run build

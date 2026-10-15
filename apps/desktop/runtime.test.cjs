@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const net = require('node:net');
-const { runtimePaths, runtimeEnvironment, assertFreePort } = require('./runtime.cjs');
+const { runtimePaths, runtimeEnvironment, assertFreePort, workerHealthMatchesLauncher } = require('./runtime.cjs');
 
 test('production environment isolates data and ignores host Python/database settings', () => {
   const project = path.resolve('发布包 with spaces');
@@ -33,6 +33,14 @@ test('occupied service ports are rejected rather than reused or killed', async (
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   try { await assert.rejects(assertFreePort(server.address().port), /已被占用/); }
   finally { await new Promise((resolve) => server.close(resolve)); }
+});
+
+test('worker health must identify the launched child on Windows', () => {
+  const health = { pid: 1234, state: 'idle' };
+  assert.equal(workerHealthMatchesLauncher(health, 1234, 'win32'), true);
+  assert.equal(workerHealthMatchesLauncher({ ...health, pid: 4321 }, 1234, 'win32'), false);
+  assert.equal(workerHealthMatchesLauncher({ ...health, state: 'standby' }, 1234, 'win32'), false);
+  assert.equal(workerHealthMatchesLauncher({ ...health, pid: 4321 }, 1234, 'darwin'), true);
 });
 
 test('desktop path has no development launcher or smoke-only deployment bypass', () => {
