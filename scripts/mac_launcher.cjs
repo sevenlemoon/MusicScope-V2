@@ -59,6 +59,72 @@ function executable(name) {
   return result.stdout.trim();
 }
 
+function listenerPids(port) {
+  const result = spawnSync('/usr/sbin/lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-t'], { encoding: 'utf8' });
+  if (result.status !== 0 && result.status !== 1) throw new Error(`无法检查端口 ${port} 的监听进程。`);
+  return [...new Set((result.stdout || '').split(/\s+/).filter((value) => /^\d+$/.test(value)).map(Number))];
+}
+
+function processDetails(pid) {
+  const command = spawnSync('/bin/ps', ['-p', String(pid), '-o', 'command='], { encoding: 'utf8' }).stdout.trim();
+  const cwd = spawnSync('/usr/sbin/lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-Fn'], { encoding: 'utf8' }).stdout
+    .split('\n').find((line) => line.startsWith('n'))?.slice(1) || '';
+  return { command, cwd };
+}
+
+function belongsToInstall(pid) {
+  const { command, cwd } = processDetails(pid);
+  return cwd === root || cwd.startsWith(`${root}${path.sep}`) || command.includes(path.join(root, '.tools/mac/web')) ||
+    command.includes(path.join(root, 'apps/api')) || command.includes(path.join(root, 'apps/audio-worker'));
+}
+
+async function probe(url) {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(1200) });
+    if (!response.ok) return null;
+    return response;
+  } catch { return null; }
+}
+
+async function handleExistingServices(data) {
+  const apiPids = listenerPids(8100), webPids = listenerPids(3100);
+  if (!apiPids.length && !webPids.length) return false;
+
+  const webResponse = webPids.length ? await probe('http://127.0.0.1:3100/studio') : null;
+  const apiResponse = apiPids.length ? await probe('http://127.0.0.1:8100/health') : null;
+  let apiHealthy = false;
+  if (apiResponse) {
+    try { apiHealthy = (await apiResponse.json()).service === 'musicscope-v2-api'; } catch { apiHealthy = false; }
+  }
+  const own = [...apiPids, ...webPids].every(belongsToInstall);
+
+  if (own && webResponse && apiHealthy) {
+    say('MusicScope 已在运行：http://127.0.0.1:3100/studio');
+    say('已复用健康的本地服务；请在浏览器中使用现有窗口。');
+    return true;
+  }
+
+  if (own && webPids.length && !apiPids.length) {
+    const stopFile = path.join(data, '.logs', 'desktop-stop');
+    fs.mkdirSync(path.dirname(stopFile), { recursive: true, mode: 0o700 });
+    fs.writeFileSync(stopFile, 'stop\n', { mode: 0o600 });
+    for (const pid of webPids) {
+      try { process.kill(pid, 'SIGTERM'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
+    }
+    for (let attempt = 0; attempt < 30 && listenerPids(3100).length; attempt++) await new Promise((resolve) => setTimeout(resolve, 200));
+    if (listenerPids(3100).length) throw new Error('MusicScope 的旧网页服务未能退出。请在活动监视器中检查本项目的 next-server 后重试。');
+    fs.rmSync(stopFile, { force: true });
+    say('已清理确认属于本项目的孤立网页服务，继续启动其余服务。');
+    return false;
+  }
+
+  const occupied = [...new Set([...apiPids, ...webPids])].map((pid) => {
+    const { command, cwd } = processDetails(pid);
+    return `PID ${pid}: ${command || '命令不可读'}${cwd ? `（${cwd}）` : ''}`;
+  }).join('\n');
+  throw new Error(`端口 ${apiPids.length ? '8100' : ''}${apiPids.length && webPids.length ? '、' : ''}${webPids.length ? '3100' : ''} 已被占用，但无法确认是健康的 MusicScope 服务；不会连接或结束未知服务。\n${occupied}`);
+}
+
 async function launch(args = process.argv.slice(2)) {
   for (const arg of args) if (!['--setup', '--status', '--no-open', '--help', '-h'].includes(arg)) throw new Error(`未知参数：${arg}`);
   if (args.includes('--help') || args.includes('-h')) {
@@ -111,6 +177,7 @@ async function launch(args = process.argv.slice(2)) {
   });
   for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.once(signal, interrupt);
   try {
+    if (await handleExistingServices(data)) return;
     await assertFreePort(8100); await assertFreePort(3100);
     fs.mkdirSync(markers, { recursive: true });
     say(`本地资料：${data}（无需 Docker）。首次准备会下载依赖，后续按版本复用。`);
@@ -181,5 +248,5 @@ async function launch(args = process.argv.slice(2)) {
   }
 }
 
-module.exports = { fingerprint, acquireLock, alive, launch };
+module.exports = { fingerprint, acquireLock, alive, listenerPids, belongsToInstall, handleExistingServices, launch };
 if (require.main === module) launch().catch((error) => { process.stderr.write(`[MusicScope] ${error.message}\n`); process.exitCode = 1; });

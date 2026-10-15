@@ -2,7 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const net = require('node:net');
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const { setTimeout: delay } = require('node:timers/promises');
 
 function runtimePaths(project) {
@@ -152,7 +152,13 @@ async function supervise(project, data, options = {}) {
     const worker = start('desktop-worker', paths.workerPython, ['-m', 'audio_worker', '--health-file', healthFile], paths.worker);
     await ready(worker, 'desktop-worker', async () => {
       const health = JSON.parse(fs.readFileSync(healthFile, 'utf8'));
-      return health.pid === worker.pid && ['idle', 'processing'].includes(health.state);
+      if (!Number.isSafeInteger(health.pid) || health.pid < 2 || !['idle', 'processing'].includes(health.state)) return false;
+      try { process.kill(health.pid, 0); } catch { return false; }
+      if (process.platform === 'win32') return true;
+      const command = spawnSync('/bin/ps', ['-p', String(health.pid), '-o', 'command='], { encoding: 'utf8' }).stdout.trim();
+      const cwd = spawnSync('/usr/sbin/lsof', ['-a', '-p', String(health.pid), '-d', 'cwd', '-Fn'], { encoding: 'utf8' }).stdout
+        .split('\n').find((line) => line.startsWith('n'))?.slice(1) || '';
+      return command.includes('-m audio_worker') && (cwd === paths.worker || cwd.startsWith(`${paths.worker}${path.sep}`));
     });
     // Account service failure must not prevent local-file separation.
     let sidecar;
