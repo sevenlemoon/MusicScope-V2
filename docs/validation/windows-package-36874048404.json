@@ -1,0 +1,15 @@
+{
+  "package": "MusicScope-0.1.0-beta.1-windows-x64.zip",
+  "sha256": "14fb2258b1c3a209c690a79eb9a82ad1125aee2d5ae9d8b39bdaecdfb8387b83",
+  "size_bytes": 582289742,
+  "uncompressed_bytes": 1695284346,
+  "entries": 34149,
+  "required_runtime_paths_present": true,
+  "zip_crc_verified": true,
+  "private_project_state_paths_found": [],
+  "desktop_sources_match_validated_commit": true,
+  "validated_commit": "f008dea3e91a580f6b404a3f937a80d6e6d9ce2f",
+  "validation_run": 36874048404,
+  "verification_date": "2026-10-04",
+  "scope": "Archive integrity, required files, selected desktop source comparison and private project state filename scan; not a complete secret or license audit."
+}

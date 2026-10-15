@@ -22,7 +22,7 @@ done
 REPO_DIR="$(cd "$(dirname "$LAUNCHER_PATH")" && pwd -P)" || exit 1
 cd "$REPO_DIR" || exit 1
 
-./scripts/dev.sh "$@"
+./scripts/start_mac.sh "$@"
 status=$?
 
 if ((status != 0 && status != 130 && status != 143)) && [[ -t 0 ]]; then

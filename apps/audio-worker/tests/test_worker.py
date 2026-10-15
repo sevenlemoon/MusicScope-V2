@@ -18,6 +18,20 @@ from audio_worker import worker
 from audio_worker.beat_analysis import SAMPLE_RATE, estimate_beat_grid
 
 
+def test_separator_keeps_windows_runtime_paths_without_secrets(monkeypatch, tmp_path):
+    for key in ("SystemRoot", "WINDIR", "TEMP", "TMP", "USERPROFILE", "LOCALAPPDATA", "APPDATA"):
+        monkeypatch.setenv(key, f"test-{key}")
+    monkeypatch.setenv("SECRET_ENCRYPTION_KEY", "must-not-leak")
+    monkeypatch.setenv("DATABASE_URL", "must-not-leak")
+    monkeypatch.setenv("PYTHONPATH", "must-not-inherit")
+    environment = worker.separator_environment(tmp_path)
+    assert environment["SystemRoot"] == "test-SystemRoot"
+    assert environment["TEMP"] == "test-TEMP"
+    assert environment["PYTHONNOUSERSITE"] == "1"
+    assert environment["TORCH_HOME"] == str(tmp_path / "torch")
+    assert not {"SECRET_ENCRYPTION_KEY", "DATABASE_URL", "PYTHONPATH"} & environment.keys()
+
+
 def make_database() -> tuple[object, Session, User, AudioAsset]:
     engine = create_engine("sqlite+pysqlite:///:memory:")
     Base.metadata.create_all(engine)

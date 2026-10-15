@@ -27,19 +27,32 @@ jobs:
           test "$(jq -r .head_branch <<< "$result")" = master
           test "$(jq -r .path <<< "$result")" = .github/workflows/ci.yml
           echo "RELEASE_SHA=$(jq -r .head_sha <<< "$result")" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+      - name: Resolve the validated version
+        shell: bash
+        run: |
+          version=$(jq -r .version apps/desktop/package.json)
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$ ]]
+          test -f "docs/releases/desktop-$version.md"
+          echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
       - name: Download tested package and verify checksum
         run: |
           gh run download "$VALIDATION_RUN" --name musicscope-windows-desktop --dir assets
           cd assets
-          sha256sum -c MusicScope-0.1.0-beta.1-windows-x64.zip.sha256
+          sha256sum -c "MusicScope-$RELEASE_VERSION-windows-x64.zip.sha256"
+          jq -e '.status == "passed"' desktop-acceptance/audio-acceptance.json
+          jq -e '.status == "passed" and .outbound_network_blocked == true' desktop-acceptance/offline-acceptance.json
+          jq -e '.status == "passed" and .ended_state == true' desktop-acceptance/playback-acceptance.json
           preview=$(find . -name desktop-preview.png -type f -print -quit)
           test -n "$preview"
           cp "$preview" desktop-preview.png
       - name: Publish the tested Windows preview
         run: |
-          gh release create v0.1.0-beta.1 --target "$RELEASE_SHA" --prerelease \
-            --title "MusicScope Desktop 0.1.0-beta.1 — Windows 桌面预览版" \
-            --notes-file docs/releases/desktop-0.1.0-beta.1.md \
-            assets/MusicScope-0.1.0-beta.1-windows-x64.zip \
-            assets/MusicScope-0.1.0-beta.1-windows-x64.zip.sha256 \
+          gh release create "v$RELEASE_VERSION" --target "$RELEASE_SHA" --prerelease \
+            --title "MusicScope Desktop $RELEASE_VERSION — Windows 桌面预览版" \
+            --notes-file "docs/releases/desktop-$RELEASE_VERSION.md" \
+            "assets/MusicScope-$RELEASE_VERSION-windows-x64.zip" \
+            "assets/MusicScope-$RELEASE_VERSION-windows-x64.zip.sha256" \
             assets/desktop-preview.png

@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "platform": "macOS arm64",
+  "warm_start_seconds": 6.53,
+  "sigterm_shutdown_seconds": 1.06,
+  "ports_released": [
+    8100,
+    3100
+  ],
+  "profile_lock_removed": true,
+  "production_build_reused": true,
+  "benchmark": false
+}

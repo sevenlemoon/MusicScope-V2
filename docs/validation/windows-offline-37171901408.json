@@ -1,0 +1,22 @@
+{
+  "status": "passed",
+  "job_id": "6c8651af-1fb0-4678-96e5-f7bd8046a355",
+  "model": "htdemucs_6s",
+  "device": "cpu",
+  "stems": [
+    "BASS",
+    "DRUMS",
+    "GUITAR",
+    "OTHER",
+    "PIANO",
+    "VOCALS"
+  ],
+  "input_duration_ms": 4000,
+  "download_integrity": true,
+  "flac_decode": true,
+  "waveforms": true,
+  "elapsed_seconds": 13.22,
+  "quality_benchmark": false,
+  "speaker_playback_test": false,
+  "outbound_network_blocked": true
+}

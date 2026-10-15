@@ -1,6 +1,8 @@
 FROM node:24.21.0-alpine AS dependencies
 WORKDIR /app
 COPY package*.json ./
+COPY .npmrc ./
+COPY compat ./compat
 RUN npm ci
 
 FROM node:24.21.0-alpine AS builder

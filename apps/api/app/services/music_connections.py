@@ -113,7 +113,13 @@ class MusicConnectionService:
             ConnectionStatus.FAILED.value,
         }:
             return challenge, None
-        if challenge.expires_at <= datetime.now(UTC):
+        # SQLite drops timezone information even for DateTime(timezone=True)
+        # columns. Treat a naive value read from the database as UTC before
+        # comparing it with the timezone-aware clock.
+        expires_at = challenge.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+        if expires_at <= datetime.now(UTC):
             challenge.status = ConnectionStatus.EXPIRED.value
             return challenge, None
 
