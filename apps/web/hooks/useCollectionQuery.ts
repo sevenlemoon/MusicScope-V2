@@ -7,6 +7,24 @@ export type CollectionQuery = CollectionView & { sort: "original" | "asc" | "des
 const defaults: CollectionQuery = { view: "liked", id: null, sort: "original", q: "", cursor: null };
 const storageKey = "musicscope:collection-view:v2";
 type Snapshot = { query: CollectionQuery; y: number; browse?: { sort: CollectionQuery["sort"]; cursor: string | null; y: number } };
+
+function readSnapshots(): Record<string, Snapshot> {
+  const stored: unknown = JSON.parse(sessionStorage.getItem(storageKey) || "{}");
+  const valid: Record<string, Snapshot> = Object.create(null);
+  if (!stored || typeof stored !== "object" || Array.isArray(stored)) return valid;
+  const position = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value >= 0;
+  const sort = (value: unknown) => value === "original" || value === "asc" || value === "desc";
+  const cursor = (value: unknown) => value === null || typeof value === "string";
+  for (const [key, value] of Object.entries(stored)) {
+    if (!value || typeof value !== "object" || !position(value.y)) continue;
+    const q = value.query;
+    if (!q || !["liked", "playlist", "album"].includes(q.view) || !cursor(q.id) ||
+        !sort(q.sort) || typeof q.q !== "string" || q.q.length > 200 || !cursor(q.cursor)) continue;
+    const browse = value.browse;
+    valid[key] = { query: q, y: value.y, ...(browse && sort(browse.sort) && cursor(browse.cursor) && position(browse.y) ? { browse } : {}) };
+  }
+  return valid;
+}
 export function parseCollectionQuery(search: string): CollectionQuery {
   const p = new URLSearchParams(search);
   const view = p.get("view") === "album" ? "album" : p.get("view") === "playlist" ? "playlist" : "liked";
@@ -40,7 +58,7 @@ export function useCollectionQuery(fixed?: CollectionView) {
     try { sessionStorage.setItem(storageKey, JSON.stringify(snapshots.current)); } catch { /* Optional storage. */ }
   }, []);
   useEffect(() => {
-    try { snapshots.current = JSON.parse(sessionStorage.getItem(storageKey) || "{}"); sessionStorage.removeItem("musicscope:library-view:v1"); } catch { snapshots.current = {}; }
+    try { snapshots.current = readSnapshots(); sessionStorage.removeItem("musicscope:library-view:v1"); } catch { snapshots.current = Object.create(null); }
     const restore = () => {
       departing.current = false;
       const parsed = parseCollectionQuery(window.location.search);

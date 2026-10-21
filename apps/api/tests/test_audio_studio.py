@@ -89,6 +89,21 @@ def test_upload_streams_hashes_and_uses_verified_media(studio_storage: Path) -> 
     assert not list(studio_storage.rglob("*.upload"))
 
 
+def test_reupload_repairs_a_missing_source_instead_of_reusing_a_broken_asset(studio_storage: Path) -> None:
+    user = create_user()
+    payload = wav_bytes()
+    with TestClient(app) as client:
+        first = upload(client, user, payload).json()
+        source = next(studio_storage.rglob("source.wav"))
+        source.unlink()
+        repaired = upload(client, user, payload)
+        assert repaired.status_code == 200
+        assert repaired.json()["id"] == first["id"]
+        assert list(studio_storage.rglob("source.wav"))
+        assert next(studio_storage.rglob("source.wav")).read_bytes() == payload
+        assert not list(studio_storage.rglob("*.upload"))
+
+
 def test_disk_full_during_upload_returns_recoverable_error_and_cleans_partial(
     studio_storage: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:

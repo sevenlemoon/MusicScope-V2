@@ -4,6 +4,12 @@ import { PlayerProvider } from "./PlayerProvider";
 const pushMock = jest.fn();
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
 const track = { id: "one", title: "A song", artists: ["Artist"], sort_group: "A", artist_items: [] };
+it("displays zero-based playlist positions as human-readable song numbers", () => {
+  const view = render(<PlayerProvider><TrackRow track={{ ...track, playlist_position: 0 }} index={1} /></PlayerProvider>);
+  expect(view.container.querySelector(".track-number")).toHaveTextContent("1");
+  view.rerender(<PlayerProvider><TrackRow track={{ ...track, playlist_position: 60 }} index={1} /></PlayerProvider>);
+  expect(view.container.querySelector(".track-number")).toHaveTextContent("61");
+});
 it("creates only once on repeated clicks and stays pending until navigation", async () => {
   let finish!: (value: unknown) => void;
   global.fetch = jest.fn(() => new Promise((resolve) => { finish = resolve; })) as jest.Mock;

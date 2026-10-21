@@ -9,6 +9,7 @@ from app.api.routes import catalog
 from app.core.database import Base
 from app.domain.models import (
     Album,
+    AlbumArtist,
     Artist,
     MusicConnection,
     Playlist,
@@ -17,6 +18,7 @@ from app.domain.models import (
     TrackArtist,
     User,
 )
+from app.services.library_queries import offset_from_cursor
 from app.services.library_scope import default_liked_collection
 
 
@@ -164,3 +166,32 @@ def test_personal_album_deep_link_keeps_synced_subscribed_playlist_tracks(db):
     db.add(PlaylistTrack(playlist_id=p.id, track_id=track.id, position=1))
     db.flush()
     assert catalog.album_tracks(album.id, db, limit=50, scope="personal", q="Existing").total == 1
+
+
+def test_personal_playlist_accepts_numeric_provider_creator_ids(db):
+    c = account(db, "12345")
+    p = playlist(db, c, creator_user_id=12345, special_type=5)
+    assert default_liked_collection(db).playlist_id == str(p.id)
+    assert catalog.playlist_detail(p.id, db, scope="personal").id == str(p.id)
+
+
+def test_saved_album_details_show_its_artists_without_liked_tracks(db):
+    from app.domain.models import SavedAlbum
+
+    c = account(db)
+    album, artist = Album(title="Saved"), Artist(name="Album artist")
+    db.add_all([album, artist])
+    db.flush()
+    db.add_all([SavedAlbum(connection_id=c.id, album_id=album.id),
+                AlbumArtist(album_id=album.id, artist_id=artist.id, position=0)])
+    db.flush()
+    detail = catalog.album_detail(album.id, db, scope="personal")
+    assert [item.name for item in detail.artists] == [artist.name]
+
+
+@pytest.mark.parametrize("cursor", [str(2**63), "9" * 400, "-1", "invalid"])
+def test_out_of_range_cursors_cannot_overflow_database_offsets(db, cursor):
+    c = account(db)
+    p = playlist(db, c, subscribed=False)
+    assert offset_from_cursor(cursor) == 0
+    assert catalog.playlist_tracks(p.id, db, scope="personal", cursor=cursor, limit=50).total == 0

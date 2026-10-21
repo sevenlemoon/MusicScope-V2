@@ -18,12 +18,13 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
     cache: "no-store",
   });
   if (!response.ok) {
-    const payload = await response.json().catch(() => null) as { detail?: string | { code?: string; message?: string } } | null;
-    const detail = payload?.detail;
+    const payload: unknown = await response.json().catch(() => null);
+    const detail = payload && typeof payload === "object" && "detail" in payload ? payload.detail : undefined;
+    const structured = detail && typeof detail === "object" ? detail : null;
     throw new ApiRequestError(
       response.status,
-      typeof detail === "object" ? detail.code : undefined,
-      typeof detail === "object" ? detail.message : typeof detail === "string" ? detail : undefined,
+      structured && "code" in structured && typeof structured.code === "string" ? structured.code : undefined,
+      structured && "message" in structured && typeof structured.message === "string" ? structured.message : typeof detail === "string" ? detail : undefined,
     );
   }
   return response.json() as Promise<T>;

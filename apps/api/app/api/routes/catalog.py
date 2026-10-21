@@ -99,7 +99,7 @@ def _track_page(
 
 
 def _artist_references(db: Session, album_id: UUID, scope: LibraryScope) -> list[EntityReference]:
-    if scope == "all":
+    if scope != "liked":
         statement = (
             select(Artist)
             .join(AlbumArtist, AlbumArtist.artist_id == Artist.id)

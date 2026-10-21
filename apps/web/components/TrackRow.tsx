@@ -23,7 +23,7 @@ export function TrackRow({ track, index }: { track: TrackItem; index?: number })
   const active = player.current?.id === track.id;
   const leadArtist = track.artist_items?.[0];
   return <article className={`${styles.row} track-row${active ? " track-row-active" : ""}`}>
-    <span className="track-number">{track.playlist_position ?? index ?? "·"}</span>
+    <span className="track-number">{track.playlist_position != null ? track.playlist_position + 1 : index ?? "·"}</span>
     <button type="button" className={styles.cover} aria-label={t(`Play and open ${track.title}`, `播放并打开 ${track.title}`)} onClick={(event) => void player.playAndOpen(track, event.currentTarget)}><Artwork src={track.artwork_url} alt="" sizes="48px" className="track-artwork" eager={index === 1} /></button>
     <div className="track-primary"><button type="button" onClick={(event) => void player.playAndOpen(track, event.currentTarget)}>{track.title}</button><span>{leadArtist?.name || track.artists?.[0] || t("Unknown artist", "未知艺人")}</span></div>
     <div className="track-album">{track.album_id && track.album ? <Link href={`/album/${track.album_id}`}>{track.album}</Link> : track.album ?? "—"}</div>

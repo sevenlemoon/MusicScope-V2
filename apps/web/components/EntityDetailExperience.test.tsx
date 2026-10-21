@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { EntityDetailExperience } from "./EntityDetailExperience";
 import { PlayerProvider } from "./PlayerProvider";
@@ -51,6 +51,19 @@ describe("canonical detail pages", () => {
     expect(screen.queryByRole("link", { name: "Artist Two" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Separate stems" }));
     await waitFor(() => expect(push).toHaveBeenCalledWith("/studio/jobs/created-job?track=t1"));
+  });
+
+  it("does not let an earlier track request overwrite the next route", async () => {
+    let finishOld!: (value: unknown) => void;
+    global.fetch = jest.fn((input) => String(input).endsWith("/tracks/old")
+      ? new Promise(resolve => { finishOld = resolve; })
+      : response({ id: "new", title: "New track", artists: [], playlists: [] })) as jest.Mock;
+    const view = renderDetail("track", "old");
+    view.rerender(<PlayerProvider><EntityDetailExperience type="track" id="new" /></PlayerProvider>);
+    expect(await screen.findByRole("heading", { name: "New track", level: 1 })).toBeInTheDocument();
+    await act(async () => finishOld({ ok: true, json: async () => ({ id: "old", title: "Old track", artists: [], playlists: [] }) }));
+    expect(screen.getByRole("heading", { name: "New track", level: 1 })).toBeInTheDocument();
+    expect(screen.queryByText("Old track")).not.toBeInTheDocument();
   });
 });
 

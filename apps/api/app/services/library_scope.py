@@ -33,7 +33,7 @@ def playlist_ids_for_scope(db: Session, scope: LibraryScope) -> tuple[UUID, ...]
             playlist.id
             for playlist, connection in rows
             if (
-                playlist.metadata_json.get("creator_user_id") == connection.provider_user_id
+                str(playlist.metadata_json.get("creator_user_id")) == connection.provider_user_id
                 if playlist.metadata_json.get("creator_user_id") is not None
                 else playlist.metadata_json.get("subscribed") is False
             )

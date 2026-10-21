@@ -18,7 +18,7 @@ type TrackItem = components["schemas"]["TrackItem"];
 export function EntityDetailExperience({ type, id }: { type: EntityType; id: string }) {
   if (type === "album") return <CollectionBrowser fixed={{ view: "album", id }} />;
   if (type === "playlist") return <CollectionBrowser fixed={{ view: "playlist", id }} />;
-  return <TrackExperience id={id} />;
+  return <TrackExperience key={id} id={id} />;
 }
 
 function TrackExperience({ id }: { id: string }) {
@@ -27,7 +27,14 @@ function TrackExperience({ id }: { id: string }) {
   const [failed, setFailed] = useState(false);
   const player = usePlayer();
   const { start: separate, pending, error } = useTrackSeparation(id, t("Could not start separation. Try again.", "分轨创建失败，请重试。"));
-  useEffect(() => { apiRequest<components["schemas"]["TrackDetail"]>(`/api/v1/tracks/${id}`).then(setDetail).catch(() => setFailed(true)); }, [id]);
+  useEffect(() => {
+    const abort = new AbortController();
+    let live = true;
+    apiRequest<components["schemas"]["TrackDetail"]>(`/api/v1/tracks/${encodeURIComponent(id)}`, { signal: abort.signal })
+      .then(value => { if (live) setDetail(value); })
+      .catch(() => { if (live) setFailed(true); });
+    return () => { live = false; abort.abort(); };
+  }, [id]);
   if (failed) return <MissingEntity type="track" />;
   if (!detail) return <DetailLoading />;
   const track: TrackItem = { id: detail.id, title: detail.title, artwork_url: detail.artwork_url, duration_ms: detail.duration_ms, album_id: detail.album?.id ?? null, album: detail.album?.name ?? null, artists: (detail.artists ?? []).map((artist) => artist.name), artist_items: detail.artists ?? [], sort_group: "#", playlist_position: null };

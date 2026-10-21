@@ -18,6 +18,32 @@ from audio_worker import worker
 from audio_worker.beat_analysis import SAMPLE_RATE, estimate_beat_grid
 
 
+def test_database_failure_terminates_the_owned_separator(monkeypatch, tmp_path):
+    engine, db, user, asset = make_database()
+    job = make_job(db, user, asset)
+    processes = []
+    original_popen = subprocess.Popen
+
+    def capture_process(*args, **kwargs):
+        process = original_popen(*args, **kwargs)
+        processes.append(process)
+        return process
+
+    monkeypatch.setattr(worker.subprocess, "Popen", capture_process)
+    monkeypatch.setattr(db, "expire_all", lambda: (_ for _ in ()).throw(RuntimeError("database unavailable")))
+    try:
+        with pytest.raises(RuntimeError, match="database unavailable"):
+            worker._run_owned_process(db, job, [sys.executable, "-c", "import time; time.sleep(60)"],
+                                      tmp_path / "separator.log", 120)
+        assert processes[0].poll() is not None
+        assert worker.ACTIVE_PROCESS is None
+    finally:
+        for process in processes:
+            worker._terminate_process_group(process)
+        db.close()
+        engine.dispose()
+
+
 def test_separator_keeps_windows_runtime_paths_without_secrets(monkeypatch, tmp_path):
     for key in ("SystemRoot", "WINDIR", "TEMP", "TMP", "USERPROFILE", "LOCALAPPDATA", "APPDATA"):
         monkeypatch.setenv(key, f"test-{key}")

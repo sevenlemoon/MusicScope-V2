@@ -72,7 +72,9 @@ def display_group(value: str) -> str:
 
 def offset_from_cursor(cursor: str | None) -> int:
     try:
-        return max(0, int(cursor or 0))
+        offset = int(cursor or 0)
+        # SQLite/PostgreSQL use signed 64-bit offsets. Leave room for page arithmetic.
+        return offset if 0 <= offset <= 2**63 - 101 else 0
     except ValueError:
         return 0
 

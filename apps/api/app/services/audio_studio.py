@@ -220,17 +220,20 @@ async def create_audio_asset(db: Session, user: User, upload: UploadFile) -> tup
         if existing is not None:
             try:
                 resolve_storage_key(existing.storage_key)
-            except StudioError:
-                existing = None
-        if existing is not None:
-            shutil.rmtree(original_dir.parent)
-            return existing, True
-        if user_storage_bytes(db, user.id) + total > get_settings().audio_storage_quota_bytes:
+            except StudioError as error:
+                if error.code != "ARTIFACT_MISSING":
+                    raise
+            else:
+                shutil.rmtree(original_dir.parent)
+                return existing, True
+        replaced_bytes = existing.size_bytes if existing is not None else 0
+        projected_bytes = user_storage_bytes(db, user.id) - replaced_bytes + total
+        if projected_bytes > get_settings().audio_storage_quota_bytes:
             raise StudioError(413, "STORAGE_QUOTA_EXCEEDED", "Studio storage quota would be exceeded.")
         final_path = original_dir / f"source{probe.extension}"
         temporary.replace(final_path)
         storage_key = final_path.relative_to(root).as_posix()
-        asset = AudioAsset(
+        asset = existing if existing is not None else AudioAsset(
             id=asset_id,
             user_id=user.id,
             original_filename=_safe_filename(upload.filename),
@@ -243,6 +246,8 @@ async def create_audio_asset(db: Session, user: User, upload: UploadFile) -> tup
             duration_ms=probe.duration_ms,
             metadata_json={"format": probe.format_name, "codec": probe.codec_name},
         )
+        # Preserve IDs referenced by existing jobs while repairing a lost source.
+        asset.storage_key = storage_key
         db.add(asset)
         try:
             db.commit()
@@ -253,10 +258,11 @@ async def create_audio_asset(db: Session, user: User, upload: UploadFile) -> tup
             )
             if existing is None:
                 raise
+            resolve_storage_key(existing.storage_key)
             shutil.rmtree(original_dir.parent)
             return existing, True
         db.refresh(asset)
-        return asset, False
+        return asset, replaced_bytes > 0
     except Exception as error:
         db.rollback()
         if original_dir.parent.exists():

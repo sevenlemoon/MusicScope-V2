@@ -275,7 +275,12 @@ def _run_owned_process(
     except FileNotFoundError as exc:
         raise WorkerFailure("MODEL_UNAVAILABLE", "A required audio tool is unavailable.") from exc
     finally:
-        ACTIVE_PROCESS = None
+        # Database/heartbeat failures must not orphan a running Demucs/FFmpeg child.
+        try:
+            if ACTIVE_PROCESS is not None:
+                _terminate_process_group(ACTIVE_PROCESS)
+        finally:
+            ACTIVE_PROCESS = None
     diagnostic = log_path.read_text(encoding="utf-8", errors="replace")[-8000:]
     if return_code != 0:
         lowered = diagnostic.casefold()
