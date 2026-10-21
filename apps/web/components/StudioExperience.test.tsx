@@ -1,6 +1,11 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createRequire } from "node:module";
 
 import { StudioExperience } from "./StudioExperience";
+
+const { studioReady } = createRequire(`${process.cwd()}/package.json`)("../desktop/studio-smoke.cjs") as {
+  studioReady: (document: Document, hasJob: boolean) => boolean;
+};
 
 const pushMock = jest.fn();
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
@@ -69,6 +74,8 @@ describe("StudioExperience", () => {
     });
     render(<StudioExperience />);
     await screen.findByText("导入本地音频");
+    expect(studioReady(document, false)).toBe(true);
+    expect(studioReady(document, true)).toBe(false);
     fireEvent.change(screen.getByLabelText("选择本地音频文件"), {
       target: { files: [new File(["audio"], "owned.wav", { type: "audio/wav" })] },
     });
@@ -207,6 +214,7 @@ describe("StudioExperience", () => {
     await screen.findByRole("button", { name: "暂停四个声部" });
     act(() => { media[0].dispatchEvent(new Event("ended")); });
     expect(screen.getByLabelText("播放位置")).toHaveValue("180");
+    expect(screen.getByRole("button", { name: "播放四个声部" })).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(screen.getByRole("button", { name: "播放四个声部" }));
     await screen.findByRole("button", { name: "暂停四个声部" });
     expect(media[0].currentTime).toBe(0);
@@ -235,6 +243,7 @@ describe("StudioExperience", () => {
       : response(job("SUCCEEDED", { model_name: "htdemucs_6s", artifacts, waveform_url: "/waveform" })) as never);
     render(<StudioExperience initialJobId="job-1" />);
     expect(await screen.findByText("六条 FLAC 音轨已保存在本机。吉他和钢琴可能有串音或伪影。")).toBeInTheDocument();
+    expect(studioReady(document, true)).toBe(true);
     expect(await screen.findByText("120 BPM")).toBeInTheDocument();
     expect(screen.getByLabelText("估算节拍位置").querySelector("path")).toHaveAttribute("d", expect.stringContaining("M1.39"));
     expect(screen.getAllByRole("button", { name: /波形中定位/ })).toHaveLength(6);

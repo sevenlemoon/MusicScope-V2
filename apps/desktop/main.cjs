@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { runtimeEnvironment, runtimePaths } = require('./runtime.cjs');
+const { studioReady, playbackAcceptance } = require('./studio-smoke.cjs');
 
 app.setName('MusicScope');
 const smoke = process.argv.includes('--smoke-test');
@@ -66,26 +67,12 @@ async function launch() {
         if (smoke) window.webContents.once('did-finish-load', () => {
           setTimeout(async () => {
             try {
-              const valid = await window.webContents.executeJavaScript(smokeJob
-                ? `Boolean(document.querySelector('.studio-mixer') && document.querySelectorAll('.studio-stem').length === 6)`
-                : `Boolean(document.querySelector('.studio-page') && document.querySelector('.studio-mode-switch'))`);
+              const valid = await window.webContents.executeJavaScript(`(${studioReady})(document, ${Boolean(smokeJob)})`);
               if (!valid) throw new Error('分轨界面未正常渲染。');
               const response = await fetch(origin.replace(':3100', ':8100') + '/api/v1/studio/jobs');
               if (!response.ok || !Array.isArray((await response.json()).items)) throw new Error('任务接口不可用。');
               if (smokeJob) {
-                const playback = await window.webContents.executeJavaScript(`(async () => {
-                  const play = document.querySelector('.studio-play');
-                  const position = document.querySelector('.studio-transport input[type=range]');
-                  if (!play || !position || document.querySelectorAll('.studio-export').length !== 6) throw Error('Missing mixer controls');
-                  play.click();
-                  await new Promise(resolve => setTimeout(resolve, 1500));
-                  const advanced = Number(position.value) > 0.1;
-                  if (!advanced) throw Error('Playback did not advance');
-                  await new Promise(resolve => setTimeout(resolve, 4000));
-                  if (play.textContent !== '▶') throw Error('Playback did not finish');
-                  return {status: 'passed', six_stem_controls: true, playback_advanced: true,
-                    ended_state: true, export_links: 6, speaker_listening_test: false};
-                })()`, true);
+                const playback = await window.webContents.executeJavaScript(`(${playbackAcceptance})(document)`, true);
                 fs.writeFileSync(path.join(workspace, '.logs', 'playback-acceptance.json'), JSON.stringify(playback, null, 2));
               }
               const screenshot = await window.webContents.capturePage();

@@ -17,7 +17,7 @@ Rename-Item (Join-Path $application 'electron.exe') 'MusicScope.exe'
 $resources = Join-Path $application 'resources'
 $app = Join-Path $resources 'app'
 New-Item -ItemType Directory -Force -Path $app | Out-Null
-foreach ($file in @('package.json', 'main.cjs', 'runtime.cjs', 'preload.cjs', 'loading.html', 'loading.css', 'loading.js')) {
+foreach ($file in @('package.json', 'main.cjs', 'runtime.cjs', 'studio-smoke.cjs', 'preload.cjs', 'loading.html', 'loading.css', 'loading.js')) {
     Copy-Item (Join-Path $root "apps\desktop\$file") $app
 }
 $project = Join-Path $resources 'project'

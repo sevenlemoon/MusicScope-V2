@@ -433,7 +433,7 @@ export function StemMixer({ job, sourceTrack }: { job: StudioJob; sourceTrack?: 
   const title = sourceTrack?.title || job.asset.original_filename;
   const librarySource = job.source_track_ids.length > 0;
 
-  return <section className={styles.workbench} aria-label={t("Studio mixer", "Studio 混音器")}>
+  return <section data-studio-mixer className={styles.workbench} aria-label={t("Studio mixer", "Studio 混音器")}>
     <div className={styles.stage}>
       <header className={styles.identity}>
         <Artwork key={sourceTrack?.artwork_url || "placeholder"} className={styles.cover} src={sourceTrack?.artwork_url} alt={t("Track artwork", "曲目封面")} sizes="(max-width: 600px) 84px, 128px" />
@@ -450,14 +450,14 @@ export function StemMixer({ job, sourceTrack }: { job: StudioJob; sourceTrack?: 
 
     <section className={styles.transport} aria-label={t("Playback controls", "主播放控制")}>
       <div className={styles.playControl}>
-        <button type="button" className={styles.play} aria-busy={starting} aria-label={playing || starting ? t(`Pause ${stems.length} stems`, `暂停${stems.length === 4 ? "四" : "六"}个声部`) : t(`Play ${stems.length} stems`, `播放${stems.length === 4 ? "四" : "六"}个声部`)} onClick={() => void togglePlay()}>
+        <button data-studio-play type="button" className={styles.play} aria-busy={starting} aria-pressed={playing} aria-label={playing || starting ? t(`Pause ${stems.length} stems`, `暂停${stems.length === 4 ? "四" : "六"}个声部`) : t(`Play ${stems.length} stems`, `播放${stems.length === 4 ? "四" : "六"}个声部`)} onClick={() => void togglePlay()}>
           <svg viewBox="0 0 24 24" aria-hidden="true">{playing || starting ? <path d="M7 5h3v14H7zm7 0h3v14h-3z" /> : <path d="m8 4 12 8-12 8z" />}</svg>
         </button>
         <span className={styles.playState} role="status">{starting ? t("Starting… press to cancel", "正在启动…可再次点击取消") : playing ? t("Playing", "播放中") : t("Paused", "已暂停")}</span>
       </div>
       <div className={styles.timeline}>
         <span>{formatDuration(position)}</span>
-        <div className={styles.timelineTrack}><BeatTicks grid={beatGrid} durationMs={job.asset.duration_ms} /><input aria-label={t("Playback position", "播放位置")} type="range" min={0} max={duration || 1} step={0.01} value={position} onChange={(event) => seek(Number(event.target.value))} /></div>
+        <div className={styles.timelineTrack}><BeatTicks grid={beatGrid} durationMs={job.asset.duration_ms} /><input data-studio-position aria-label={t("Playback position", "播放位置")} type="range" min={0} max={duration || 1} step={0.01} value={position} onChange={(event) => seek(Number(event.target.value))} /></div>
         <span>{formatDuration(duration)}</span>
       </div>
       <label className={styles.master}>{t("Master volume", "主音量")}<input aria-label={t("Master volume", "主音量")} type="range" min={0} max={1} step={0.01} value={master} onChange={(event) => setMaster(Number(event.target.value))} /><output>{Math.round(master * 100)}%</output></label>
@@ -488,7 +488,7 @@ export function StemMixer({ job, sourceTrack }: { job: StudioJob; sourceTrack?: 
           <label className={styles.gain}>{t("Gain", "增益")} <input aria-label={t(`${titleCase(stem)} gain`, `${LABELS[stem]}增益`)} type="range" min={0} max={1.5} step={0.01} value={gains[stem]} onChange={(event) => setGains((current) => ({ ...current, [stem]: Number(event.target.value) }))} /><output>{Math.round(gains[stem] * 100)}%</output></label>
           <button className={styles.mixToggle} type="button" aria-label={t(`Mute ${titleCase(stem)}`, `${LABELS[stem]}静音`)} title={t(`Mute ${titleCase(stem)}`, `${LABELS[stem]}静音`)} aria-pressed={muted.has(stem)} onClick={() => setMuted(toggleSet(muted, stem))}>M</button>
           <button className={styles.mixToggle} type="button" aria-label={t(`Solo ${titleCase(stem)}`, `${LABELS[stem]}独奏`)} title={t(`Solo ${titleCase(stem)}`, `${LABELS[stem]}独奏`)} aria-pressed={soloed.has(stem)} onClick={() => setSoloed(toggleSet(soloed, stem))}>S</button>
-          {artifact && <a className={styles.download} href={apiUrl(`${artifact.stream_url}?download=true`)} aria-label={t(`Download ${titleCase(stem)} FLAC`, `下载${LABELS[stem]} FLAC`)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4" /></svg><span>FLAC</span></a>}
+          {artifact && <a data-studio-export className={styles.download} href={apiUrl(`${artifact.stream_url}?download=true`)} aria-label={t(`Download ${titleCase(stem)} FLAC`, `下载${LABELS[stem]} FLAC`)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4" /></svg><span>FLAC</span></a>}
         </article>;
       })}
     </section>
