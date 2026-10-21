@@ -1,5 +1,7 @@
 # MusicScope 答辩说明
 
+> 历史设计记录：推荐、演出和 Insights 已退出当前运行入口。保留本文用于追溯；当前功能与启动方式以 [README](../README.md) 和 [架构说明](ARCHITECTURE.md) 为准。
+
 ## 用直白语言介绍系统
 
 - **前端（Next.js、React、TypeScript）**：呈现页面、全局中英文切换、播放器和 Studio 四声部混音器。Node.js 是运行前端开发工具所需的环境，并不承担音频分离。

@@ -1,5 +1,7 @@
 # Live concert intelligence
 
+> 历史设计记录：推荐、演出和 Insights 已退出当前运行入口。保留本文用于追溯；当前功能与启动方式以 [README](../README.md) 和 [架构说明](ARCHITECTURE.md) 为准。
+
 MusicScope Live is a cache-backed application service, not a browser-to-provider proxy. The
 browser consumes normalized MusicScope DTOs; server-only adapters own provider credentials,
 request budgets, retries, health, and vendor response mapping.

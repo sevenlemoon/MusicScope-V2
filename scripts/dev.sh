@@ -358,13 +358,11 @@ start_audio_worker() {
 }
 
 app_state() {
-  local connections library profile
+  local connections library
   connections="$(curl -fsS --max-time 3 "http://127.0.0.1:$API_PORT/api/v1/music-connections" 2>/dev/null || true)"
   library="$(curl -fsS --max-time 3 "http://127.0.0.1:$API_PORT/api/v1/library/summary" 2>/dev/null || true)"
-  profile="$(curl -fsS --max-time 3 "http://127.0.0.1:$API_PORT/api/v1/recommendations/profile" 2>/dev/null || true)"
   if [[ "$connections" == *'"status":"CONNECTED"'* ]]; then say "NetEase: CONNECTED"; else say "NetEase: NOT_CONNECTED/UNKNOWN"; fi
   if [[ "$library" == *'"connection_state":"connected"'* && "$library" != *'"tracks":0'* ]]; then say "Library: READY"; elif [[ -n "$library" ]]; then say "Library: EMPTY"; else say "Library: UNKNOWN"; fi
-  if [[ "$profile" == *'"profile_id"'* ]]; then say "Recommendations: READY"; elif [[ "$profile" == *'Recommendation profile has not been built'* ]]; then say "Recommendations: NOT_READY"; else say "Recommendations: UNKNOWN"; fi
 }
 
 status_mode() {

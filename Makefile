@@ -1,4 +1,4 @@
-.PHONY: install dev api-dev web-dev netease-api-dev lint typecheck test sidecar-check web-dependency-check build contract-generate contract-check schema-check database-check compose-check check
+.PHONY: install dev api-dev web-dev netease-api-dev lint typecheck test worker-check sidecar-check web-dependency-check build contract-generate contract-check schema-check database-check compose-check check
 
 install:
 	uv sync --project apps/api --extra dev
@@ -28,6 +28,11 @@ typecheck:
 test:
 	cd apps/api && .venv/bin/pytest
 	cd apps/web && npm test
+
+worker-check:
+	cd apps/audio-worker && .venv/bin/ruff check audio_worker tests
+	cd apps/audio-worker && .venv/bin/python -m compileall -q audio_worker tests
+	cd apps/audio-worker && .venv/bin/pytest
 
 sidecar-check:
 	cd services/netease-api && npm test

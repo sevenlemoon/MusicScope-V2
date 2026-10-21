@@ -126,7 +126,7 @@ Next.js / React / TypeScript
 | `services/netease-api` | 仅绑定本机的网易云连接服务 |
 | `contracts` | OpenAPI 合约与前端类型来源 |
 
-已配置开发环境后，可运行 `make check` 检查合约、静态分析、测试、数据库、依赖与前端构建；音频 worker 使用独立环境，需另行运行其测试。更多说明见 [架构设计](docs/ARCHITECTURE.md) · [领域模型](docs/DOMAIN_MODEL.md) · [桌面版发布说明](docs/releases/desktop-0.1.0-beta.1.md)。
+已配置开发环境后，可运行 `make check` 检查合约、静态分析、测试、数据库、依赖与前端构建；音频 worker 使用独立环境，可另行运行 `make worker-check`。更多说明见 [架构设计](docs/ARCHITECTURE.md) · [领域模型](docs/DOMAIN_MODEL.md) · [文档索引](docs/README.md) · [桌面版发布说明](docs/releases/desktop-0.1.0-beta.1.md)。
 
 MusicScope 当前面向**单机本地使用**，服务绑定 `127.0.0.1`。`X-MusicScope-User-ID` 用于本地用户选择，不是公网身份验证；共享或远程部署需要另行设计认证、TLS 和访问控制。请勿提交 `.env`、账号会话、个人音频、分轨文件或模型缓存。
 
