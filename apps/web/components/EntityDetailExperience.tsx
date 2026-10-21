@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useTrackSeparation } from "@/hooks/useTrackSeparation";
 import { useEffect, useState } from "react";
 
 import { Artwork } from "@/components/Artwork";
 import { EmptyState } from "@/components/EmptyState";
-import { TrackRow } from "@/components/TrackRow";
+import { CollectionBrowser } from "./CollectionBrowser";
 import { usePlayer } from "@/components/PlayerProvider";
 import { apiRequest } from "@/lib/api-client";
 import type { components } from "@/lib/api-schema.generated";
@@ -14,42 +14,11 @@ import { useText } from "./LocaleProvider";
 
 type EntityType = "album" | "playlist" | "track";
 type TrackItem = components["schemas"]["TrackItem"];
-type TrackPage = components["schemas"]["TrackPage"];
 
 export function EntityDetailExperience({ type, id }: { type: EntityType; id: string }) {
-  if (type === "album") return <AlbumExperience id={id} />;
-  if (type === "playlist") return <PlaylistExperience id={id} />;
+  if (type === "album") return <CollectionBrowser fixed={{ view: "album", id }} />;
+  if (type === "playlist") return <CollectionBrowser fixed={{ view: "playlist", id }} />;
   return <TrackExperience id={id} />;
-}
-
-function AlbumExperience({ id }: { id: string }) {
-  const t = useText();
-  const [detail, setDetail] = useState<components["schemas"]["AlbumDetail"] | null>(null);
-  const [tracks, setTracks] = useState<TrackPage | null>(null);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => { apiRequest<components["schemas"]["AlbumDetail"]>(`/api/v1/albums/${id}?scope=all`).then(setDetail).catch(() => setFailed(true)); }, [id]);
-  useEffect(() => { const query = new URLSearchParams({ scope: "all" }); if (cursor) query.set("cursor", cursor); apiRequest<TrackPage>(`/api/v1/albums/${id}/tracks?${query}`).then(setTracks).catch(() => setFailed(true)); }, [cursor, id]);
-  if (failed) return <MissingEntity type="album" />;
-  if (!detail || !tracks) return <DetailLoading />;
-  return <div className="detail-view"><DetailHero eyebrow={t("ALBUM / SYNCED TRACKS", "专辑 / 已同步曲目")} name={detail.title} artwork={detail.artwork_url} meta={t(`${detail.library_track_count} synchronized tracks on this album`, `此专辑中已同步曲目 ${detail.library_track_count} 首`)} relationships={(detail.artists ?? []).map((artist) => <span key={artist.id}>{artist.name}</span>)} />{tracks.total ? <PagedTracks title={t("Synchronized tracks on this album", "此专辑中已同步的曲目")} page={tracks} setCursor={setCursor} /> : <p className="detail-description">{t("This album is saved in your account, but none of its songs are in the synchronized library yet.", "这张专辑已在账号中收藏，但目前没有属于已同步资料库的曲目。")}</p>}</div>;
-}
-
-function PlaylistExperience({ id }: { id: string }) {
-  const t = useText();
-  const [detail, setDetail] = useState<components["schemas"]["PlaylistDetail"] | null>(null);
-  const [tracks, setTracks] = useState<TrackPage | null>(null);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [sort, setSort] = useState<"original" | "asc" | "desc">("original");
-  const [failed, setFailed] = useState(false);
-  useEffect(() => { apiRequest<components["schemas"]["PlaylistDetail"]>(`/api/v1/playlists/${id}?scope=personal`).then(setDetail).catch(() => setFailed(true)); }, [id]);
-  useEffect(() => { const query = new URLSearchParams({ sort, scope: "personal" }); if (cursor) query.set("cursor", cursor); apiRequest<TrackPage>(`/api/v1/playlists/${id}/tracks?${query}`).then(setTracks).catch(() => setFailed(true)); }, [cursor, id, sort]);
-  if (failed) return <MissingEntity type="playlist" />;
-  if (!detail || !tracks) return <DetailLoading />;
-  return <div className="detail-view"><DetailHero eyebrow={t("PLAYLIST / NETEASE", "歌单 / 网易云音乐")} name={detail.name} artwork={detail.artwork_url} meta={t(`${detail.synchronized_track_count} synchronized tracks${detail.provider_track_count !== null && detail.provider_track_count !== detail.synchronized_track_count ? ` · ${detail.provider_track_count} reported by provider` : ""}`, `${detail.synchronized_track_count} 首已同步曲目${detail.provider_track_count !== null && detail.provider_track_count !== detail.synchronized_track_count ? ` · 来源报告 ${detail.provider_track_count} 首` : ""}`)} description={detail.description} />
-    <div className="detail-sort" aria-label={t("Playlist track order", "歌单曲目顺序")}>{(["original", "asc", "desc"] as const).map((value) => <button type="button" key={value} aria-pressed={sort === value} onClick={() => { setSort(value); setCursor(null); }}>{value === "original" ? t("Playlist order", "歌单顺序") : value === "asc" ? "A–Z" : "Z–A"}</button>)}</div>
-    <PagedTracks title={t("Playlist tracks", "歌单曲目")} page={tracks} setCursor={setCursor} />
-  </div>;
 }
 
 function TrackExperience({ id }: { id: string }) {
@@ -57,15 +26,14 @@ function TrackExperience({ id }: { id: string }) {
   const [detail, setDetail] = useState<components["schemas"]["TrackDetail"] | null>(null);
   const [failed, setFailed] = useState(false);
   const player = usePlayer();
-  const router = useRouter();
+  const { start: separate, pending, error } = useTrackSeparation(id, t("Could not start separation. Try again.", "分轨创建失败，请重试。"));
   useEffect(() => { apiRequest<components["schemas"]["TrackDetail"]>(`/api/v1/tracks/${id}`).then(setDetail).catch(() => setFailed(true)); }, [id]);
   if (failed) return <MissingEntity type="track" />;
   if (!detail) return <DetailLoading />;
   const track: TrackItem = { id: detail.id, title: detail.title, artwork_url: detail.artwork_url, duration_ms: detail.duration_ms, album_id: detail.album?.id ?? null, album: detail.album?.name ?? null, artists: (detail.artists ?? []).map((artist) => artist.name), artist_items: detail.artists ?? [], sort_group: "#", playlist_position: null };
   const active = player.current?.id === id;
-  const separate = () => router.push(`/studio?source=account&track=${id}`);
   return <div className="detail-view"><DetailHero eyebrow={t("TRACK / CANONICAL", "曲目 / 规范化资料")} name={detail.title} artwork={detail.artwork_url} meta={durationText(detail.duration_ms, t("en", "zh"))} relationships={<>{(detail.artists ?? []).map((artist, index) => <span key={artist.id}>{index > 0 && ", "}{artist.name}</span>)}{detail.album && <> · <Link href={`/album/${detail.album.id}`}>{detail.album.name}</Link></>}</>} />
-    <div className="detail-actions"><button className="button button-primary" type="button" onClick={() => void (active ? player.toggle() : player.playTrack(track))}>{active && player.status === "playing" ? t("Pause", "暂停") : t("Play from NetEase", "从网易云音乐播放")}</button><button className="button button-quiet" type="button" onClick={separate}>{t("Separate stems", "分离声部")}</button></div>
+    <div className="detail-actions"><button className="button button-primary" type="button" onClick={() => void (active ? player.toggle() : player.playTrack(track))}>{active && player.status === "playing" ? t("Pause", "暂停") : t("Play from NetEase", "从网易云音乐播放")}</button><button className="button button-quiet" type="button" onClick={() => void separate()} disabled={pending} aria-busy={pending}>{pending ? t("Starting…", "创建中…") : t("Separate stems", "分离声部")}</button></div>{error && <p className="studio-error" role="alert">{error}</p>}
     <section className="detail-section"><div className="detail-section-heading"><h2>{t("Liked playlist", "我喜欢的音乐")}</h2><span>{(detail.playlists ?? []).length}</span></div>{(detail.playlists ?? []).length ? <div className="relationship-list">{(detail.playlists ?? []).map((playlist) => <Link key={playlist.id} href={`/playlist/${playlist.id}`}>{playlist.name}<span>{t("Open playlist →", "打开歌单 →")}</span></Link>)}</div> : <p>{t("This track is not currently in your synchronized liked-songs playlist.", "此曲目目前不在已同步的“我喜欢的音乐”歌单中。")}</p>}</section>
   </div>;
 }
@@ -73,11 +41,6 @@ function TrackExperience({ id }: { id: string }) {
 function DetailHero({ eyebrow, name, artwork, meta, description, relationships }: { eyebrow: string; name: string; artwork?: string | null; meta: string; description?: string | null; relationships?: React.ReactNode }) {
   const t = useText();
   return <header className="detail-hero"><Artwork src={artwork} alt="" sizes="(max-width: 767px) 180px, 280px" className="detail-artwork" eager /><div><p className="eyebrow">{eyebrow}</p><h1>{name}</h1>{relationships && <div className="detail-relationships">{relationships}</div>}<p className="detail-meta">{meta}</p>{description && <p className="detail-description">{description}</p>}<Link className="text-link" href="/library">{t("← Back to library", "← 返回资料库")}</Link></div></header>;
-}
-
-function PagedTracks({ title, page, setCursor }: { title: string; page: TrackPage; setCursor: (cursor: string | null) => void }) {
-  const t = useText();
-  return <section className="detail-section"><div className="detail-section-heading"><h2>{title}</h2><span>{page.range_start}–{page.range_end} {t("of", "/")} {page.total}</span></div><div className="track-list">{page.items.map((track, index) => <TrackRow track={track} key={track.id} index={(page.range_start || 1) + index} />)}</div><div className="pagination-controls"><button className="button button-quiet" type="button" disabled={!page.previous_cursor} onClick={() => setCursor(page.previous_cursor ?? null)}>{t("Previous", "上一页")}</button><button className="button button-quiet" type="button" disabled={!page.next_cursor} onClick={() => setCursor(page.next_cursor ?? null)}>{t("Next", "下一页")}</button></div></section>;
 }
 
 function DetailLoading() { const t = useText(); return <div className="library-loading">{t("Loading canonical details…", "正在读取曲目资料…")}</div>; }

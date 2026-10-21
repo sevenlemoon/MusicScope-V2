@@ -273,6 +273,15 @@ class PlaybackSourceResponse(BaseModel):
     resolution_ms: int
 
 
+class TrackLyricsResponse(BaseModel):
+    track_id: str
+    provider: Literal["netease"] = "netease"
+    kind: Literal["synced", "plain", "instrumental", "none"]
+    original: str = ""
+    translated: str = ""
+    precision: Literal["line", "none"] = "none"
+
+
 class StemEntryResponse(BaseModel):
     status: Literal["ACCOUNT_SONG_SELECTED"]
     message: str
@@ -362,3 +371,10 @@ class HealthResponse(BaseModel):
     service: str
     release: str | None = None
     database: str | None = None
+
+
+class DefaultCollectionResponse(BaseModel):
+    status: Literal["resolved", "no_connection", "missing", "ambiguous"]
+    playlist_id: str | None = None
+    connection_id: str | None = None
+    account_name: str | None = None

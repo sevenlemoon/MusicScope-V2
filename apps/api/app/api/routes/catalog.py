@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.schemas import (
@@ -17,6 +17,7 @@ from app.api.schemas import (
     PlaylistDetail,
     StemEntryResponse,
     TrackDetail,
+    TrackLyricsResponse,
     TrackPage,
 )
 from app.core.database import get_db
@@ -36,18 +37,40 @@ from app.providers.errors import (
 )
 from app.services.library_queries import (
     apply_group,
+    apply_track_search,
     display_group,
     offset_from_cursor,
     page_metadata,
     sort_clauses,
     track_items,
 )
-from app.services.library_scope import LibraryScope, playlist_ids_for_scope, track_ids_for_scope
+from app.services.library_scope import (
+    LibraryScope,
+    album_ids_for_scope,
+    playlist_ids_for_scope,
+    track_ids_for_scope,
+)
+from app.services.lyrics import TrackLyricsService
 from app.services.playback import PlaybackService
 
 router = APIRouter(tags=["catalog"])
 DbSession = Annotated[Session, Depends(get_db)]
 SortOrder = Literal["asc", "desc"]
+
+
+@router.get("/tracks/{track_id}/lyrics", response_model=TrackLyricsResponse)
+async def track_lyrics(track_id: UUID, response: Response, db: DbSession) -> TrackLyricsResponse:
+    response.headers["Cache-Control"] = "private, no-store"
+    try:
+        return await TrackLyricsService(db).get(track_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="Track not found.") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=409, detail="Connect NetEase to load lyrics.") from exc
+    except ProviderAuthenticationExpired as exc:
+        raise HTTPException(status_code=401, detail="NetEase session expired.") from exc
+    except ProviderError as exc:
+        raise HTTPException(status_code=503, detail="Lyrics are temporarily unavailable.") from exc
 
 
 def _track_page(
@@ -63,11 +86,7 @@ def _track_page(
     filtered = apply_group(statement, Track.title, group)
     total = db.scalar(select(func.count()).select_from(filtered.order_by(None).subquery())) or 0
     rows = list(
-        db.scalars(
-            filtered.order_by(*sort_clauses(Track.title, Track.id, sort))
-            .offset(offset)
-            .limit(limit)
-        )
+        db.scalars(filtered.order_by(*sort_clauses(Track.title, Track.id, sort)).offset(offset).limit(limit))
     )
     items = track_items(db, rows)
     return TrackPage(
@@ -97,11 +116,7 @@ def _artist_references(db: Session, album_id: UUID, scope: LibraryScope) -> list
                 TrackArtist.position == 0,
             )
         )
-        statement = (
-            select(Artist)
-            .where(Artist.id.in_(artist_ids))
-            .order_by(Artist.name, Artist.id)
-        )
+        statement = select(Artist).where(Artist.id.in_(artist_ids)).order_by(Artist.name, Artist.id)
     artists = db.scalars(statement)
     return [EntityReference(id=str(artist.id), name=artist.name) for artist in artists]
 
@@ -152,9 +167,7 @@ def artist_tracks(
         .where(TrackArtist.artist_id == artist_id)
     )
     if scope == "liked":
-        statement = statement.where(
-            TrackArtist.position == 0, Track.id.in_(track_ids_for_scope(db, scope))
-        )
+        statement = statement.where(TrackArtist.position == 0, Track.id.in_(track_ids_for_scope(db, scope)))
     return _track_page(db, statement, cursor=cursor, limit=limit, sort=sort)
 
 
@@ -177,17 +190,11 @@ def artist_albums(
         .distinct()
     )
     if scope == "liked":
-        album_ids = album_ids.where(
-            TrackArtist.position == 0, Track.id.in_(track_ids_for_scope(db, scope))
-        )
+        album_ids = album_ids.where(TrackArtist.position == 0, Track.id.in_(track_ids_for_scope(db, scope)))
     statement = select(Album).where(Album.id.in_(album_ids))
     total = db.scalar(select(func.count()).select_from(statement.subquery())) or 0
     albums = list(
-        db.scalars(
-            statement.order_by(*sort_clauses(Album.title, Album.id, sort))
-            .offset(offset)
-            .limit(limit)
-        )
+        db.scalars(statement.order_by(*sort_clauses(Album.title, Album.id, sort)).offset(offset).limit(limit))
     )
     return AlbumPage(
         items=[
@@ -206,9 +213,27 @@ def artist_albums(
     )
 
 
+def _visible_album(db: Session, album_id: UUID, scope: LibraryScope) -> Album | None:
+    statement = select(Album).where(Album.id == album_id)
+    if scope == "personal":
+        # Keep saved albums and deep links from this local user's synchronized playlists.
+        # This ID helper includes subscribed playlists but still checks connection.user_id.
+        member_albums = select(Track.album_id).where(
+            Track.id.in_(
+                select(PlaylistTrack.track_id).where(
+                    PlaylistTrack.playlist_id.in_(playlist_ids_for_scope(db, "all"))
+                )
+            )
+        )
+        statement = statement.where(
+            or_(Album.id.in_(album_ids_for_scope(db, scope)), Album.id.in_(member_albums))
+        )
+    return db.scalar(statement)
+
+
 @router.get("/albums/{album_id}", response_model=AlbumDetail)
 def album_detail(album_id: UUID, db: DbSession, scope: LibraryScope = "liked") -> AlbumDetail:
-    album = db.get(Album, album_id)
+    album = _visible_album(db, album_id, scope)
     if album is None:
         raise HTTPException(status_code=404, detail="Album not found.")
     track_query = select(func.count()).select_from(Track).where(Track.album_id == album.id)
@@ -232,15 +257,16 @@ def album_tracks(
     limit: int = Query(50, ge=1, le=100),
     sort: SortOrder = "asc",
     scope: LibraryScope = "liked",
+    q: Annotated[str | None, Query(max_length=200)] = None,
 ) -> TrackPage:
-    if db.get(Album, album_id) is None:
+    if _visible_album(db, album_id, scope) is None:
         raise HTTPException(status_code=404, detail="Album not found.")
     statement = select(Track).where(Track.album_id == album_id)
     if scope == "liked":
         statement = statement.where(Track.id.in_(track_ids_for_scope(db, scope)))
     return _track_page(
         db,
-        statement,
+        apply_track_search(statement, q),
         cursor=cursor,
         limit=limit,
         sort=sort,
@@ -254,9 +280,7 @@ def playlist_detail(playlist_id: UUID, db: DbSession, scope: LibraryScope = "lik
         raise HTTPException(status_code=404, detail="Playlist not found.")
     synchronized_count = (
         db.scalar(
-            select(func.count())
-            .select_from(PlaylistTrack)
-            .where(PlaylistTrack.playlist_id == playlist.id)
+            select(func.count()).select_from(PlaylistTrack).where(PlaylistTrack.playlist_id == playlist.id)
         )
         or 0
     )
@@ -278,25 +302,20 @@ def playlist_tracks(
     limit: int = Query(50, ge=1, le=100),
     sort: Literal["original", "asc", "desc"] = "original",
     scope: LibraryScope = "liked",
+    q: Annotated[str | None, Query(max_length=200)] = None,
 ) -> TrackPage:
     if db.get(Playlist, playlist_id) is None or (
         scope != "all" and playlist_id not in playlist_ids_for_scope(db, scope)
     ):
         raise HTTPException(status_code=404, detail="Playlist not found.")
     offset = offset_from_cursor(cursor)
-    total = (
-        db.scalar(
-            select(func.count())
-            .select_from(PlaylistTrack)
-            .where(PlaylistTrack.playlist_id == playlist_id)
-        )
-        or 0
-    )
     statement = (
         select(Track, PlaylistTrack.position)
         .join(PlaylistTrack, PlaylistTrack.track_id == Track.id)
         .where(PlaylistTrack.playlist_id == playlist_id)
     )
+    statement = apply_track_search(statement, q)
+    total = db.scalar(select(func.count()).select_from(statement.subquery())) or 0
     if sort == "original":
         statement = statement.order_by(PlaylistTrack.position, Track.id)
     else:
@@ -334,9 +353,7 @@ def track_detail(track_id: UUID, db: DbSession, scope: LibraryScope = "liked") -
         .order_by(Playlist.name, Playlist.id)
     )
     if scope == "liked":
-        playlist_statement = playlist_statement.where(
-            Playlist.id.in_(playlist_ids_for_scope(db, scope))
-        )
+        playlist_statement = playlist_statement.where(Playlist.id.in_(playlist_ids_for_scope(db, scope)))
     playlists = db.scalars(playlist_statement)
     album = db.get(Album, track.album_id) if track.album_id else None
     return TrackDetail(
@@ -346,9 +363,7 @@ def track_detail(track_id: UUID, db: DbSession, scope: LibraryScope = "liked") -
         duration_ms=track.duration_ms,
         artists=[EntityReference(id=str(artist.id), name=artist.name) for artist in artists],
         album=EntityReference(id=str(album.id), name=album.title) if album else None,
-        playlists=[
-            EntityReference(id=str(playlist.id), name=playlist.name) for playlist in playlists
-        ],
+        playlists=[EntityReference(id=str(playlist.id), name=playlist.name) for playlist in playlists],
     )
 
 

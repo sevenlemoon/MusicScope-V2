@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import styles from "./AppShell.module.css";
 import { Icon } from "./Icon";
 import { apiRequest } from "@/lib/api-client";
 import type { components } from "@/lib/api-schema.generated";
@@ -33,12 +34,12 @@ function AppFrame({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("musicscope:connection-changed", refresh);
   }, [pathname]);
 
-  return <div className="app-shell">
+  return <div className={`app-shell ${styles.shell}`}>
     <header className="tool-topbar">
       <Link className="tool-brand" href="/" aria-label={locale === "zh" ? "MusicScope 分轨首页" : "MusicScope separation home"}><span className="tool-mark"><AudioMark /></span><span><strong>MusicScope</strong><small>STEM STUDIO</small></span></Link>
       <nav className="tool-nav" aria-label={locale === "zh" ? "主导航" : "Primary navigation"}>
         <Link href="/" aria-current={pathname === "/" || pathname.startsWith("/studio") ? "page" : undefined}>{locale === "zh" ? "分轨" : "Separate"}</Link>
-        <Link href="/library" aria-current={pathname.startsWith("/library") ? "page" : undefined}>{locale === "zh" ? "资料库" : "Library"}</Link>
+        <Link href="/library" onNavigate={() => window.dispatchEvent(new Event("musicscope:library-default"))} aria-current={pathname.startsWith("/library") ? "page" : undefined}>{locale === "zh" ? "资料库" : "Library"}</Link>
       </nav>
       <div className="tool-actions">
         <LocaleToggle />

@@ -1,0 +1,24 @@
+.row { position: relative; min-width: 0; min-height: 72px; display: grid; grid-template-columns: 28px 44px minmax(0, 1.35fr) minmax(100px, .8fr) 46px auto; align-items: center; gap: 14px; padding: 10px 6px; border-bottom: 1px solid var(--line); }
+.row:hover, .row:global(.track-row-active) { background: #d9e6bf07; }
+.row:global(.track-row-active)::before { content: ""; position: absolute; inset: 14px auto 14px 0; width: 2px; background: var(--accent); }
+.row :global(.track-number), .row :global(.track-duration) { color: var(--text-faint); font: 11px/1 ui-monospace, monospace; text-align: center; }
+.row :global(.track-artwork) { width: 44px; border-radius: 7px; }
+.row :global(.track-artwork span) { font-size: 17px; }
+.row :global(.track-primary) { min-width: 0; display: grid; gap: 6px; }
+.row :global(.track-primary > button) { overflow: hidden; font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.row :global(.track-primary > span), .row :global(.track-album) { overflow: hidden; color: var(--text-faint); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.row :global(.track-album a:hover) { color: var(--accent); }
+.row :global(.track-actions) { display: flex; align-items: center; gap: 4px; }
+.row :global(.track-actions > button), .row :global(.track-actions summary) { min-width: 44px; min-height: 44px; display: grid; place-items: center; padding: 0 8px; color: var(--text-soft); background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; font-size: 12px; list-style: none; }
+.row :global(.track-actions > button:hover), .row :global(.track-actions summary:hover) { color: var(--accent); background: #d9e6bf0b; }
+.row :global(.track-actions button:disabled) { opacity: .5; cursor: wait; }
+.row :global(.track-actions details) { position: relative; }
+.row :global(.track-actions summary::-webkit-details-marker) { display: none; }
+.row :global(.track-actions details > div) { position: absolute; right: 0; top: 44px; z-index: 8; width: 150px; display: grid; padding: 6px; background: #1d2a2e; border: 1px solid var(--line-strong); border-radius: 9px; box-shadow: 0 12px 30px #0005; }
+.row :global(.track-actions details a) { display: flex; align-items: center; min-height: 44px; padding: 9px; color: var(--text-soft); font-size: 12px; border-radius: 6px; }
+.error { grid-column: 1 / -1; margin: 0; color: var(--danger); font-size: 12px; }
+@media (max-width: 1100px) { .row { grid-template-columns: 24px 44px minmax(0, 1fr) 44px auto; } .row :global(.track-album) { display: none; } }
+@media (max-width: 767px) { .row { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 8px; padding: 9px 0; } .row :global(.track-number), .row :global(.track-duration) { display: none; } .row :global(.track-artwork) { width: 38px; } .row :global(.track-actions) { gap: 0; } .row :global(.track-actions > button), .row :global(.track-actions summary) { padding-inline: 5px; } .row :global(.track-primary > button) { font-size: 13px; } }
+
+.cover { padding: 0; border: 0; background: none; border-radius: 7px; cursor: pointer; }
+.row :global(.track-primary > button) { padding: 0; border: 0; background: none; text-align: left; color: var(--text); font-family: inherit; cursor: pointer; min-height: 24px; }

@@ -140,6 +140,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/default-collection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Default Collection */
+        get: operations["default_collection_api_v1_library_default_collection_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/library/playlists": {
         parameters: {
             query?: never;
@@ -552,6 +569,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tracks/{track_id}/lyrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Track Lyrics */
+        get: operations["track_lyrics_api_v1_tracks__track_id__lyrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tracks/{track_id}/playback-source": {
         parameters: {
             query?: never;
@@ -800,6 +834,20 @@ export interface components {
             provider_user_id?: string | null;
             /** Status */
             status: string;
+        };
+        /** DefaultCollectionResponse */
+        DefaultCollectionResponse: {
+            /** Account Name */
+            account_name?: string | null;
+            /** Connection Id */
+            connection_id?: string | null;
+            /** Playlist Id */
+            playlist_id?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "resolved" | "no_connection" | "missing" | "ambiguous";
         };
         /** EntityReference */
         EntityReference: {
@@ -1339,6 +1387,38 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** TrackLyricsResponse */
+        TrackLyricsResponse: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "synced" | "plain" | "instrumental" | "none";
+            /**
+             * Original
+             * @default
+             */
+            original: string;
+            /**
+             * Precision
+             * @default none
+             * @enum {string}
+             */
+            precision: "line" | "none";
+            /**
+             * Provider
+             * @default netease
+             * @constant
+             */
+            provider: "netease";
+            /** Track Id */
+            track_id: string;
+            /**
+             * Translated
+             * @default
+             */
+            translated: string;
+        };
         /** TrackPage */
         TrackPage: {
             /** Group */
@@ -1432,6 +1512,7 @@ export interface operations {
                 limit?: number;
                 sort?: "asc" | "desc";
                 scope?: "liked" | "personal" | "all";
+                q?: string | null;
             };
             header?: never;
             path: {
@@ -1652,6 +1733,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ArtistEnrichmentResponse"];
+                };
+            };
+        };
+    };
+    default_collection_api_v1_library_default_collection_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefaultCollectionResponse"];
                 };
             };
         };
@@ -2048,6 +2149,7 @@ export interface operations {
                 limit?: number;
                 sort?: "original" | "asc" | "desc";
                 scope?: "liked" | "personal" | "all";
+                q?: string | null;
             };
             header?: never;
             path: {
@@ -2424,6 +2526,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrackDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    track_lyrics_api_v1_tracks__track_id__lyrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                track_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackLyricsResponse"];
                 };
             };
             /** @description Validation Error */

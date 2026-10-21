@@ -60,10 +60,10 @@ def track_ids_for_scope(db: Session, scope: LibraryScope):
 def album_ids_for_scope(db: Session, scope: LibraryScope):
     if scope == "personal":
         user_id = select(User.id).order_by(User.created_at, User.id).limit(1).scalar_subquery()
-        return select(SavedAlbum.album_id).join(
-            MusicConnection, SavedAlbum.connection_id == MusicConnection.id
-        ).where(
-            MusicConnection.user_id == user_id
+        return (
+            select(SavedAlbum.album_id)
+            .join(MusicConnection, SavedAlbum.connection_id == MusicConnection.id)
+            .where(MusicConnection.user_id == user_id)
         )
     return select(Track.album_id).where(
         Track.id.in_(track_ids_for_scope(db, scope)), Track.album_id.is_not(None)
@@ -73,4 +73,50 @@ def album_ids_for_scope(db: Session, scope: LibraryScope):
 def lead_artist_ids_for_scope(db: Session, scope: LibraryScope):
     return select(TrackArtist.artist_id).where(
         TrackArtist.track_id.in_(track_ids_for_scope(db, scope)), TrackArtist.position == 0
+    )
+
+
+def default_liked_collection(db: Session):
+    """Use the same active account as playback; never aggregate other creators."""
+    from app.api.schemas import DefaultCollectionResponse
+
+    user_id = select(User.id).order_by(User.created_at, User.id).limit(1).scalar_subquery()
+    connection = db.scalar(
+        select(MusicConnection)
+        .where(
+            MusicConnection.user_id == user_id,
+            MusicConnection.provider == "netease",
+            MusicConnection.status == "CONNECTED",
+        )
+        .order_by(MusicConnection.updated_at.desc(), MusicConnection.id)
+        .limit(1)
+    )
+    if connection is None:
+        return DefaultCollectionResponse(status="no_connection")
+    rows = list(db.scalars(select(Playlist).where(Playlist.owner_connection_id == connection.id)))
+
+    def owned(playlist):
+        metadata = playlist.metadata_json
+        creator = metadata.get("creator_user_id")
+        return (
+            str(creator) == connection.provider_user_id
+            if creator is not None
+            else metadata.get("subscribed") is False
+        )
+
+    typed = [p for p in rows if p.metadata_json.get("special_type") == 5 and owned(p)]
+    legacy = [
+        p
+        for p in rows
+        if p.metadata_json.get("special_type") is None
+        and not p.metadata_json.get("subscribed")
+        and (p.metadata_json.get("creator_user_id") is None or owned(p))
+        and p.name == f"{connection.metadata_json.get('nickname', '')}喜欢的音乐"
+    ]
+    candidates = typed or legacy
+    return DefaultCollectionResponse(
+        status="resolved" if len(candidates) == 1 else "ambiguous" if candidates else "missing",
+        playlist_id=str(candidates[0].id) if len(candidates) == 1 else None,
+        connection_id=str(connection.id),
+        account_name=connection.metadata_json.get("nickname"),
     )

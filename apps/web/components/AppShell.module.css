@@ -1,0 +1,20 @@
+.shell {
+  --canvas: #10171b;
+  --canvas-soft: #151f23;
+  --surface-1: #172226;
+  --surface-2: #1d292d;
+  --surface-3: #263638;
+  --accent: #d9e6bf;
+  --accent-ink: #1a261b;
+  --text: #f0f3ee;
+  --text-soft: #b1bdb9;
+  --text-faint: #95a5a1;
+  --line: #dae8dc12;
+  --line-strong: #dae8dc29;
+  background: radial-gradient(ellipse at 15% 0, #20352d66, transparent 50rem), #10171b;
+}
+.shell :global(.tool-topbar) { background: #10191cec; }
+.shell :global(.page-content) { width: min(1280px, calc(100% - clamp(32px, 8vw, 112px))); }
+.shell :global(.button-primary) { box-shadow: none; }
+.shell :global(.connection-control), .shell :global(.tool-settings) { min-height: 44px; }
+@media (max-width: 767px) { .shell :global(.page-content) { width: calc(100% - 32px); } }

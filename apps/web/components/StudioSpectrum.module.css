@@ -1,0 +1,10 @@
+.panel { min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.heading h3 { margin: 0; color: var(--text-soft); font-size: 11px; font-weight: 600; }
+.heading button { min-height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--text-soft); background: transparent; cursor: pointer; font-size: 10px; }
+.heading button:hover { color: var(--accent); }
+.heading button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.canvas { display: block; width: 100%; height: 64px; margin-top: 8px; }
+.placeholder { display: grid; min-height: 64px; align-content: center; margin: 8px 0 0; color: #929a9d; font-size: 12px; line-height: 1.6; }
+.note { margin: 4px 0 0; color: #929a9d; font-size: 10px; line-height: 1.5; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .canvas { height: 64px; } .heading button { min-height: 40px; } .placeholder { min-height: 64px; } }

@@ -18,7 +18,7 @@ describe("canonical detail pages", () => {
     push.mockReset();
     global.fetch = jest.fn((input) => {
       const url = String(input);
-      if (url.includes("/stem-jobs")) return response({ status: "ACCOUNT_SONG_SELECTED", message: "Choose a model in Studio.", studio_url: "/studio?source=account&track=t1" }) as never;
+      if (url.includes("/studio/tracks/")) return response({ id: "created-job" }) as never;
       if (url.includes("/albums/al1?")) return response({ id: "al1", title: "Canonical album", artwork_url: null, artists: [{ id: "a1", name: "Artist One" }], library_track_count: 1 }) as never;
       if (url.includes("/albums/al1/tracks")) return response(trackPage) as never;
       if (url.includes("/playlists/p1?")) return response({ id: "p1", name: "Canonical playlist", artwork_url: null, provider_track_count: 1, synchronized_track_count: 1 }) as never;
@@ -33,7 +33,7 @@ describe("canonical detail pages", () => {
     renderDetail("album", "al1");
     expect(await screen.findByRole("heading", { name: "Canonical album", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Synchronized tracks on this album" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Canonical song" })).toHaveAttribute("href", "/track/t1");
+    expect(screen.getByRole("button", { name: "Canonical song" })).toBeInTheDocument();
   });
 
   it("renders playlist order controls and its paged real tracks", async () => {
@@ -43,13 +43,20 @@ describe("canonical detail pages", () => {
     expect(screen.getByText("1–1 of 1")).toBeInTheDocument();
   });
 
-  it("renders track relationships and routes Separate Stems to account-song mode", async () => {
+  it("renders track relationships and starts separation directly from track details", async () => {
     renderDetail("track", "t1");
     expect(await screen.findByRole("heading", { name: "Canonical song", level: 1 })).toBeInTheDocument();
     expect(screen.getByText("Artist One")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Artist One" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Artist Two" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Separate stems" }));
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/studio?source=account&track=t1"));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/studio/jobs/created-job?track=t1"));
   });
+});
+
+it("saved albums without synced songs show an honest empty state and never start playback", async () => {
+  global.fetch = jest.fn((input) => response(String(input).includes("/tracks?") ? { ...trackPage, total: 0, items: [], range_start: 0, range_end: 0 } : { id: "empty", title: "Empty saved album", library_track_count: 0 })) as jest.Mock;
+  renderDetail("album", "empty");
+  expect(await screen.findByText(/This album is saved, but no songs have been synchronized/)).toBeInTheDocument();
+  expect(jest.mocked(fetch).mock.calls.every(([, init]) => !init?.method || init.method === "GET")).toBe(true);
 });

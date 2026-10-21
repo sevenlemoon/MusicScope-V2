@@ -54,6 +54,7 @@ module.exports = {
   album_sublist: moduleCall("album_sublist"),
   playlist_detail: moduleCall("playlist_detail"),
   song_detail: moduleCall("song_detail"),
+  lyric: moduleCall("lyric"),
   song_url_v1: async (data) => {
     await ensureXeapiConfiguration();
     return songUrlV1(data);

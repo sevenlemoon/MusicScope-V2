@@ -11,6 +11,7 @@ from app.api.schemas import (
     ArtistEnrichmentResponse,
     ArtistItem,
     ArtistPage,
+    DefaultCollectionResponse,
     EntityReference,
     LibraryCounts,
     LibrarySearchResponse,
@@ -51,6 +52,7 @@ from app.services.library_queries import (
 from app.services.library_scope import (
     LibraryScope,
     album_ids_for_scope,
+    default_liked_collection,
     lead_artist_ids_for_scope,
     playlist_ids_for_scope,
     track_ids_for_scope,
@@ -468,3 +470,8 @@ async def enrich_artist_artwork(db: DbSession) -> ArtistEnrichmentResponse:
     except ProviderError as exc:
         db.rollback()
         raise HTTPException(status_code=503, detail="Artist enrichment is temporarily unavailable.") from exc
+
+
+@router.get("/default-collection", response_model=DefaultCollectionResponse)
+def default_collection(db: DbSession) -> DefaultCollectionResponse:
+    return default_liked_collection(db)

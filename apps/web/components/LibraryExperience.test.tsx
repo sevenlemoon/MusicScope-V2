@@ -1,118 +1,133 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { LibraryExperience } from "./LibraryExperience";
 import { PlayerProvider } from "./PlayerProvider";
 
-jest.setTimeout(30000);
+jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+const response = (payload: object) => Promise.resolve({ ok: true, json: async () => payload });
+const base = { total: 60, next_cursor: "50", previous_cursor: null, range_start: 1, range_end: 50 };
+const song = (id = "t1", title = "Real track") => ({ id, title, artists: ["Artist"], artist_items: [{ id: "a1", name: "Artist" }], album: "Album", album_id: "a1", sort_group: "R", playlist_position: 61 });
+const page = (items = [song()]) => ({ ...base, items });
+const request = (input: RequestInfo | URL) => {
+  const url = new URL(String(input));
+  if (url.pathname.endsWith("/default-collection")) return response({ status: "resolved", playlist_id: "liked", account_name: "Listener" });
+  if (url.pathname.includes("/library/playlists")) return response({ ...base, total: 25, next_cursor: url.searchParams.has("cursor") ? null : "24", items: [{ id: url.searchParams.has("cursor") ? "p25" : "p1", name: url.searchParams.has("cursor") ? "Last playlist" : "Other playlist", track_count: 4 }] });
+  if (url.pathname.includes("/library/albums")) return response({ ...base, next_cursor: null, items: [{ id: "a1", title: "Saved album", artists: [] }] });
+  if (url.pathname.includes("/library/search")) return response({ ...base, total: 1, playlists: [{ playlist: { id: "p25", name: "Last playlist", track_count: 4 } }], albums: [] });
+  if (url.pathname.endsWith("/tracks")) return response(page(url.searchParams.has("q") ? url.searchParams.get("q") === "nothing" ? [] : [song("found", "夜 beyond page 1")] : undefined));
+  if (url.pathname.includes("/albums/")) return response({ id: "a1", title: "Saved album", library_track_count: 0 });
+  return response({ id: "liked", name: url.pathname.includes("/p25") ? "Last playlist" : url.pathname.includes("/p1") ? "Other playlist" : "My liked songs", synchronized_track_count: 2549, provider_track_count: 2548 });
+};
+const renderLibrary = () => render(<PlayerProvider><LibraryExperience /></PlayerProvider>);
+const search = () => { fireEvent.click(screen.getByRole("button", { name: "Search current collection" })); return screen.getByRole("searchbox", { name: "Search current collection" }); };
+beforeAll(() => {
+  HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+  HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
+});
+beforeEach(() => { sessionStorage.clear(); window.history.replaceState(null, "", "/library"); jest.spyOn(window, "scrollTo").mockImplementation(() => {}); global.fetch = jest.fn(request) as jest.Mock; });
+afterEach(() => jest.restoreAllMocks());
 
-const pushMock = jest.fn();
-jest.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
+test("defaults to the identified account playlist and keeps local and provider counts distinct", async () => {
+  sessionStorage.setItem("musicscope:library-view:v1", JSON.stringify({ search: "tab=albums" }));
+  renderLibrary();
+  await screen.findByRole("heading", { name: "My liked songs" });
+  expect(screen.getByText(/2549 synced · 2548 reported/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Playlist order" })).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining("cursor=50"), expect.anything()));
+  fireEvent.click(screen.getByRole("button", { name: "Z–A" }));
+  expect(location.search).toContain("sort=desc"); expect(location.search).not.toContain("cursor=");
+});
 
-function response(payload: object) { return Promise.resolve({ ok: true, json: async () => payload }); }
-const pageBase = { total: 1, next_cursor: null, previous_cursor: null, range_start: 1, range_end: 1, groups: [{ key: "R", count: 1 }], sort: "asc", group: null };
+test("song title and artwork are play buttons and details remain in more actions", async () => {
+  renderLibrary(); await screen.findByRole("button", { name: "Real track" });
+  expect(screen.getByRole("button", { name: "Play and open Real track" })).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "Real track" })).not.toBeInTheDocument();
+  expect(screen.getByText("Artist")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Album" })).toHaveAttribute("href", "/album/a1");
+  fireEvent.click(screen.getByLabelText("More actions for Real track"));
+  expect(screen.getByRole("link", { name: "Track details" })).toHaveAttribute("href", "/track/t1");
+});
 
-describe("LibraryExperience", () => {
-  beforeEach(() => {
-    pushMock.mockReset();
-    global.fetch = jest.fn((input) => {
-      const url = String(input);
-      if (url.includes("/saved-albums/sync")) return response({ status: "SYNCED", albums: 23 }) as never;
-      if (url.endsWith("/music-connections")) return response({ items: [{ id: "connection-1", status: "CONNECTED" }] }) as never;
-      if (url.includes("/summary")) return response({ connection_state: "connected", sync_state: "complete", counts: { playlists: 1, albums: 1, artists: 1, tracks: 1 }, items: [] }) as never;
-      if (url.includes("/search")) {
-        if (url.includes("no-match")) return response({ query: "no-match", tracks: [], artists: [], albums: [], playlists: [], total: 0, next_cursor: null, previous_cursor: null, range_start: 0, range_end: 0 }) as never;
-        const unicode = url.includes("%E5%A4%9C");
-        return response({
-          query: unicode ? "夜" : "MILET",
-          tracks: [{ entity_type: "track", match: "prefix", track: { id: "st1", title: unicode ? "夜に駆ける" : "Search track", artwork_url: null, duration_ms: 180000, album_id: "sal1", album: "Search album", artists: ["Search artist"], artist_items: [{ id: "sa1", name: "Search artist" }], sort_group: "S" } }],
-          artists: [{ entity_type: "artist", match: "exact", artist: { id: "sa1", name: "Search artist", artwork_url: null, sort_group: "S" }, library_track_count: 8 }],
-          albums: [{ entity_type: "album", match: "prefix", album: { id: "sal1", title: "Search album", artwork_url: null, artists: [{ id: "sa1", name: "Search artist" }], sort_group: "S" } }],
-          playlists: [{ entity_type: "playlist", match: "substring", playlist: { id: "sp1", name: "Search playlist", artwork_url: null, track_count: 12, sort_group: "S" } }],
-          total: 30,
-          next_cursor: url.includes("cursor=24") ? null : "24",
-          previous_cursor: url.includes("cursor=24") ? "0" : null,
-          range_start: url.includes("cursor=24") ? 25 : 1,
-          range_end: url.includes("cursor=24") ? 30 : 24,
-        }) as never;
-      }
-      if (url.includes("/playback-source")) return response({ track_id: "st1", source_type: "provider_stream", url: "https://temporary.invalid/audio", mime_type: "audio/mpeg", provider: "netease", resolution_ms: 20 }) as never;
-      if (url.includes("/stem-jobs")) return response({ status: "ACCOUNT_SONG_SELECTED", studio_url: "/studio?source=account&track=st1" }) as never;
-      if (url.includes("/playlists")) return response({ ...pageBase, next_cursor: "24", items: [{ id: "p1", name: "Real playlist", artwork_url: null, track_count: 120, sort_group: "R" }] }) as never;
-      if (url.includes("/albums")) return response({ ...pageBase, items: [{ id: "al1", title: "Real album", artwork_url: null, artists: [{ id: "a1", name: "Artist A" }], sort_group: "R" }] }) as never;
-      return response({ ...pageBase, items: [{ id: "t1", title: "Real track", artwork_url: null, album_id: "al1", album: "Real album", artists: ["Artist A", "Artist B"], artist_items: [{ id: "a1", name: "Artist A" }, { id: "a2", name: "Artist B" }], sort_group: "R" }] }) as never;
-    });
-  });
-  afterEach(() => jest.restoreAllMocks());
+test("searches only collection members and resets the cursor without adding typing history", async () => {
+  renderLibrary(); await screen.findByText("Real track"); const length = history.length;
+  fireEvent.change(search(), { target: { value: "夜" } });
+  fireEvent.submit(screen.getByRole("search"));
+  await screen.findByText("夜 beyond page 1");
+  expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/playlists/liked/tracks?scope=personal&sort=original&limit=50&q=%E5%A4%9C"), expect.anything());
+  expect(history.length).toBe(length); expect(location.search).not.toContain("cursor");
+});
 
-  it("provides global pagination and an accessible A–Z index with empty groups disabled", async () => {
-    render(<PlayerProvider><LibraryExperience /></PlayerProvider>);
-    expect(await screen.findByText("Real track")).toBeInTheDocument();
-    expect(screen.getByText(/Playlists are account-created; albums are explicitly saved/)).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: /artists/i })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Refresh saved albums →" }));
-    expect(await screen.findByText("23 saved albums refreshed.")).toBeInTheDocument();
-    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/music-connections/connection-1/saved-albums/sync"), expect.objectContaining({ method: "POST" }));
-    expect(screen.queryByRole("button", { name: "All playlists" })).not.toBeInTheDocument();
-    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/library/tracks?sort=asc&limit=50&scope=personal"), expect.anything());
-    expect(screen.getByRole("tab", { name: /tracks/i })).toHaveAttribute("aria-selected", "true");
-    fireEvent.click(screen.getByRole("tab", { name: /playlists/i }));
-    expect(await screen.findByText("Real playlist")).toBeInTheDocument();
-    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/library/playlists?sort=asc&limit=24&scope=personal"), expect.anything());
-    expect(screen.getByRole("link", { name: /Real playlist/ })).toHaveAttribute("href", "/playlist/p1");
-    expect(screen.getByRole("button", { name: "A" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "R" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("cursor=24"), expect.anything()));
-  });
+test("clears Unicode search and collapses only after query is clear", async () => {
+  renderLibrary(); await screen.findByText("Real track"); const input = search();
+  fireEvent.change(input, { target: { value: "nothing" } }); fireEvent.submit(screen.getByRole("search"));
+  expect(await screen.findByText("No matching songs in this collection.")).toBeInTheDocument();
+  fireEvent.keyDown(input, { key: "Escape" }); await screen.findByText("Real track");
+  expect(screen.getByRole("searchbox")).toBeInTheDocument();
+  fireEvent.keyDown(input, { key: "Escape" }); expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+});
 
-  it("links tracks and albums while keeping artist credits as plain text", async () => {
-    render(<PlayerProvider><LibraryExperience /></PlayerProvider>);
-    await screen.findByText("Real track");
-    fireEvent.click(screen.getByRole("tab", { name: /albums/i }));
-    expect(await screen.findByRole("link", { name: /Real album/ })).toHaveAttribute("href", "/album/al1");
-    fireEvent.click(screen.getByRole("tab", { name: /tracks/i }));
-    expect(await screen.findByRole("link", { name: "Real track" })).toHaveAttribute("href", "/track/t1");
-    expect(screen.getByText("Artist A")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Artist A" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Artist B")).not.toBeInTheDocument();
-  });
+test("waits for IME, debounces input, and rejects late search responses even when abort is ignored", async () => {
+  let finish!: (value: unknown) => void;
+  global.fetch = jest.fn((input) => String(input).includes("q=slow") ? new Promise((resolve) => { finish = resolve; }) : request(input)) as jest.Mock;
+  renderLibrary(); await screen.findByText("Real track"); const input = search();
+  fireEvent.compositionStart(input); fireEvent.change(input, { target: { value: "夜" } });
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 330)); });
+  expect(jest.mocked(fetch).mock.calls.some(([url]) => String(url).includes("q="))).toBe(false);
+  fireEvent.compositionEnd(input); await screen.findByText("夜 beyond page 1");
+  fireEvent.change(input, { target: { value: "slow" } }); fireEvent.submit(screen.getByRole("search"));
+  await waitFor(() => expect(finish).toBeDefined());
+  fireEvent.change(input, { target: { value: "nothing" } }); fireEvent.submit(screen.getByRole("search"));
+  await screen.findByText("No matching songs in this collection.");
+  await act(async () => finish(await response(page([song("late", "Late response")]))));
+  expect(screen.queryByText("Late response")).not.toBeInTheDocument();
+});
 
-  it("searches tracks, albums and playlists without artist results", async () => {
-    render(<PlayerProvider><LibraryExperience /></PlayerProvider>);
-    await screen.findByText("Real track");
-    const input = screen.getByPlaceholderText("Search liked tracks, created playlists and saved albums");
-    fireEvent.change(input, { target: { value: "  MILET  " } });
-    fireEvent.submit(screen.getByRole("search"));
-    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("scope=personal"), expect.anything());
-    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("types=track%2Calbum%2Cplaylist"), expect.anything());
+test("selects one cover and closes immediately, loads page 25, and rejects the old collection response", async () => {
+  let finish!: (value: unknown) => void;
+  global.fetch = jest.fn((input) => String(input).includes("/p1/tracks") ? new Promise((resolve) => { finish = resolve; }) : request(input)) as jest.Mock;
+  renderLibrary(); await screen.findByText("Real track");
+  const switcher = screen.getByRole("button", { name: /Switch album/ }); switcher.focus(); fireEvent.click(switcher);
+  await screen.findByRole("button", { name: /Other playlist/ });
+  fireEvent.click(screen.getByRole("button", { name: /Other playlist/ }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument(); expect(switcher).toHaveFocus();
+  expect(screen.queryByText("Real track")).not.toBeInTheDocument();
+  fireEvent.click(switcher); await screen.findByRole("button", { name: /Other playlist/ });
+  fireEvent.click(screen.getByRole("button", { name: "Load more collections →" }));
+  fireEvent.click(await screen.findByRole("button", { name: /Last playlist/ }));
+  await screen.findByRole("heading", { name: "Last playlist" });
+  await act(async () => finish(await response(page([song("late", "Wrong collection")]))));
+  expect(screen.queryByText("Wrong collection")).not.toBeInTheDocument();
+});
 
-    expect(await screen.findByRole("link", { name: "Search track" })).toHaveAttribute("href", "/track/st1");
-    expect(screen.queryByRole("link", { name: /Search artist 8 library tracks/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Search album Search artist · prefix match" })).toHaveAttribute("href", "/album/sal1");
-    expect(screen.getByRole("link", { name: "Search playlist 12 provider-reported tracks · substring match" })).toHaveAttribute("href", "/playlist/sp1");
-    expect(screen.queryByRole("navigation", { name: "Filter by first character" })).not.toBeInTheDocument();
+test.each(["missing", "ambiguous", "no_connection"])("shows an accurate %s default empty state and still offers switching", async (status) => {
+  global.fetch = jest.fn((input) => String(input).includes("default-collection") ? response({ status }) : request(input)) as jest.Mock;
+  renderLibrary(); await screen.findByText(status === "ambiguous" ? /Multiple liked playlists/ : status === "missing" ? /No liked-songs playlist/ : /Connect an account/);
+  expect(screen.queryByText("Real track")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Switch album/ })).toBeEnabled();
+});
 
-    fireEvent.click(screen.getByRole("button", { name: "Play Search track" }));
-    expect(await screen.findByRole("button", { name: "Pause" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Separate stems for Search track" }));
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/studio?source=account&track=st1"));
+test("searches names across all selector pages, handles Esc, and preserves current tracks on mere scroll", async () => {
+  renderLibrary(); await screen.findByText("Real track"); const opener = screen.getByRole("button", { name: /Switch album/ }); opener.focus(); fireEvent.click(opener);
+  await screen.findByRole("button", { name: /Other playlist/ });
+  fireEvent.scroll(screen.getByLabelText("Collection covers"), { target: { scrollLeft: 400 } });
+  expect(location.search).toBe("");
+  const input = screen.getByRole("searchbox", { name: "Search collection names" });
+  fireEvent.change(input, { target: { value: "Last" } }); fireEvent.submit(input.closest("form")!);
+  expect(await screen.findByRole("button", { name: /Last playlist/ })).toBeInTheDocument();
+  expect(fetch).toHaveBeenCalledWith(expect.stringContaining("types=playlist"), expect.anything());
+  fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
+  expect(opener).toHaveFocus(); expect(document.body.style.overflow).not.toBe("hidden");
+});
 
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("cursor=24"), expect.anything()));
-    fireEvent.keyDown(input, { key: "Escape" });
-    expect(await screen.findByRole("navigation", { name: "Filter by first character" })).toBeInTheDocument();
-  });
-
-  it("renders Unicode and honest no-result searches", async () => {
-    render(<PlayerProvider><LibraryExperience /></PlayerProvider>);
-    await screen.findByText("Real track");
-    const input = screen.getByPlaceholderText("Search liked tracks, created playlists and saved albums");
-    fireEvent.change(input, { target: { value: "夜" } });
-    fireEvent.submit(screen.getByRole("search"));
-    expect(await screen.findByRole("link", { name: "夜に駆ける" })).toBeInTheDocument();
-    fireEvent.change(input, { target: { value: "no-match" } });
-    fireEvent.submit(screen.getByRole("search"));
-    expect(await screen.findByText(/No tracks, albums, or playlists match/)).toBeInTheDocument();
-  });
+test("collection errors retry in place with the same sort and search", async () => {
+  let failed = false;
+  window.history.replaceState(null, "", "/library?sort=desc&q=夜");
+  global.fetch = jest.fn((input) => {
+    if (String(input).includes("/tracks?") && !failed) { failed = true; return Promise.resolve({ ok: false, status: 503, json: async () => ({ detail: "Unavailable" }) }); }
+    return request(input);
+  }) as jest.Mock;
+  renderLibrary(); await screen.findByRole("alert");
+  fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+  await screen.findByText("夜 beyond page 1");
+  expect(location.search).toContain("sort=desc"); expect(new URLSearchParams(location.search).get("q")).toBe("夜");
 });

@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.schemas import AlphabetGroup, EntityReference, TrackItem
@@ -127,3 +127,18 @@ def track_items(
         )
         for track in tracks
     ]
+
+
+def apply_track_search(statement: Any, query: str | None) -> Any:
+    """Filter members before count/pagination; EXISTS keeps multi-artist songs unique."""
+    if not query or not query.strip():
+        return statement
+    escaped = query.strip().lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    pattern = f"%{escaped}%"
+    artists = select(TrackArtist.track_id).join(Artist, Artist.id == TrackArtist.artist_id).where(
+        TrackArtist.track_id == Track.id, func.lower(Artist.name).like(pattern, escape="\\")
+    ).exists()
+    album = select(Album.id).where(
+        Album.id == Track.album_id, func.lower(Album.title).like(pattern, escape="\\")
+    ).exists()
+    return statement.where(or_(func.lower(Track.title).like(pattern, escape="\\"), artists, album))

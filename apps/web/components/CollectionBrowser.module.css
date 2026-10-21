@@ -1,0 +1,67 @@
+.browser { min-width: 0; padding: 30px 0; }
+.hero { display: flex; align-items: center; gap: 20px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+.cover { width: 80px; flex: 0 0 80px; border-radius: 12px; }
+.identity { min-width: 0; flex: 1; }
+.identity h1 { font-size: clamp(23px, 3vw, 32px); overflow-wrap: anywhere; margin: 5px 0 9px; }
+.identity p { font-size: 12px; color: var(--text-faint); margin: 0; line-height: 1.7; }
+.switcher, .toolbar button, .picker button { min-height: 44px; border: 1px solid var(--line, #37504c); border-radius: 8px; padding: 0 12px; background: #1a2b2c; color: var(--text-soft, #ced8d6); font: inherit; font-size: 12px; cursor: pointer; }
+.switcher { flex-shrink: 0; }
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 18px 0; }
+.search { min-width: 0; }
+.search > button { display: flex; align-items: center; gap: 6px; }
+.searchField { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; background: #192a2c; width: min(320px, 100%); animation: reveal 180ms ease-out; }
+.searchField:focus-within { border-color: var(--accent); }
+.searchField input { color: var(--text); background: none; border: 0; min-width: 0; width: 240px; max-width: 100%; padding: 0 12px; height: 44px; outline: none; font: inherit; font-size: 13px; }
+.searchField input::-webkit-search-cancel-button { display: none; }
+.searchField button { flex: none; border: 0; background: none; font-size: 22px; min-width: 44px; padding: 0; }
+.sort { display: flex; gap: 5px; flex-shrink: 0; }
+.sort button[aria-pressed="true"], .picker button[aria-selected="true"], .liked[aria-pressed="true"] { color: #172220; background: #d9e6bf; border-color: #d9e6bf; }
+.filter { color: var(--text-soft); font-size: 12px; overflow-wrap: anywhere; }
+.results { min-height: 300px; }
+.results > p { padding: 24px 0; color: var(--text-soft); line-height: 1.8; }
+.range { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 0; }
+.range h2 { font-size: 14px; color: var(--text-soft); }
+.range span { flex-shrink: 0; font-size: 12px; color: var(--text-faint); }
+.picker { --text: #edf0eb; --text-soft: #bdcccb; --line: #39504d; --accent: #d9e6bf; color: var(--text); background: #132325; width: min(900px, calc(100vw - 40px)); max-height: 84dvh; margin: auto; border: 1px solid #3f5551; border-radius: 20px; padding: 24px; overflow-y: auto; box-shadow: 0 30px 100px #0008; opacity: 0; transform: translateY(7px); transition: opacity 170ms ease, transform 170ms ease, display 170ms allow-discrete, overlay 170ms allow-discrete; }
+.picker::backdrop { background: #081114b8; backdrop-filter: blur(6px); }
+.pickerHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.pickerHeader h2 { margin: 0; font-size: 22px; }
+.pickerHeader > button { font-size: 26px; border: 0; background: transparent; }
+.pickerTools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 18px 0; }
+.pickerTools > div { display: flex; gap: 6px; }
+.pickerSearch { display: flex; align-items: center; width: 100%; border: 1px solid #39504d; border-radius: 10px; background: #1b3031; }
+.pickerSearch input { width: 100%; min-width: 0; height: 44px; border: 0; background: none; color: var(--text); padding: 0 14px; font: inherit; font-size: 14px; }
+.pickerSearch > button { border: 0; background: none; font-size: 22px; }
+.railControls { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; font-size: 12px; color: var(--text-soft); }
+.railControls > div { display: flex; gap: 6px; }
+.railControls button { min-width: 44px; font-size: 18px; }
+.rail { display: flex; gap: 16px; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: x proximity; padding: 20px 3px 16px; min-height: 240px; touch-action: pan-x pan-y; scrollbar-width: thin; scrollbar-color: #587065 transparent; }
+.picker .card { scroll-snap-align: start; flex: 0 0 calc((100% - 64px) / 4.5); min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 0; color: var(--text); text-align: left; border: 0; background: none; transition: transform 160ms ease, opacity 160ms ease; transform: scale(.97); user-select: none; }
+.picker .card:hover, .picker .card:focus-visible, .picker .card[aria-pressed="true"] { transform: scale(1); opacity: 1; }
+.card > :first-child { border-radius: 10px; width: 100%; }
+.card strong { font-size: 14px; font-weight: 600; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card small { color: var(--text-soft); font-size: 12px; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card > span { font-size: 11px; color: var(--accent); }
+.picker .loadMore { flex: 0 0 150px; align-self: center; }
+.hint { color: var(--text-soft); font-size: 12px; line-height: 1.7; margin: 6px 0 0; }
+@keyframes reveal { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 767px) {
+  .browser { padding-top: 22px; }
+  .hero { gap: 12px; flex-wrap: wrap; }
+  .cover { width: 60px; flex-basis: 60px; }
+  .identity { flex-basis: calc(100% - 72px); }
+  .identity h1 { font-size: 23px; }
+  .switcher { margin-left: 72px; }
+  .toolbar { gap: 8px; }
+  .search:has(input) { flex-basis: 100%; }
+  .searchField { width: 100%; }
+  .searchField input { flex: 1; }
+  .picker { margin: auto 0 0; width: 100%; max-width: 100%; max-height: 84dvh; padding: 20px 18px max(20px, env(safe-area-inset-bottom)); border-radius: 20px 20px 0 0; }
+  .picker .card { flex-basis: calc((100% - 24px) / 2.15); }
+  .rail { gap: 12px; min-height: 210px; }
+}
+@media (prefers-reduced-motion: reduce) { .picker, .searchField { animation: none; } .picker .card { transition: none; transform: none; } .rail { scroll-behavior: auto; scroll-snap-type: none; } }
+
+.picker[open] { opacity: 1; transform: translateY(0); transition-duration: 210ms; }
+@starting-style { .picker[open] { opacity: 0; transform: translateY(7px); } }
+@media (prefers-reduced-motion: reduce) { .picker, .picker[open] { transition: none; transform: none; } }

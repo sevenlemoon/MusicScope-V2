@@ -486,6 +486,58 @@
         "title": "ConnectionSummary",
         "type": "object"
       },
+      "DefaultCollectionResponse": {
+        "properties": {
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          },
+          "connection_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Id"
+          },
+          "playlist_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playlist Id"
+          },
+          "status": {
+            "enum": [
+              "resolved",
+              "no_connection",
+              "missing",
+              "ambiguous"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "DefaultCollectionResponse",
+        "type": "object"
+      },
       "EntityReference": {
         "properties": {
           "id": {
@@ -1873,6 +1925,55 @@
         "title": "TrackItem",
         "type": "object"
       },
+      "TrackLyricsResponse": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "synced",
+              "plain",
+              "instrumental",
+              "none"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "original": {
+            "default": "",
+            "title": "Original",
+            "type": "string"
+          },
+          "precision": {
+            "default": "none",
+            "enum": [
+              "line",
+              "none"
+            ],
+            "title": "Precision",
+            "type": "string"
+          },
+          "provider": {
+            "const": "netease",
+            "default": "netease",
+            "title": "Provider",
+            "type": "string"
+          },
+          "track_id": {
+            "title": "Track Id",
+            "type": "string"
+          },
+          "translated": {
+            "default": "",
+            "title": "Translated",
+            "type": "string"
+          }
+        },
+        "required": [
+          "track_id",
+          "kind"
+        ],
+        "title": "TrackLyricsResponse",
+        "type": "object"
+      },
       "TrackPage": {
         "properties": {
           "group": {
@@ -2130,6 +2231,23 @@
               ],
               "title": "Scope",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
             }
           }
         ],
@@ -2649,6 +2767,27 @@
           }
         },
         "summary": "Enrich Artist Artwork",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/api/v1/library/default-collection": {
+      "get": {
+        "operationId": "default_collection_api_v1_library_default_collection_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultCollectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Default Collection",
         "tags": [
           "library"
         ]
@@ -3425,6 +3564,23 @@
               "title": "Scope",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
           }
         ],
         "responses": {
@@ -4114,6 +4270,49 @@
           }
         },
         "summary": "Track Detail",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/tracks/{track_id}/lyrics": {
+      "get": {
+        "operationId": "track_lyrics_api_v1_tracks__track_id__lyrics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "track_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Track Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackLyricsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Track Lyrics",
         "tags": [
           "catalog"
         ]

@@ -31,14 +31,18 @@ const peaks = Object.fromEntries(["VOCALS", "DRUMS", "BASS", "OTHER"].map((stem)
 
 class Gain {
   gain = { value: 1 };
-  connect() { return this; }
+  connections = new Set<Gain>();
+  connect(target: Gain) { this.connections.add(target); return target; }
+  disconnect() {}
 }
 
 class AudioContextMock {
-  static nodes: Gain[] = [];
+  static instance: AudioContextMock;
+  bindings = new Map<HTMLAudioElement, Gain>();
+  constructor() { AudioContextMock.instance = this; }
   destination = new Gain();
-  createGain() { const node = new Gain(); AudioContextMock.nodes.push(node); return node; }
-  createMediaElementSource() { return { connect: (node: Gain) => node }; }
+  createGain() { return new Gain(); }
+  createMediaElementSource(audio: HTMLAudioElement) { const node = new Gain(); this.bindings.set(audio, node); return node; }
   async resume() {}
   async close() {}
 }
@@ -46,7 +50,6 @@ class AudioContextMock {
 describe("StudioExperience", () => {
   beforeEach(() => {
     pushMock.mockReset();
-    AudioContextMock.nodes = [];
     global.AudioContext = AudioContextMock as unknown as typeof AudioContext;
   });
 
@@ -116,6 +119,20 @@ describe("StudioExperience", () => {
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/studio/jobs/job-1"));
   });
 
+  test("a failed cancellation remains retryable in place", async () => {
+    let attempts = 0;
+    global.fetch = jest.fn((input) => {
+      if (String(input).endsWith("/cancel")) return ++attempts === 1
+        ? response({ detail: "Try cancellation again" }, 503) as never : response(job("CANCELLED")) as never;
+      return response(job("QUEUED")) as never;
+    });
+    render(<StudioExperience initialJobId="job-1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "取消任务" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Try cancellation again");
+    fireEvent.click(screen.getByRole("button", { name: "取消任务" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "取消任务" })).not.toBeInTheDocument());
+  });
+
   test("polls active work and exposes cancellation", async () => {
     jest.useFakeTimers();
     const queued = job("QUEUED");
@@ -163,9 +180,15 @@ describe("StudioExperience", () => {
     expect(screen.getByRole("link", { name: "下载人声 FLAC" })).toHaveAttribute("href", "http://localhost:8100/stream/VOCALS?download=true");
     fireEvent.click(screen.getByRole("button", { name: "播放四个声部" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "暂停四个声部" })).toBeInTheDocument());
-    expect(AudioContextMock.nodes[0].gain.value).toBe(0.5);
-    expect(AudioContextMock.nodes).toHaveLength(5);
-    expect(AudioContextMock.nodes.slice(1).map((node) => node.gain.value)).toEqual([0, 1, 0, 0]);
+    const context = AudioContextMock.instance;
+    const master = [...context.bindings.values()][0].connections.values().next().value!.connections.values().next().value!;
+    expect(master.gain.value).toBe(0.5);
+    expect(master.connections.has(context.destination)).toBe(true); // Analysis unavailable in this mock.
+    for (const [audio, source] of context.bindings) {
+      const gain = [...source.connections][0];
+      expect(gain.gain.value).toBe(audio.src.endsWith("DRUMS") ? 1 : 0);
+      expect(gain.connections.has(master)).toBe(true);
+    }
   });
 
   test("playback end resets the transport and a new play starts from zero", async () => {

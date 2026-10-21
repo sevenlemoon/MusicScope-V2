@@ -1,114 +1,149 @@
-# MusicScope
+<h1 align="center">MusicScope</h1>
 
-**把喜欢的歌，拆成可以聆听、练习和再创作的六条音轨。**
+<p align="center"><strong>听见每一个声部。</strong><br>把喜欢的歌，拆成可以聆听、练习和再创作的六条音轨。</p>
 
-A local-first six-stem studio for the music already in your library.
+<p align="center">A local-first six-stem music studio. Separate, mix, practice, and export.</p>
 
-## Windows 桌面预览版
+<p align="center">
+  <a href="https://github.com/sevenlemoon/MusicScope-V2/releases/tag/v0.1.0-beta.1"><img src="https://img.shields.io/badge/preview-v0.1.0--beta.1-d9e6ae" alt="Windows 桌面预览版 v0.1.0-beta.1"></a>
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-182426" alt="平台：macOS 与 Windows">
+  <img src="https://img.shields.io/badge/stems-6-d9e6ae" alt="六轨音频分离">
+</p>
 
-> “内置运行组件”的新版已通过 Windows 打包、中文路径重启、真实 CPU 六轨、离线新任务和播放器状态自动验收，详见 [验收证据与待办](docs/DESKTOP_DELIVERY.md)。纯净 Windows、真人听音、旧版实包升级及再分发审查仍待完成。下方已发布的 beta.1 仍是首次联网准备依赖的旧版；新版尚未发布。
+<p align="center">
+  <a href="#界面预览">界面预览</a> ·
+  <a href="#快速开始">快速开始</a> ·
+  <a href="#使用流程">使用流程</a> ·
+  <a href="#开发与架构">开发与架构</a> ·
+  <a href="https://github.com/sevenlemoon/MusicScope-V2/issues">反馈问题</a>
+</p>
 
-[下载桌面预览版](https://github.com/sevenlemoon/MusicScope-V2/releases/tag/v0.1.0-beta.1)：选择 `MusicScope-0.1.0-beta.1-windows-x64.zip`，完整解压到可写目录，再打开 `MusicScope.exe`。分轨界面直接显示在应用窗口中，无需命令行、Docker 或 WSL2。
+MusicScope 是一款在自己电脑上运行的音乐分轨工作室。导入本地音频，或从网易云资料库选择当前账号可播放的歌曲，即可用 Demucs 分离出 **人声、鼓组、贝斯、吉他、钢琴和其他声音**，在同一个工作台里试听、调节和导出。
 
-首次打开会联网下载 Node、Python、FFmpeg 和音频引擎，并在窗口显示准备进度；模型在首次分轨时下载。资料库使用内置 SQLite，无需安装数据库。因此这是**联网初始化的桌面预览版，不是全离线安装包**。关闭后重新打开会复用组件，网络下载中断可续传。资料保存在 `%APPDATA%/MusicScope/workspace`，更新时保留该目录。原仓库或 Docker 资料库不会自动迁入桌面版。
+## 界面预览
 
-当前提供 Windows x64 预览包，尚未购买代码签名证书，Windows 可能显示未知发布者提示；macOS 继续使用下面的源码启动方式。关闭应用会停止它启动的分轨服务，请等待当前任务完成后退出。
+以下为 **2026-10-21 本地开发版实机截图**。六轨工作台与播放器均在实际播放时拍摄；截图中的新版布局、歌词和频谱展示尚未全部进入默认分支或 beta.1 发布包。版本与截图来源见 [预览记录](docs/README_SHOWCASE.md)。
 
-**先看实际界面：** [六轨混音与导出](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-mixer.jpg) · [网易云扫码连接](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/netease-login.jpg) · [账号选歌](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-account.jpg) · [本地文件导入](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-local.jpg)
+![六轨混音工作台：真实波形、播放中频谱、逐轨增益、静音、独奏与 FLAC 导出](docs/screenshots/readme/studio-mixer.jpg)
 
-![六轨试听与导出界面，展示人声、鼓组、贝斯、吉他、钢琴和其他声音的独立波形](docs/screenshots/studio-mixer.jpg)
+| 本地音频导入 | 网易云资料库 |
+| :---: | :---: |
+| [![导入 MP3、WAV、FLAC 或 M4A/AAC 音频](docs/screenshots/readme/studio-import.jpg)](docs/screenshots/readme/studio-import.jpg) | [![资料库中的歌曲列表、搜索、排序与分轨入口](docs/screenshots/readme/library.jpg)](docs/screenshots/readme/library.jpg) |
+| 不需要登录，从自己的文件开始 | 从已同步的歌曲进入播放或分轨 |
 
-上图是完成分轨后的真实界面：每条音轨都能单独调音量、静音、独奏和下载。截图已避开私人曲名。
+<details>
+<summary>展开查看开发版播放器：封面、歌词阅读与实时频谱</summary>
 
-MusicScope 专注于一件事：从自己的音频文件，或网易云账号“我喜欢的音乐”中的**可播放歌曲**，直接生成同步的 **人声、鼓、贝斯、吉他、钢琴、其他** 六条音轨。界面围绕选曲、分离、试听和导出设计，不需要先经过推荐或数据洞察页面。
+![开发版沉浸播放器：曲目封面、纯音乐歌词状态、实时 FFT 频谱和播放控制](docs/screenshots/readme/player.jpg)
 
-## 网易云扫码连接
+</details>
 
-在连接页点击“生成二维码”，用网易云音乐官方手机应用扫码并确认，然后只读同步资料库。MusicScope 不要求输入网易云密码。
+## 可以做什么
 
-![网易云账号扫码连接入口，展示生成二维码按钮和手机确认流程](docs/screenshots/netease-login.jpg)
+| 能力 | 使用方式 |
+| --- | --- |
+| **六轨分离** | 使用 Demucs `htdemucs_6s`，分别得到人声、鼓、贝斯、吉他、钢琴与其他声音。 |
+| **两种音源** | 上传自己的音频，或扫码连接网易云，从“我喜欢的音乐”选择可播放曲目。 |
+| **逐轨混音** | 查看各轨时间波形，独立调整增益、静音或独奏，点击波形定位。 |
+| **循环练习** | 以 0.75×、1×、1.25× 速度试听，设置 A–B 循环；新任务在节奏证据充足时提供估算 BPM 与节拍刻度。 |
+| **FLAC 导出** | 下载各声部的 FLAC 文件，供后续练习或在其他音频工具中使用。 |
+| **本机资料库** | 同步喜欢的歌曲、自己创建的歌单与明确收藏的专辑，提供中英文界面。 |
 
-[在 GitHub 打开扫码连接截图](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/netease-login.jpg)
+音频分离在本机完成。网易云连接、资料同步与在线音源仍需要网络；模型和依赖需要在首次使用时下载。分离结果可能存在串音或伪影，尤其是吉他与钢琴声部。
 
-这是登录前界面的演示截图；出于账号安全，文档不包含有效登录二维码或个人账号信息。
+## 快速开始
 
-## 两种分轨入口
+### Windows：下载桌面预览版
 
-进入项目就是分轨页面，按音源选择一种入口。图片下方也提供了文字链接，方便图片未加载时查看。
+**[下载 MusicScope v0.1.0-beta.1](https://github.com/sevenlemoon/MusicScope-V2/releases/tag/v0.1.0-beta.1)**
 
-### 1. 网易云账号选歌
+1. 下载 `MusicScope-0.1.0-beta.1-windows-x64.zip`，完整解压到可写目录。
+2. 打开 `MusicScope.exe`，等待窗口完成首次运行环境准备。
+3. 导入音频，开始六轨分离。模型会在首次分轨时下载。
 
-扫码连接后，从资料库挑选当前账号可取得可播放音源的歌曲，直接在本机分轨。
+适用 Windows 10/11 x64，无需手动安装 Node、Python、Docker、WSL2 或数据库，建议预留至少 10 GB 空间。**beta.1 首次启动需要联网准备运行组件，并非全离线安装包。** 当前预览包没有 MusicScope 自有代码签名证书。
 
-![账号歌曲直接分轨：从资料库选取可播放歌曲](docs/screenshots/studio-account.jpg)
+桌面版资料保存在 `%APPDATA%/MusicScope/workspace`，更新时请保留该目录；已有源码版或 Docker 资料不会自动迁入。关闭应用会停止它启动的服务，请等待分轨任务结束后退出。详细验证范围见 [发布说明](docs/releases/desktop-0.1.0-beta.1.md)。
 
-[在 GitHub 打开账号选歌截图](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-account.jpg)
+### macOS：从源码启动
 
-### 2. 独立导入本地文件
+默认分支的 macOS 启动器适用 **Apple silicon**，需要 Docker Desktop、[uv](https://docs.astral.sh/uv/)、FFmpeg（含 ffprobe）和 Node.js **24.21.0 或更新的 24.x**。先启动 Docker Desktop，再运行：
 
-导入自己的 MP3、WAV、FLAC 或 M4A/AAC 音频，不需要登录账号。
+```bash
+git clone https://github.com/sevenlemoon/MusicScope-V2.git
+cd MusicScope-V2
+nvm install
+./MusicScope.command
+```
 
-![独立导入文件：选择本地音频开始六轨分离](docs/screenshots/studio-local.jpg)
+`nvm install` 适用于已安装 nvm 的环境；也可以自行准备符合版本要求的 Node.js。之后可直接双击 `MusicScope.command`。
 
-[在 GitHub 打开本地导入截图](https://github.com/sevenlemoon/MusicScope-V2/blob/master/docs/screenshots/studio-local.jpg)
+启动器准备依赖、数据库迁移和音频 worker，浏览器会自动打开 **[http://127.0.0.1:3100](http://127.0.0.1:3100)**。首次安装需要联网；后续复用已下载的依赖与模型。默认分支仍使用 Docker/PostgreSQL；开发中的 macOS SQLite 启动器尚未合并。
 
-选歌与本地导入截图均裁去了最近任务，避免公开私人歌名。
+<details>
+<summary>Windows 源码启动、状态检查与旧资料库</summary>
 
-## 为什么用它
+下载并完整解压源码后，双击 `MusicScope.cmd`。首次启动会准备 Node.js、uv、Python 3.12、FFmpeg/ffprobe、前后端依赖和音频引擎，资料库使用 `storage/library.sqlite3`。等待终端显示 `APPLICATION READY`，浏览器会自动打开。
 
-- **两种入口**：拖入本地音频；或扫码连接网易云，从“我喜欢的音乐”选择歌曲。账号曲目只有在当前账号可取得可播放音源时才能分离。
-- **六轨而非笼统的伴奏**：Demucs 将人声、鼓、贝斯、吉他、钢琴和其他声音分别导出为 FLAC；各轨保持同步。
-- **边听边练**：逐轨调音量、静音或独奏，调速、循环、拖动波形；新任务还会在鼓轨节奏足够稳定时显示**估算 BPM 和节拍标记**。
-- **本机优先**：音频处理、资料库和账号连接在本机运行；登录会话留在服务端，不交给浏览器。提供中英文界面。
-
-资料库中的曲目来自“我喜欢的音乐”；歌单显示账号自己创建的，专辑显示账号明确收藏的，不会把所有喜欢歌曲涉及的专辑误算成收藏。资料库页可单独更新收藏专辑，无需重扫所有歌单。艺人仅作为曲目和专辑的署名信息显示，不提供独立分类；资料库也不推断播放次数。推荐、演唱会、Insights 和空白个人资料页已移除，项目围绕分轨与资料库维护。
-
-## 在本机运行
-
-| 平台 | 启动方式 | 必需软件 |
+| 操作 | macOS | Windows PowerShell |
 | --- | --- | --- |
-| macOS（Apple silicon） | 双击 `MusicScope.command` | [uv](https://docs.astral.sh/uv/)、Node.js 24.21.0+（24.x）、FFmpeg；无需 Docker |
-| Windows 10/11 x64 | 解压项目后双击 `MusicScope.cmd` | 可联网；无需 Docker、WSL2 或开启虚拟化，工具由脚本准备 |
+| 只读检查状态 | `./scripts/dev.sh --status` | `./scripts/dev.ps1 -Status` |
+| 仅准备环境 | `./scripts/dev.sh --setup` | `./scripts/dev.ps1 -Setup` |
+| 启动但不打开浏览器 | `./scripts/dev.sh --no-open` | `./scripts/dev.ps1 -NoOpen` |
+| 使用旧 Docker 资料库 | 默认使用 PostgreSQL | `./MusicScope.cmd -LegacyDocker` |
 
-### Windows：双击启动
+Windows 源码版 SQLite 与旧 PostgreSQL 资料独立，不会自动迁移或删除旧数据库卷。更新源码时保留 `.env`、`.tools`、`storage` 和数据库卷。下载中断后可重新运行启动器；安装日志位于 `.logs/`。关闭启动终端会停止该窗口启动的服务。
 
-1. 下载并完整解压项目，双击 `MusicScope.cmd`。
-2. 首次启动自动准备 Node.js、uv、Python 3.12、FFmpeg/ffprobe、前后端依赖和音频引擎；资料库直接使用本地 SQLite 文件。
-3. 等待终端显示 `APPLICATION READY`；浏览器会自动打开。以后仍然双击同一个文件，已安装的工具和前端依赖会复用。
+</details>
 
-无需预先安装 Node、Python、uv、FFmpeg，也无需手动修改 PATH。项目工具放在忽略的 `.tools/` 中并校验 SHA-256；FFmpeg 使用 [Gyan Windows essentials 构建](https://www.gyan.dev/ffmpeg/builds/)。网络中断会自动重试，失败后再次双击即可利用下载缓存继续依赖安装。安装细节记录在 `.logs/setup-windows.log`。
+## 使用流程
 
-**首次系统条件：** Windows x64、网络连接和足够的磁盘空间（建议至少 10 GB）。默认启动不安装 Docker、不要求 WSL2、虚拟化、独立数据库或管理员权限。首次下载需要能访问 Node.js、GitHub、PyPI、npm 和 FFmpeg 下载服务。下载中断后保留进度，再次双击可续传。
+1. **选择音源**：导入 MP3、WAV、FLAC、M4A/AAC，或在连接页生成二维码，用网易云官方手机应用扫码确认后同步资料库。本地导入无需账号，文件上限为 **200 MiB / 15 分钟**。
+2. **开始分轨**：提交六轨任务，等待音源准备、模型加载、分离和波形生成。首次任务会额外下载模型；处理耗时取决于音频长度与硬件。
+3. **试听与练习**：播放同步音轨，用独奏听清某个声部，用静音制作练习伴奏；配合变速与 A–B 循环反复练习。
+4. **保存结果**：下载需要的 FLAC 声部。任务结果保存在本机，返回已完成任务无需重新分离。
 
-**已有 Docker 资料库：** Windows 默认资料库保存在 `storage/library.sqlite3`，与旧 PostgreSQL 数据独立。旧 Docker 卷不会删除，也不会自动迁移；若要继续使用旧 Docker 数据库，请运行 `MusicScope.cmd -LegacyDocker`。默认模式会建立独立资料库，不代表旧资料丢失。
+网易云登录不需要在 MusicScope 输入账号密码，会话保留在本机服务端。曲目是否可导入取决于当前账号能否取得可播放音源；请仅处理自己有权使用的音频。
 
-### macOS：双击启动
-
-双击 `MusicScope.command`。首次准备 Python 依赖并构建生产界面；源码和依赖版本未变时直接复用，不再启动 `next dev`。默认资料位于 `~/Library/Application Support/MusicScope/workspace`，使用 SQLite，无需启动 Docker。网易云组件暂时不可用时，本地分轨仍可使用。更多信息见 [macOS 启动说明](docs/MAC_STARTUP.md)。
-
-**已有 macOS Docker 资料：** 保留在原 PostgreSQL 卷和仓库配置中，不会自动迁入新本地资料库。继续打开旧资料请运行 `./MusicScope.command --legacy-docker`；源码开发仍可使用 `./scripts/dev.sh`。
-
-各启动器都会准备隔离的 Python 环境。旧 PostgreSQL 模式仍执行前向迁移。Demucs 模型首次分轨时独立下载、校验，准备完成后使用本地模型。长音频 CPU 分离可能很慢；macOS 优先使用 MPS，Windows 检测到可用 CUDA 时使用 CUDA，否则使用 CPU。需要 CPU 重试时，可用环境变量 `AUDIO_WORKER_DEVICE=cpu` 启动。
-
-可选启动参数：macOS 为 `./MusicScope.command --status|--setup|--no-open`；Windows 为 `./scripts/dev.ps1 -Status|-Setup|-NoOpen`。状态模式只读取状态。关闭启动终端会停止由该窗口启动的应用进程，资料保留；关闭 macOS 浏览器窗口不会停止后台分轨。启动器不会自动同步网易云或删除资料库。
-
-若双击被 Windows 安全提示拦截，可在 PowerShell 中从已检查的仓库目录启动 `./MusicScope.cmd`；不需要修改全局执行策略。更新已有安装时保留 `.env`、`.tools`、`storage` 和数据库卷，它们包含本地配置、工具缓存和工作资料。
-
-## 技术结构
+## 开发与架构
 
 ```text
 Next.js / React / TypeScript
-          → FastAPI / SQLAlchemy → SQLite（Windows 默认）/ PostgreSQL
-          → 网易云连接服务（仅本机）
-          → 独立 Python 音频 worker → Demucs → 六条 FLAC 音轨
+              │
+          FastAPI API
+           ├── SQLAlchemy → SQLite（Windows）/ PostgreSQL（macOS）
+           ├── 网易云连接服务 → 资料同步与可播放音源
+           └── 本地任务队列 → Python audio worker → Demucs / FFmpeg
+                                                    └── FLAC / 波形 / 估算节拍
 ```
 
-本机 `.env` 会生成独一份数据库密码和加密密钥，且已被 Git 忽略。Windows 启动器会收紧该文件的 ACL；macOS 使用仅文件所有者可读写的权限。请勿提交或分享 `.env`、账号会话、分轨源文件和模型缓存。更多设计见 [架构](docs/ARCHITECTURE.md) 与 [领域模型](docs/DOMAIN_MODEL.md)。
+| 目录 | 职责 |
+| --- | --- |
+| `apps/web` | 分轨工作台、资料库、播放器与中英文界面 |
+| `apps/api` | HTTP API、资料同步、任务与音频文件管理 |
+| `apps/audio-worker` | 独立音频环境、模型推理、音轨校验与波形生成 |
+| `apps/desktop` | Windows Electron 桌面外壳 |
+| `services/netease-api` | 仅绑定本机的网易云连接服务 |
+| `contracts` | OpenAPI 合约与前端类型来源 |
 
-## 验证与边界
+已配置开发环境后，可运行 `make check` 检查合约、静态分析、测试、数据库、依赖与前端构建；音频 worker 使用独立环境，需另行运行其测试。更多说明见 [架构设计](docs/ARCHITECTURE.md) · [领域模型](docs/DOMAIN_MODEL.md) · [桌面版发布说明](docs/releases/desktop-0.1.0-beta.1.md)。
 
-macOS/Linux 开发验证：`make check`。GitHub Actions 运行 Linux 全量检查与 Windows 原生 Python、前端和启动器检查。Windows 自动化检查不能替代所有 Windows 硬件、声卡或 GPU 上的完整模型分离实测。
+MusicScope 当前面向**单机本地使用**，服务绑定 `127.0.0.1`。`X-MusicScope-User-ID` 用于本地用户选择，不是公网身份验证；共享或远程部署需要另行设计认证、TLS 和访问控制。请勿提交 `.env`、账号会话、个人音频、分轨文件或模型缓存。
 
-节拍/BPM 是从新分离任务的鼓轨**估算**，不是乐谱级精确转录；节奏证据不足时不会显示数字，旧任务也不会凭空补出节拍。分离结果可能有串音或伪影。账号选曲取决于该账号是否能取得合法可播放音源；请只处理自己有权使用的音乐。
+## 常见问题
 
-MusicScope 当前仅支持**单机本地使用**：服务绑定 `127.0.0.1`，不应直接开放到局域网或公网。开发用的 `X-MusicScope-User-ID` 不是身份验证；共享部署需要重新设计认证、TLS 与安全边界。
+**必须登录网易云吗？** 不需要。本地文件导入和分轨可独立使用。
+
+**可以完全离线吗？** 依赖与模型准备完成后，本地音频分轨可使用已下载的组件。首次初始化、模型下载与网易云功能需要联网。
+
+**没有独立显卡可以运行吗？** 可以使用 CPU，长音频处理可能较慢。macOS 优先使用 MPS，Windows 检测到可用 CUDA 时使用 CUDA，否则回退 CPU；可在本地 `.env` 中设置 `AUDIO_WORKER_DEVICE=cpu`。
+
+**为什么吉他或钢琴还有其他声音？** 模型分离并不保证完全独立。不同录音、混音与乐器组合会影响效果；BPM 与节拍也属于估算，不是乐谱级转录。
+
+**下载后界面为什么和截图不同？** 截图来自 2026-10-21 的本地开发版，包含尚未发布的界面更新；beta.1 与默认分支以各自实际代码为准。
+
+## 反馈与致谢
+
+欢迎通过 [Issues](https://github.com/sevenlemoon/MusicScope-V2/issues) 反馈问题或建议。请提供操作系统、使用版本、复现步骤和经过脱敏的错误信息；界面问题可附截图，避免上传账号会话或私人音频。
+
+音频处理基于 [Demucs](https://github.com/facebookresearch/demucs)、[PyTorch](https://pytorch.org/) 与 [FFmpeg](https://ffmpeg.org/)，网易云连接使用 [NeteaseCloudMusicApiEnhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced)。感谢这些项目提供的基础能力；第三方组件与模型遵循各自的许可条款。

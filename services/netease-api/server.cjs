@@ -226,6 +226,11 @@ async function route(request, response) {
   if (path === "/v1/playlist/detail") return send(response, 200, await providerRead(payload, api.playlist_detail, "playlist_detail"));
   if (path === "/v1/songs/detail") return send(response, 200, await providerRead(payload, api.song_detail, "song_detail"));
   if (path === "/v1/song/url") return send(response, 200, await playbackSource(payload));
+  if (path === "/v1/song/lyrics") {
+    const id = requireText(payload, "id");
+    if (!/^\d+$/.test(id)) throw new Error("invalid_song_id");
+    return send(response, 200, await providerRead({ session_cookie: payload.session_cookie, id }, api.lyric, "lyrics"));
+  }
   if (path === "/v1/search/tracks") return send(response, 200, await search(payload, 1, "search_tracks"));
   if (path === "/v1/search/artists") return send(response, 200, await search(payload, 100, "search_artists"));
   if (path === "/v1/artists/songs") return send(response, 200, await artistSongs(payload));

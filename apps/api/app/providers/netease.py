@@ -111,6 +111,14 @@ class NetEaseProvider:
             raise ProviderAuthenticationExpired("Provider session is unavailable.")
         return {"session_cookie": self.session_cookie, **values}
 
+    async def get_lyrics(self, provider_id: str) -> dict[str, object]:
+        result = await self._post(
+            "lyrics", "/v1/song/lyrics", self._authenticated_payload(id=provider_id)
+        )
+        if str(result.get("code", 200)) != "200":
+            raise ProviderTemporarilyUnavailable("Lyrics are temporarily unavailable.")
+        return result
+
     async def create_auth_challenge(self) -> AuthChallenge:
         public_id = str(uuid4())
         result = await self._post("qr_create", "/v1/qr/create", {"challenge_id": public_id})
