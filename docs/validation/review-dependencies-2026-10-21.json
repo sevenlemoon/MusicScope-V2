@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-21",
+  "timezone": "Asia/Shanghai",
+  "python_installed_environments": {
+    "api": {
+      "audited_installed_packages": 39,
+      "known_vulnerabilities": 0
+    },
+    "worker": {
+      "audited_installed_packages": 43,
+      "known_vulnerabilities": 0
+    }
+  },
+  "python_certifi_version": "2026.10.19",
+  "fixed_python_advisory": "PYSEC-2026-4320",
+  "npm": {
+    "sidecar": {
+      "known_vulnerabilities": 0,
+      "follow_redirects": "1.16.1"
+    },
+    "desktop": {
+      "known_vulnerabilities": 0
+    },
+    "web_production": {
+      "known_vulnerabilities": 0
+    },
+    "web_all": {
+      "moderate": 19,
+      "high": 0,
+      "critical": 0,
+      "root_package": "sprintf-js",
+      "development_only": true
+    }
+  },
+  "notes": [
+    "Python audit covers installed macOS environments after locked sync, not uninstalled Windows-only dependencies.",
+    "Web moderate findings remain in the Jest development dependency chain."
+  ]
+}
